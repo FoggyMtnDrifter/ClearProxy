@@ -413,6 +413,8 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
   const routes: any[] = [];
 
   for (const host of hosts) {
+    if (!host.enabled) continue; // Skip disabled hosts
+
     const route: any = {
       match: [{
         host: [host.domain]
@@ -465,14 +467,45 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
     routes.push(route);
   }
 
+  // Create the complete Caddy configuration
   return {
+    admin: {
+      listen: process.env.CADDY_ADMIN_LISTEN || "0.0.0.0:2019",
+      enforce_origin: false,
+      origins: ["*"]
+    },
+    logging: {
+      logs: {
+        default: {
+          level: "INFO"
+        }
+      }
+    },
     apps: {
       http: {
         servers: {
           srv0: {
             listen: [":80", ":443"],
-            routes: routes
+            routes: routes,
+            automatic_https: {
+              disable: false
+            }
           }
+        }
+      },
+      tls: {
+        automation: {
+          policies: [{
+            subjects: hosts.filter(h => h.enabled && h.sslEnabled).map(h => h.domain),
+            issuers: [{
+              module: "acme",
+              challenges: {
+                http: {
+                  alternate_port: 80
+                }
+              }
+            }]
+          }]
         }
       }
     }
@@ -487,12 +520,47 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
     await retryWithBackoff(async () => {
+      // First, get the current config to check admin settings
+      const currentConfig = await fetch(`${CADDY_API_URL}/config/`).then(r => r.ok ? r.json() : null);
+      
+      // If we have a current config, preserve its admin settings
+      if (currentConfig?.admin) {
+        config.admin = currentConfig.admin;
+      }
+
       const configJson = JSON.stringify(config);
       caddyLogger.debug({
         url: `${CADDY_API_URL}/load`,
-        configLength: configJson.length
+        configLength: configJson.length,
+        adminConfig: config.admin
       }, 'Sending configuration to Caddy API');
 
+      // First try to validate the config
+      const validateResponse = await fetch(`${CADDY_API_URL}/load/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: configJson
+      });
+
+      if (!validateResponse.ok) {
+        const error = await validateResponse.text();
+        caddyLogger.error({
+          statusCode: validateResponse.status,
+          statusText: validateResponse.statusText,
+          error,
+          requestUrl: `${CADDY_API_URL}/load/config`,
+          configSample: configJson.substring(0, 500) + '...' // Log first 500 chars
+        }, 'Caddy config validation failed');
+        throw new CaddyError(
+          `Invalid Caddy configuration: ${error}`,
+          'CONFIG_VALIDATION_ERROR',
+          { statusCode: validateResponse.status, error }
+        );
+      }
+
+      // If validation passed, apply the config
       const response = await fetch(`${CADDY_API_URL}/load`, {
         method: 'POST',
         headers: {
@@ -508,7 +576,7 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
           statusText: response.statusText,
           error,
           requestUrl: `${CADDY_API_URL}/load`,
-          requestBody: configJson
+          configSample: configJson.substring(0, 500) + '...' // Log first 500 chars
         }, 'Caddy API returned error response');
         throw new CaddyError(
           `Failed to apply Caddy configuration: ${error}`,

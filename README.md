@@ -152,18 +152,40 @@ curl -L https://raw.githubusercontent.com/foggymtndrifter/clearproxy/main/docker
 mkdir -p data/caddy/data data/caddy/config data/certificates
 ```
 
-4. Start the container:
+4. Start the containers:
 ```bash
 docker compose up -d
 ```
 
-The application will be available at `http://localhost` (or your server's IP address).
+The application will be available at `http://localhost:3000`.
 
-### Using Docker CLI
+### Architecture
+
+The Docker Compose setup includes two containers:
+
+1. **ClearProxy App** (`clearproxy-app`):
+   - Runs the SvelteKit application
+   - Handles user interface and business logic
+   - Communicates with Caddy's admin API
+   - Manages the SQLite database
+
+2. **Caddy Server** (`clearproxy-caddy`):
+   - Handles actual proxy operations
+   - Manages SSL/TLS certificates
+   - Provides the admin API for configuration
+
+### Using Docker CLI (Advanced)
+
+To run the containers separately:
 
 ```bash
+# Create a network
+docker network create proxy-network
+
+# Run Caddy
 docker run -d \
-  --name clearproxy \
+  --name clearproxy-caddy \
+  --network proxy-network \
   --restart unless-stopped \
   -p 80:80 \
   -p 443:443 \
@@ -171,23 +193,34 @@ docker run -d \
   -v ./data/caddy/data:/data \
   -v ./data/caddy/config:/config \
   -v ./data/certificates:/certificates \
+  caddy:2-alpine
+
+# Run ClearProxy
+docker run -d \
+  --name clearproxy-app \
+  --network proxy-network \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -v ./data:/data \
   -e NODE_ENV=production \
-  -e DATABASE_URL=file:/data/caddy-manager.db \
+  -e DATABASE_URL=file:/data/clearproxy.db \
+  -e CADDY_API_URL=http://clearproxy-caddy:2019 \
   ghcr.io/foggymtndrifter/clearproxy:latest
 ```
 
-### Updating the Container
+### Updating the Containers
 
 To update to the latest version:
 
 ```bash
-# Using Docker Compose
+# Using Docker Compose (Recommended)
 docker compose pull
 docker compose up -d
 
 # Using Docker CLI
 docker pull ghcr.io/foggymtndrifter/clearproxy:latest
-docker stop clearproxy
-docker rm clearproxy
-# Then run the container again using the command above
+docker pull caddy:2-alpine
+docker stop clearproxy-app clearproxy-caddy
+docker rm clearproxy-app clearproxy-caddy
+# Then run the containers again using the commands above
 ```

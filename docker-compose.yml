@@ -1,9 +1,26 @@
 version: '3.8'
 
 services:
-  clearproxy:
+  app:
     image: ghcr.io/${GITHUB_REPOSITORY:-foggymtndrifter/clearproxy}:latest
-    container_name: clearproxy
+    container_name: clearproxy-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/data/clearproxy.db
+      - CADDY_API_URL=http://caddy:2019
+    volumes:
+      - ./data:/data
+    networks:
+      - proxy-network
+    depends_on:
+      - caddy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: clearproxy-caddy
     restart: unless-stopped
     ports:
       - "80:80"
@@ -13,9 +30,6 @@ services:
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
       - ./data/certificates:/certificates
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=file:/data/clearproxy.db
     networks:
       - proxy-network
 

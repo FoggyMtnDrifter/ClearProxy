@@ -38,7 +38,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -58,11 +58,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Debug image info
+        run: |
+          echo "Image reference: ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}"
+          echo "Available tags:"
+          echo "${{ steps.meta.outputs.tags }}"
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         if: github.event_name != 'pull_request'
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.ref_name }}
           format: 'sarif'
           output: 'trivy-results.sarif'
 

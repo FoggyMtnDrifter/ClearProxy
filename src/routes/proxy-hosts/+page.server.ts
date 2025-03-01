@@ -80,7 +80,7 @@ export const actions = {
    * @throws Will return a 503 status if Caddy server is not running
    * @throws Will return a 500 status for other errors
    */
-  create: async ({ request }) => {
+  create: async ({ request, locals }) => {
     const data = await request.formData();
     const domain = data.get('domain')?.toString();
     let targetHost = data.get('targetHost')?.toString();
@@ -167,6 +167,7 @@ export const actions = {
           actionType: 'create',
           entityType: 'proxy_host',
           entityId: newHost.id,
+          userId: locals.user?.id,
           changes: {
             domain,
             targetHost,
@@ -221,7 +222,7 @@ export const actions = {
    * @throws Will return a 503 status if Caddy server is not running
    * @throws Will return a 500 status for other errors
    */
-  edit: async ({ request }) => {
+  edit: async ({ request, locals }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const domain = data.get('domain')?.toString();
@@ -313,6 +314,7 @@ export const actions = {
           actionType: 'update',
           entityType: 'proxy_host',
           entityId: id,
+          userId: locals.user?.id,
           changes: {
             domain: domain !== existingHost.domain ? { from: existingHost.domain, to: domain } : undefined,
             targetHost: targetHost !== existingHost.targetHost ? { from: existingHost.targetHost, to: targetHost } : undefined,
@@ -355,7 +357,7 @@ export const actions = {
     }
   },
 
-  delete: async ({ request }) => {
+  delete: async ({ request, locals }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
 
@@ -392,6 +394,7 @@ export const actions = {
           actionType: 'delete',
           entityType: 'proxy_host',
           entityId: id,
+          userId: locals.user?.id,
           changes: {
             domain: existingHost.domain,
             targetHost: existingHost.targetHost,
@@ -428,7 +431,7 @@ export const actions = {
     }
   },
 
-  toggle: async ({ request }) => {
+  toggle: async ({ request, locals }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const enabled = data.get('enabled') === 'true';
@@ -467,6 +470,7 @@ export const actions = {
           actionType: 'toggle',
           entityType: 'proxy_host',
           entityId: id,
+          userId: locals.user?.id,
           changes: {
             enabled: { from: existingHost.enabled, to: enabled }
           }

@@ -12,10 +12,89 @@
   import Modal from '$lib/components/Modal.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+  import Input from '$lib/components/Input.svelte';
+  import Table from '$lib/components/Table.svelte';
+  import Icon from '$lib/components/Icons.svelte';
   
   export let data;
   let form: ProxyHostFormData | null = null;
   let statusCheckInterval: ReturnType<typeof setInterval>;
+  let searchQuery = '';
+  let searchTimeout: ReturnType<typeof setTimeout>;
+  let filteredHosts = data.hosts;
+
+  // Filter hosts when search query changes
+  $: {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      if (!searchQuery) {
+        filteredHosts = data.hosts;
+      } else {
+        const query = searchQuery.toLowerCase();
+        filteredHosts = data.hosts.filter(host => 
+          host.domain.toLowerCase().includes(query) ||
+          host.targetHost.toLowerCase().includes(query) ||
+          host.targetPort.toString().includes(query) ||
+          host.targetProtocol.toLowerCase().includes(query)
+        );
+      }
+    }, 300); // 300ms debounce delay
+  }
+
+  // Table configuration
+  const columns = [
+    { header: 'Domain Name', key: 'domain', class: 'font-medium text-gray-900' },
+    { header: 'Target Host', key: 'targetHost' },
+    { header: 'Target Port', key: 'targetPort' },
+    { header: 'Protocol', key: 'targetProtocol' },
+    { 
+      header: 'Status', 
+      key: 'status',
+      class: 'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
+      render: (host: typeof data.hosts[number]) => `
+        <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
+          Active
+        </span>
+      `
+    }
+  ];
+
+  const rowActions = [
+    {
+      srLabel: (host: typeof data.hosts[number]) => `Edit ${host.domain}`,
+      onClick: (host: typeof data.hosts[number]) => startEdit(host),
+      class: 'p-2 hover:bg-gray-50 rounded-full',
+      component: Icon,
+      props: {
+        type: 'edit',
+        className: 'size-4 text-gray-500 hover:text-gray-700'
+      }
+    },
+    {
+      srLabel: (host: typeof data.hosts[number]) => `Delete ${host.domain}`,
+      onClick: async (host: typeof data.hosts[number]) => {
+        if (confirm(`Are you sure you want to delete ${host.domain}?`)) {
+          const form = new FormData();
+          form.set('id', host.id.toString());
+          
+          const response = await fetch('?/delete', {
+            method: 'POST',
+            body: form
+          });
+          
+          if (response.ok) {
+            invalidate('app:proxy-hosts');
+          }
+        }
+      },
+      class: 'p-2 hover:bg-gray-50 rounded-full',
+      component: Icon,
+      props: {
+        type: 'delete',
+        className: 'size-4 text-red-500 hover:text-red-700'
+      }
+    }
+  ];
 
   // Add function to handle target host input changes
   function handleTargetHostInput(event: Event, targetPortId: string) {
@@ -51,6 +130,9 @@
   onDestroy(() => {
     if (statusCheckInterval) {
       clearInterval(statusCheckInterval);
+    }
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
   });
 
@@ -209,819 +291,456 @@
 </script>
 
 <div class="py-6">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-semibold text-gray-900">Proxy Hosts</h1>
-        <div class="mt-1 flex items-center gap-2">
-          <div class={`h-2 w-2 rounded-full ${data.caddyStatus?.running ? 'bg-green-400' : 'bg-red-400'}`}></div>
-          <p class="text-sm text-gray-500">
-            {#if data.caddyStatus?.running}
-              Caddy server is running
-            {:else}
-              Caddy server is not running
-            {/if}
-          </p>
-        </div>
-      </div>
-      <button
-        on:click={() => {
-          resetForm();
-          showCreateModal = true;
-        }}
-        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        disabled={isSubmitting || !data.caddyStatus?.running}
-      >
-        Add Proxy Host
-      </button>
-    </div>
-
-    {#if !data.caddyStatus?.running}
-      <div class="mt-4">
-        <ErrorAlert 
-          error="Caddy server is not running" 
-          details="Please make sure the Caddy server is running and accessible before managing proxy hosts."
-        />
-      </div>
-    {/if}
-
-    {#if error}
-      <div class="mt-4">
-        <ErrorAlert error={error.message} details={error.details} />
-      </div>
-    {/if}
-
-    {#if !data.hosts}
-      <div class="mt-8 flex justify-center">
-        <LoadingSpinner size="lg" center={true} />
-      </div>
-    {:else if data.hosts.length === 0}
-      <div class="mt-8 text-center text-gray-500">
-        No proxy hosts configured yet. Click "Add Proxy Host" to create one.
-      </div>
-    {:else}
-      <div class="mt-8 flex flex-col">
-        <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-              <table class="min-w-full divide-y divide-gray-300">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Domain</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Target</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">SSL</th>
-                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Certificate</th>
-                    <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span class="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 bg-white">
-                  {#each data.hosts as host}
-                    <tr>
-                      <td class="whitespace-nowrap px-3 py-4">
-                        <form method="POST" action="?/toggle" use:enhance={handleToggle}>
-                          <input type="hidden" name="id" value={host.id} />
-                          <input type="hidden" name="enabled" value={(!host.enabled).toString()} />
-                          <button
-                            type="submit"
-                            class={`inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded min-w-[4.5rem] justify-center ${
-                              host.enabled
-                                ? 'text-green-800 bg-green-100 hover:bg-green-200'
-                                : 'text-gray-800 bg-gray-100 hover:bg-gray-200'
-                            }`}
-                            disabled={isSubmitting}
-                          >
-                            {#if isSubmitting}
-                              <LoadingSpinner size="sm" label="Updating..." />
-                            {:else}
-                              {host.enabled ? 'Enabled' : 'Disabled'}
-                            {/if}
-                          </button>
-                        </form>
-                      </td>
-                      <td class="whitespace-nowrap px-3 py-4">{host.domain}</td>
-                      <td class="whitespace-nowrap px-3 py-4">{host.targetProtocol}://{host.targetHost}:{host.targetPort}</td>
-                      <td class="whitespace-nowrap px-3 py-4">{host.sslEnabled ? 'Enabled' : 'Disabled'}</td>
-                      <td class="whitespace-nowrap px-3 py-4">{host.certInfo ? 'Certified' : 'Uncertified'}</td>
-                      <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                        <div class="flex justify-end space-x-3">
-                          <button
-                            type="button"
-                            on:click={() => startEdit(host)}
-                            class="text-indigo-600 hover:text-indigo-900"
-                            disabled={isSubmitting}
-                          >
-                            Edit
-                          </button>
-                          <form method="POST" action="?/delete" use:enhance={handleDelete} class="inline-block">
-                            <input type="hidden" name="id" value={host.id} />
-                            <button
-                              type="submit"
-                              class="text-red-600 hover:text-red-900"
-                              disabled={isSubmitting}
-                            >
-                              {#if isSubmitting}
-                                <LoadingSpinner size="sm" label="Deleting..." />
-                              {:else}
-                                Delete
-                              {/if}
-                            </button>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    {/if}
-
-    <Modal
-      title="Add Proxy Host"
-      isOpen={showCreateModal}
-      onClose={() => showCreateModal = false}
-    >
-      <form method="POST" action="?/create" use:enhance={handleSubmit}>
-        <div class="space-y-6">
-          <!-- Domain Name -->
+  <div class="px-4 sm:px-6 lg:px-0">
+    <!-- Table -->
+    <div class="overflow-hidden bg-white shadow sm:rounded-lg">
+      <div class="px-4 py-5 sm:px-6">
+        <div class="flex justify-between items-center">
           <div>
-            <label for="domain" class="block text-sm font-medium text-gray-700">Domain Name</label>
-            <input
-              type="text"
-              name="domain"
-              id="domain"
-              required
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="example.com"
-            />
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Proxy Hosts</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">Configure and manage your proxy host settings.</p>
           </div>
-
-          <!-- Target Host and Port -->
           <div class="flex gap-4">
-            <div class="w-24">
-              <label for="targetProtocol" class="block text-sm font-medium text-gray-700">Protocol</label>
-              <select
-                name="targetProtocol"
-                id="targetProtocol"
-                bind:value={targetProtocol}
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              >
-                <option value="http">HTTP</option>
-                <option value="https">HTTPS</option>
-              </select>
-            </div>
-
-            <div class="flex-1">
-              <label for="targetHost" class="block text-sm font-medium text-gray-700">Target Host</label>
+            <div class="relative">
               <input
                 type="text"
-                name="targetHost"
-                id="targetHost"
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="localhost"
-                on:input={(e) => handleTargetHostInput(e, 'targetPort')}
+                bind:value={searchQuery}
+                placeholder="Search hosts..."
+                class="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>
-
-            <div class="w-24">
-              <label for="targetPort" class="block text-sm font-medium text-gray-700">Target Port</label>
-              <input
-                type="number"
-                name="targetPort"
-                id="targetPort"
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="3000"
-              />
-            </div>
+            <button
+              type="button"
+              on:click={() => {
+                showCreateModal = true;
+                resetForm();
+              }}
+              class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              Add Host
+            </button>
           </div>
+        </div>
+      </div>
+      <div class="px-4 pb-5 sm:px-6 sm:pb-6">
+        <Table columns={columns} data={filteredHosts} rowActions={rowActions} />
+      </div>
+    </div>
 
-          <!-- Add the ignore invalid cert checkbox when protocol is HTTPS -->
-          {#if targetProtocol === 'https'}
-            <div class="mt-4">
+    <!-- Create Modal -->
+    {#if showCreateModal}
+      <Modal
+        title="Add Proxy Host"
+        isOpen={showCreateModal}
+        onClose={() => {
+          showCreateModal = false;
+          resetForm();
+        }}
+      >
+        <form
+          method="POST"
+          action="?/create"
+          use:enhance={handleSubmit}
+          class="space-y-4"
+        >
+          <Input
+            label="Domain Name"
+            name="domain"
+            type="text"
+            required
+            placeholder="example.com"
+          />
+          <Input
+            label="Target Host"
+            name="targetHost"
+            type="text"
+            required
+            placeholder="localhost"
+            on:input={(e) => handleTargetHostInput(e, 'targetPort')}
+          />
+          <Input
+            label="Target Port"
+            name="targetPort"
+            id="targetPort"
+            type="number"
+            required
+            placeholder="8080"
+          />
+
+          <div class="space-y-4 border-t border-gray-200 pt-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-900">SSL Settings</h4>
               <div class="flex items-center">
                 <input
                   type="checkbox"
-                  id="ignoreInvalidCert"
-                  bind:checked={ignoreInvalidCert}
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  id="sslEnabled"
+                  bind:checked={sslEnabled}
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <label for="ignoreInvalidCert" class="ml-2 block text-sm text-gray-900">
-                  Ignore invalid certificates
-                </label>
-              </div>
-              <p class="mt-1 text-sm text-gray-500">
-                Enable this if the target uses a self-signed or invalid certificate
-              </p>
-            </div>
-          {/if}
-
-          <!-- Toggles -->
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <label for="sslEnabled" class="text-sm font-medium text-gray-700">Enable SSL</label>
-              <button 
-                type="button"
-                role="switch"
-                aria-checked={sslEnabled}
-                id="sslEnabled"
-                on:click={() => sslEnabled = !sslEnabled}
-                class={`${
-                  sslEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-              >
-                <span class="sr-only">Enable SSL</span>
-                <span
-                  aria-hidden="true"
-                  class={`${
-                    sslEnabled ? 'translate-x-5' : 'translate-x-0'
-                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                ></span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label for="forceSSL" class="text-sm font-medium text-gray-700">Force SSL</label>
-              <button 
-                type="button"
-                role="switch"
-                aria-checked={forceSSL}
-                id="forceSSL"
-                on:click={() => sslEnabled && (forceSSL = !forceSSL)}
-                class={`${
-                  forceSSL && sslEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                  !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                disabled={!sslEnabled}
-              >
-                <span class="sr-only">Force SSL</span>
-                <span
-                  aria-hidden="true"
-                  class={`${
-                    forceSSL && sslEnabled ? 'translate-x-5' : 'translate-x-0'
-                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                ></span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label for="http2Support" class="text-sm font-medium text-gray-700">HTTP/2 Support</label>
-              <button 
-                type="button"
-                role="switch"
-                aria-checked={http2Support}
-                id="http2Support"
-                on:click={() => http2Support = !http2Support}
-                class={`${
-                  http2Support ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                  !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                disabled={!sslEnabled}
-              >
-                <span class="sr-only">HTTP/2 Support</span>
-                <span
-                  aria-hidden="true"
-                  class={`${
-                    http2Support ? 'translate-x-5' : 'translate-x-0'
-                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                ></span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label for="http3Support" class="text-sm font-medium text-gray-700">HTTP/3 Support</label>
-              <button 
-                type="button"
-                role="switch"
-                aria-checked={http3Support}
-                id="http3Support"
-                on:click={() => http3Support = !http3Support}
-                class={`${
-                  http3Support ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                  !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                disabled={!sslEnabled}
-              >
-                <span class="sr-only">HTTP/3 Support</span>
-                <span
-                  aria-hidden="true"
-                  class={`${
-                    http3Support ? 'translate-x-5' : 'translate-x-0'
-                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                ></span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label for="showAdvanced" class="text-sm font-medium text-gray-700">Advanced Configuration</label>
-              <button 
-                type="button"
-                role="switch"
-                aria-checked={showAdvanced}
-                id="showAdvanced"
-                on:click={() => showAdvanced = !showAdvanced}
-                class={`${
-                  showAdvanced ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-              >
-                <span class="sr-only">Show Advanced Configuration</span>
-                <span
-                  aria-hidden="true"
-                  class={`${
-                    showAdvanced ? 'translate-x-5' : 'translate-x-0'
-                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                ></span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label for="basicAuthEnabled" class="text-sm font-medium text-gray-700">Basic Authentication</label>
-              <button 
-                type="button"
-                role="switch"
-                aria-checked={basicAuthEnabled}
-                id="basicAuthEnabled"
-                on:click={() => basicAuthEnabled = !basicAuthEnabled}
-                class={`${
-                  basicAuthEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-              >
-                <span class="sr-only">Enable Basic Authentication</span>
-                <span
-                  aria-hidden="true"
-                  class={`${
-                    basicAuthEnabled ? 'translate-x-5' : 'translate-x-0'
-                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                ></span>
-              </button>
-            </div>
-          </div>
-
-          {#if basicAuthEnabled}
-            <div class="space-y-4">
-              <div>
-                <label for="basicAuthUsername" class="block text-sm font-medium text-gray-700">Username</label>
-                <input
-                  type="text"
-                  name="basicAuthUsername"
-                  id="basicAuthUsername"
-                  bind:value={basicAuthUsername}
-                  required={basicAuthEnabled}
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Enter username"
-                />
-              </div>
-
-              <div>
-                <label for="basicAuthPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                <input
-                  type="password"
-                  name="basicAuthPassword"
-                  id="basicAuthPassword"
-                  bind:value={basicAuthPassword}
-                  required={basicAuthEnabled}
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Enter password"
-                />
-              </div>
-            </div>
-          {/if}
-
-          {#if showAdvanced}
-            <div class="mt-4">
-              <label for="advancedConfig" class="block text-sm font-medium text-gray-700">
-                Advanced Configuration
-                <span class="text-xs text-gray-500 font-normal">(JSON format)</span>
-              </label>
-              <div class="mt-1">
-                <textarea
-                  id="advancedConfig"
-                  name="advancedConfig"
-                  rows="8"
-                  bind:value={advancedConfig}
-                  class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
-                  placeholder={`{
-  "match": [
-    {
-      "path": ["/api/*"]
-    }
-  ],
-  "handle": [
-    {
-      "handler": "headers",
-      "response": {
-        "set": {
-          "Access-Control-Allow-Origin": ["*"],
-          "Cache-Control": ["public, max-age=3600"]
-        }
-      }
-    }
-  ]
-}`}
-                ></textarea>
-              </div>
-              <div class="mt-2 text-sm text-gray-500 space-y-2">
-                <p>Add custom Caddy configuration in JSON format. Supports:</p>
-                <ul class="list-disc pl-5 space-y-1">
-                  <li><code>reverse_proxy</code>: Advanced proxy settings (load balancing, health checks)</li>
-                  <li><code>static_response</code>: Custom responses and redirects</li>
-                  <li><code>headers</code>: Request/response header manipulation</li>
-                  <li><code>rewrite</code>: URL rewriting</li>
-                  <li><code>handle_errors</code>: Custom error pages</li>
-                  <li><code>encode</code>: Response compression</li>
-                  <li>And more...</li>
-                </ul>
-                <p>
-                  <a href="https://caddyserver.com/docs/json/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500">
-                    View full documentation →
-                  </a>
-                </p>
-              </div>
-            </div>
-          {/if}
-        </div>
-
-        <div class="mt-6 flex justify-end space-x-3">
-          <button
-            type="button"
-            on:click={() => showCreateModal = false}
-            class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 min-w-[5rem]"
-            disabled={isSubmitting}
-          >
-            {#if isSubmitting}
-              <LoadingSpinner size="sm" label="Creating..." />
-            {:else}
-              Create
-            {/if}
-          </button>
-        </div>
-
-        {#if error}
-          <div class="mt-4">
-            <ErrorAlert error={error.message} details={error.details} />
-          </div>
-        {/if}
-      </form>
-    </Modal>
-
-    <Modal
-      title="Edit Proxy Host"
-      isOpen={showEditModal}
-      onClose={() => showEditModal = false}
-    >
-      {#if editingHost}
-        <form method="POST" action="?/edit" use:enhance={handleEditSubmit}>
-          <div class="space-y-6">
-            <!-- Domain Name -->
-            <div>
-              <label for="editDomain" class="block text-sm font-medium text-gray-700">Domain Name</label>
-              <input
-                type="text"
-                name="domain"
-                id="editDomain"
-                required
-                value={editingHost.domain}
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="example.com"
-              />
-            </div>
-
-            <!-- Target Host and Port -->
-            <div class="flex gap-4">
-              <div class="w-24">
-                <label for="editTargetProtocol" class="block text-sm font-medium text-gray-700">Protocol</label>
-                <select
-                  name="targetProtocol"
-                  id="editTargetProtocol"
-                  bind:value={targetProtocol}
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                >
-                  <option value="http">HTTP</option>
-                  <option value="https">HTTPS</option>
-                </select>
-              </div>
-
-              <div class="flex-1">
-                <label for="editTargetHost" class="block text-sm font-medium text-gray-700">Target Host</label>
-                <input
-                  type="text"
-                  name="targetHost"
-                  id="editTargetHost"
-                  required
-                  value={editingHost.targetHost}
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="localhost"
-                  on:input={(e) => handleTargetHostInput(e, 'editTargetPort')}
-                />
-              </div>
-
-              <div class="w-24">
-                <label for="editTargetPort" class="block text-sm font-medium text-gray-700">Target Port</label>
-                <input
-                  type="number"
-                  name="targetPort"
-                  id="editTargetPort"
-                  required
-                  value={editingHost.targetPort}
-                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="3000"
-                />
+                <label for="sslEnabled" class="ml-2 text-sm text-gray-600">Enable SSL</label>
               </div>
             </div>
 
-            <!-- Add the ignore invalid cert checkbox when protocol is HTTPS -->
-            {#if targetProtocol === 'https'}
-              <div class="mt-4">
+            {#if sslEnabled}
+              <div class="ml-4 space-y-2">
                 <div class="flex items-center">
                   <input
                     type="checkbox"
-                    id="editIgnoreInvalidCert"
-                    bind:checked={ignoreInvalidCert}
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    id="forceSSL"
+                    bind:checked={forceSSL}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
-                  <label for="editIgnoreInvalidCert" class="ml-2 block text-sm text-gray-900">
-                    Ignore invalid certificates
-                  </label>
+                  <label for="forceSSL" class="ml-2 text-sm text-gray-600">Force SSL</label>
                 </div>
-                <p class="mt-1 text-sm text-gray-500">
-                  Enable this if the target uses a self-signed or invalid certificate
-                </p>
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="http2Support"
+                    bind:checked={http2Support}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="http2Support" class="ml-2 text-sm text-gray-600">HTTP/2 Support</label>
+                </div>
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="http3Support"
+                    bind:checked={http3Support}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="http3Support" class="ml-2 text-sm text-gray-600">HTTP/3 Support</label>
+                </div>
               </div>
             {/if}
+          </div>
 
-            <!-- Toggles -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <label for="editSslEnabled" class="text-sm font-medium text-gray-700">Enable SSL</label>
-                <button 
-                  type="button"
-                  role="switch"
-                  aria-checked={sslEnabled}
-                  id="editSslEnabled"
-                  on:click={() => sslEnabled = !sslEnabled}
-                  class={`${
-                    sslEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-                >
-                  <span class="sr-only">Enable SSL</span>
-                  <span
-                    aria-hidden="true"
-                    class={`${
-                      sslEnabled ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  ></span>
-                </button>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <label for="editForceSSL" class="text-sm font-medium text-gray-700">Force SSL</label>
-                <button 
-                  type="button"
-                  role="switch"
-                  aria-checked={forceSSL}
-                  id="editForceSSL"
-                  on:click={() => sslEnabled && (forceSSL = !forceSSL)}
-                  class={`${
-                    forceSSL && sslEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                    !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  disabled={!sslEnabled}
-                >
-                  <span class="sr-only">Force SSL</span>
-                  <span
-                    aria-hidden="true"
-                    class={`${
-                      forceSSL && sslEnabled ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  ></span>
-                </button>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <label for="editHttp2Support" class="text-sm font-medium text-gray-700">HTTP/2 Support</label>
-                <button 
-                  type="button"
-                  role="switch"
-                  aria-checked={http2Support}
-                  id="editHttp2Support"
-                  on:click={() => http2Support = !http2Support}
-                  class={`${
-                    http2Support ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                    !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  disabled={!sslEnabled}
-                >
-                  <span class="sr-only">HTTP/2 Support</span>
-                  <span
-                    aria-hidden="true"
-                    class={`${
-                      http2Support ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  ></span>
-                </button>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <label for="editHttp3Support" class="text-sm font-medium text-gray-700">HTTP/3 Support</label>
-                <button 
-                  type="button"
-                  role="switch"
-                  aria-checked={http3Support}
-                  id="editHttp3Support"
-                  on:click={() => http3Support = !http3Support}
-                  class={`${
-                    http3Support ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                    !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  disabled={!sslEnabled}
-                >
-                  <span class="sr-only">HTTP/3 Support</span>
-                  <span
-                    aria-hidden="true"
-                    class={`${
-                      http3Support ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  ></span>
-                </button>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <label for="editShowAdvanced" class="text-sm font-medium text-gray-700">Advanced Configuration</label>
-                <button 
-                  type="button"
-                  role="switch"
-                  aria-checked={showAdvanced}
-                  id="editShowAdvanced"
-                  on:click={() => showAdvanced = !showAdvanced}
-                  class={`${
-                    showAdvanced ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-                >
-                  <span class="sr-only">Show Advanced Configuration</span>
-                  <span
-                    aria-hidden="true"
-                    class={`${
-                      showAdvanced ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  ></span>
-                </button>
-              </div>
-
-              <div class="flex items-center justify-between">
-                <label for="editBasicAuthEnabled" class="text-sm font-medium text-gray-700">Basic Authentication</label>
-                <button 
-                  type="button"
-                  role="switch"
-                  aria-checked={basicAuthEnabled}
-                  id="editBasicAuthEnabled"
-                  on:click={() => basicAuthEnabled = !basicAuthEnabled}
-                  class={`${
-                    basicAuthEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-                >
-                  <span class="sr-only">Enable Basic Authentication</span>
-                  <span
-                    aria-hidden="true"
-                    class={`${
-                      basicAuthEnabled ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  ></span>
-                </button>
+          <div class="space-y-4 border-t border-gray-200 pt-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-900">Basic Authentication</h4>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="basicAuthEnabled"
+                  bind:checked={basicAuthEnabled}
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label for="basicAuthEnabled" class="ml-2 text-sm text-gray-600">Enable Basic Auth</label>
               </div>
             </div>
 
             {#if basicAuthEnabled}
-              <div class="space-y-4">
-                <div>
-                  <label for="editBasicAuthUsername" class="block text-sm font-medium text-gray-700">Username</label>
-                  <input
-                    type="text"
-                    name="basicAuthUsername"
-                    id="editBasicAuthUsername"
-                    bind:value={basicAuthUsername}
-                    required={basicAuthEnabled}
-                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Enter username"
-                  />
-                </div>
-
-                <div>
-                  <label for="editBasicAuthPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                  <input
-                    type="password"
-                    name="basicAuthPassword"
-                    id="editBasicAuthPassword"
-                    bind:value={basicAuthPassword}
-                    required={basicAuthEnabled}
-                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Enter password"
-                  />
-                </div>
+              <div class="ml-4 space-y-4">
+                <Input
+                  label="Username"
+                  name="basicAuthUsername"
+                  bind:value={basicAuthUsername}
+                  required={basicAuthEnabled}
+                />
+                <Input
+                  label="Password"
+                  name="basicAuthPassword"
+                  type="password"
+                  bind:value={basicAuthPassword}
+                  required={basicAuthEnabled}
+                />
               </div>
             {/if}
+          </div>
+
+          <div class="space-y-4 border-t border-gray-200 pt-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-900">Advanced Settings</h4>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showAdvanced"
+                  bind:checked={showAdvanced}
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label for="showAdvanced" class="ml-2 text-sm text-gray-600">Show Advanced Settings</label>
+              </div>
+            </div>
 
             {#if showAdvanced}
-              <div class="mt-4">
-                <label for="editAdvancedConfig" class="block text-sm font-medium text-gray-700">
-                  Advanced Configuration
-                  <span class="text-xs text-gray-500 font-normal">(JSON format)</span>
-                </label>
-                <div class="mt-1">
-                  <textarea
-                    id="editAdvancedConfig"
-                    name="advancedConfig"
-                    rows="8"
-                    bind:value={advancedConfig}
-                    class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
-                    placeholder={`{
-  "match": [
-    {
-      "path": ["/api/*"]
-    }
-  ],
-  "handle": [
-    {
-      "handler": "headers",
-      "response": {
-        "set": {
-          "Access-Control-Allow-Origin": ["*"],
-          "Cache-Control": ["public, max-age=3600"]
-        }
-      }
-    }
-  ]
-}`}
-                  ></textarea>
+              <div class="ml-4 space-y-4">
+                <div>
+                  <label for="targetProtocol" class="block text-sm font-medium text-gray-700">Target Protocol</label>
+                  <select
+                    id="targetProtocol"
+                    name="targetProtocol"
+                    bind:value={targetProtocol}
+                    class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="http">HTTP</option>
+                    <option value="https">HTTPS</option>
+                  </select>
                 </div>
-                <div class="mt-2 text-sm text-gray-500 space-y-2">
-                  <p>Add custom Caddy configuration in JSON format. Supports:</p>
-                  <ul class="list-disc pl-5 space-y-1">
-                    <li><code>reverse_proxy</code>: Advanced proxy settings (load balancing, health checks)</li>
-                    <li><code>static_response</code>: Custom responses and redirects</li>
-                    <li><code>headers</code>: Request/response header manipulation</li>
-                    <li><code>rewrite</code>: URL rewriting</li>
-                    <li><code>handle_errors</code>: Custom error pages</li>
-                    <li><code>encode</code>: Response compression</li>
-                    <li>And more...</li>
-                  </ul>
-                  <p>
-                    <a href="https://caddyserver.com/docs/json/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500">
-                      View full documentation →
-                    </a>
-                  </p>
+
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="ignoreInvalidCert"
+                    bind:checked={ignoreInvalidCert}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="ignoreInvalidCert" class="ml-2 text-sm text-gray-600">Ignore Invalid Certificate</label>
+                </div>
+
+                <div>
+                  <label for="advancedConfig" class="block text-sm font-medium text-gray-700">Advanced Configuration</label>
+                  <div class="mt-1">
+                    <textarea
+                      id="advancedConfig"
+                      name="advancedConfig"
+                      bind:value={advancedConfig}
+                      rows="4"
+                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      placeholder="Enter advanced Caddyfile configuration"
+                    />
+                  </div>
                 </div>
               </div>
             {/if}
           </div>
 
-          <div class="mt-6 flex justify-end space-x-3">
-            <button
-              type="button"
-              on:click={() => showEditModal = false}
-              class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
+          {#if error}
+            <ErrorAlert error={error.message} details={error.details} />
+          {/if}
+
+          <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
             <button
               type="submit"
-              class="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 min-w-[5rem]"
+              class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
               disabled={isSubmitting}
             >
               {#if isSubmitting}
-                <LoadingSpinner size="sm" label="Saving..." />
+                <LoadingSpinner size="sm" label="Loading..." center />
+                Creating...
+              {:else}
+                Create Host
+              {/if}
+            </button>
+            <button
+              type="button"
+              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
+              on:click={() => {
+                showCreateModal = false;
+                resetForm();
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+    {/if}
+
+    <!-- Edit Modal -->
+    {#if showEditModal && editingHost}
+      <Modal
+        title="Edit Proxy Host"
+        isOpen={showEditModal}
+        onClose={() => {
+          showEditModal = false;
+          editingHost = null;
+        }}
+      >
+        <form
+          method="POST"
+          action="?/update"
+          use:enhance={handleEditSubmit}
+          class="space-y-4"
+        >
+          <Input
+            label="Domain Name"
+            name="domain"
+            type="text"
+            required
+            value={editingHost.domain}
+          />
+          <Input
+            label="Target Host"
+            name="targetHost"
+            type="text"
+            required
+            value={editingHost.targetHost}
+            on:input={(e) => handleTargetHostInput(e, 'targetPort')}
+          />
+          <Input
+            label="Target Port"
+            name="targetPort"
+            id="targetPort"
+            type="text"
+            required
+            value={editingHost.targetPort.toString()}
+          />
+
+          <div class="space-y-4 border-t border-gray-200 pt-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-900">SSL Settings</h4>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="sslEnabled"
+                  bind:checked={sslEnabled}
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label for="sslEnabled" class="ml-2 text-sm text-gray-600">Enable SSL</label>
+              </div>
+            </div>
+
+            {#if sslEnabled}
+              <div class="ml-4 space-y-2">
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="forceSSL"
+                    bind:checked={forceSSL}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="forceSSL" class="ml-2 text-sm text-gray-600">Force SSL</label>
+                </div>
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="http2Support"
+                    bind:checked={http2Support}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="http2Support" class="ml-2 text-sm text-gray-600">HTTP/2 Support</label>
+                </div>
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="http3Support"
+                    bind:checked={http3Support}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="http3Support" class="ml-2 text-sm text-gray-600">HTTP/3 Support</label>
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          <div class="space-y-4 border-t border-gray-200 pt-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-900">Basic Authentication</h4>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="basicAuthEnabled"
+                  bind:checked={basicAuthEnabled}
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label for="basicAuthEnabled" class="ml-2 text-sm text-gray-600">Enable Basic Auth</label>
+              </div>
+            </div>
+
+            {#if basicAuthEnabled}
+              <div class="ml-4 space-y-4">
+                <Input
+                  label="Username"
+                  name="basicAuthUsername"
+                  bind:value={basicAuthUsername}
+                  required={basicAuthEnabled}
+                />
+                <Input
+                  label="Password"
+                  name="basicAuthPassword"
+                  type="password"
+                  bind:value={basicAuthPassword}
+                  required={basicAuthEnabled}
+                />
+              </div>
+            {/if}
+          </div>
+
+          <div class="space-y-4 border-t border-gray-200 pt-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-900">Advanced Settings</h4>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showAdvanced"
+                  bind:checked={showAdvanced}
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label for="showAdvanced" class="ml-2 text-sm text-gray-600">Show Advanced Settings</label>
+              </div>
+            </div>
+
+            {#if showAdvanced}
+              <div class="ml-4 space-y-4">
+                <div>
+                  <label for="targetProtocol" class="block text-sm font-medium text-gray-700">Target Protocol</label>
+                  <select
+                    id="targetProtocol"
+                    name="targetProtocol"
+                    bind:value={targetProtocol}
+                    class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="http">HTTP</option>
+                    <option value="https">HTTPS</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="ignoreInvalidCert"
+                    bind:checked={ignoreInvalidCert}
+                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label for="ignoreInvalidCert" class="ml-2 text-sm text-gray-600">Ignore Invalid Certificate</label>
+                </div>
+
+                <div>
+                  <label for="advancedConfig" class="block text-sm font-medium text-gray-700">Advanced Configuration</label>
+                  <div class="mt-1">
+                    <textarea
+                      id="advancedConfig"
+                      name="advancedConfig"
+                      bind:value={advancedConfig}
+                      rows="4"
+                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      placeholder="Enter advanced Caddyfile configuration"
+                    />
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          {#if error}
+            <ErrorAlert error={error.message} details={error.details} />
+          {/if}
+
+          <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+            <button
+              type="submit"
+              class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
+              disabled={isSubmitting}
+            >
+              {#if isSubmitting}
+                <LoadingSpinner size="sm" label="Loading..." center />
+                Saving...
               {:else}
                 Save Changes
               {/if}
             </button>
+            <button
+              type="button"
+              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
+              on:click={() => {
+                showEditModal = false;
+                editingHost = null;
+              }}
+            >
+              Cancel
+            </button>
           </div>
-
-          {#if error}
-            <div class="mt-4">
-              <ErrorAlert error={error.message} details={error.details} />
-            </div>
-          {/if}
         </form>
-      {/if}
-    </Modal>
+      </Modal>
+    {/if}
   </div>
 </div>

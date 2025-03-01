@@ -8,6 +8,7 @@
   - Body scroll locking when open
   - Accessible (proper ARIA attributes and keyboard handling)
   - Responsive design
+  - Smooth transitions and animations
   
   Usage:
   ```svelte
@@ -22,6 +23,8 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
+  import Icon from './Icons.svelte';
 
   export let title: string;
   export let isOpen: boolean;
@@ -51,25 +54,31 @@
 </script>
 
 {#if isOpen}
-  <dialog
-    class="fixed inset-0 z-50 overflow-y-auto bg-transparent p-0 m-0"
-    aria-labelledby={title}
-    open
+  <div 
+    class="relative z-50" 
+    role="dialog" 
+    aria-labelledby="modal-title" 
+    aria-modal="true"
   >
-    <!-- Overlay -->
-    <button
-      type="button"
-      class="fixed inset-0 bg-black/30 backdrop-blur-sm"
+    <!-- Backdrop -->
+    <div 
+      in:fade={{ duration: 300 }}
+      out:fade={{ duration: 200 }}
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+      aria-hidden="true"
       on:click={onClose}
-      aria-label="Close modal"
-    ></button>
+    ></div>
 
-    <!-- Modal panel -->
-    <div class="fixed inset-0 overflow-y-auto">
-      <div class="flex min-h-full items-center justify-center p-4">
+    <!-- Modal container -->
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Modal panel -->
         <div
-          class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"
+          in:fly={{ y: 40, duration: 300, opacity: 0 }}
+          out:fly={{ y: 40, duration: 200, opacity: 0 }}
+          class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"
         >
+          <!-- Close button -->
           <div class="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
             <button
               type="button"
@@ -77,15 +86,14 @@
               on:click={onClose}
             >
               <span class="sr-only">Close</span>
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon type="close" className="size-6" stroke={true} />
             </button>
           </div>
 
+          <!-- Content -->
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-              <h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4" id="modal-title">
+              <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">
                 {title}
               </h3>
               <div class="mt-2">
@@ -96,5 +104,5 @@
         </div>
       </div>
     </div>
-  </dialog>
+  </div>
 {/if} 

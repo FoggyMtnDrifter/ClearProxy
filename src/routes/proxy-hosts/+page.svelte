@@ -16,6 +16,9 @@
   import Input from '$lib/components/Input.svelte';
   import Table from '$lib/components/Table.svelte';
   import Icon from '$lib/components/Icons.svelte';
+  import Select from '$lib/components/Select.svelte';
+  import Toggle from '$lib/components/Toggle.svelte';
+  import Textarea from '$lib/components/Textarea.svelte';
   
   export let data;
   let form: ProxyHostFormData | null = null;
@@ -342,95 +345,105 @@
           method="POST"
           action="?/create"
           use:enhance={handleSubmit}
-          class="space-y-4"
+          class="space-y-6"
         >
-          <Input
-            label="Domain Name"
-            name="domain"
-            type="text"
-            required
-            placeholder="example.com"
-          />
-          <Input
-            label="Target Host"
-            name="targetHost"
-            type="text"
-            required
-            placeholder="localhost"
-            on:input={(e) => handleTargetHostInput(e, 'targetPort')}
-          />
-          <Input
-            label="Target Port"
-            name="targetPort"
-            id="targetPort"
-            type="number"
-            required
-            placeholder="8080"
-          />
-
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium text-gray-900">SSL Settings</h4>
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="sslEnabled"
-                  bind:checked={sslEnabled}
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          <!-- Basic Configuration -->
+          <div class="space-y-4">
+            <h4 class="text-base font-medium text-gray-900">Basic Configuration</h4>
+            <Input
+              label="Domain Name"
+              name="domain"
+              type="text"
+              required
+              placeholder="example.com"
+            />
+            
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
+              <div class="sm:col-span-3">
+                <Select
+                  label="Target Protocol"
+                  name="targetProtocol"
+                  bind:value={targetProtocol}
+                  options={[
+                    { value: 'http', label: 'HTTP' },
+                    { value: 'https', label: 'HTTPS' }
+                  ]}
                 />
-                <label for="sslEnabled" class="ml-2 text-sm text-gray-600">Enable SSL</label>
+              </div>
+              <div class="sm:col-span-6">
+                <Input
+                  label="Target Host"
+                  name="targetHost"
+                  type="text"
+                  required
+                  placeholder="localhost"
+                  on:input={(e) => handleTargetHostInput(e, 'targetPort')}
+                />
+              </div>
+              <div class="sm:col-span-3">
+                <Input
+                  label="Target Port"
+                  name="targetPort"
+                  id="targetPort"
+                  type="number"
+                  required
+                  placeholder="8080"
+                />
               </div>
             </div>
+          </div>
+
+          <!-- SSL Configuration -->
+          <div class="border-t border-gray-200 pt-6">
+            <Toggle
+              bind:checked={sslEnabled}
+              label="SSL Configuration"
+              name="sslEnabled"
+            />
 
             {#if sslEnabled}
-              <div class="ml-4 space-y-2">
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="forceSSL"
-                    bind:checked={forceSSL}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              <div class="mt-4 space-y-4">
+                <Toggle
+                  bind:checked={forceSSL}
+                  label="Force SSL"
+                  description="Redirect all HTTP traffic to HTTPS"
+                  name="forceSSL"
+                />
+                {#if targetProtocol === 'https'}
+                  <Toggle
+                    bind:checked={ignoreInvalidCert}
+                    label="Ignore Invalid Certificate"
+                    description="Skip SSL certificate validation for target"
+                    name="ignoreInvalidCert"
                   />
-                  <label for="forceSSL" class="ml-2 text-sm text-gray-600">Force SSL</label>
-                </div>
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="http2Support"
-                    bind:checked={http2Support}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label for="http2Support" class="ml-2 text-sm text-gray-600">HTTP/2 Support</label>
-                </div>
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="http3Support"
-                    bind:checked={http3Support}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label for="http3Support" class="ml-2 text-sm text-gray-600">HTTP/3 Support</label>
-                </div>
+                {/if}
+                <Toggle
+                  bind:checked={http2Support}
+                  label="HTTP/2 Support"
+                  description="Enable HTTP/2 protocol support"
+                  name="http2Support"
+                />
+                <Toggle
+                  bind:checked={http3Support}
+                  label="HTTP/3 Support"
+                  description="Enable HTTP/3 protocol support"
+                  name="http3Support"
+                />
               </div>
             {/if}
           </div>
 
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium text-gray-900">Basic Authentication</h4>
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="basicAuthEnabled"
-                  bind:checked={basicAuthEnabled}
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <label for="basicAuthEnabled" class="ml-2 text-sm text-gray-600">Enable Basic Auth</label>
-              </div>
-            </div>
+          <!-- Security -->
+          <div class="border-t border-gray-200 pt-6">
+            <Toggle
+              bind:checked={basicAuthEnabled}
+              label="Security"
+              description="Enable basic authentication for this proxy"
+              name="basicAuthEnabled"
+            />
 
             {#if basicAuthEnabled}
-              <div class="ml-4 space-y-4">
+              <div class="mt-4 space-y-4">
                 <Input
                   label="Username"
                   name="basicAuthUsername"
@@ -448,58 +461,24 @@
             {/if}
           </div>
 
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium text-gray-900">Advanced Settings</h4>
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="showAdvanced"
-                  bind:checked={showAdvanced}
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <label for="showAdvanced" class="ml-2 text-sm text-gray-600">Show Advanced Settings</label>
-              </div>
-            </div>
+          <!-- Advanced Configuration -->
+          <div class="border-t border-gray-200 pt-6">
+            <Toggle
+              bind:checked={showAdvanced}
+              label="Advanced Configuration"
+              description="Additional Caddyfile directives for advanced users"
+              name="showAdvanced"
+            />
 
             {#if showAdvanced}
-              <div class="ml-4 space-y-4">
-                <div>
-                  <label for="targetProtocol" class="block text-sm font-medium text-gray-700">Target Protocol</label>
-                  <select
-                    id="targetProtocol"
-                    name="targetProtocol"
-                    bind:value={targetProtocol}
-                    class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                  >
-                    <option value="http">HTTP</option>
-                    <option value="https">HTTPS</option>
-                  </select>
-                </div>
-
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="ignoreInvalidCert"
-                    bind:checked={ignoreInvalidCert}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label for="ignoreInvalidCert" class="ml-2 text-sm text-gray-600">Ignore Invalid Certificate</label>
-                </div>
-
-                <div>
-                  <label for="advancedConfig" class="block text-sm font-medium text-gray-700">Advanced Configuration</label>
-                  <div class="mt-1">
-                    <textarea
-                      id="advancedConfig"
-                      name="advancedConfig"
-                      bind:value={advancedConfig}
-                      rows="4"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      placeholder="Enter advanced Caddyfile configuration"
-                    ></textarea>
-                  </div>
-                </div>
+              <div class="mt-4 space-y-4">
+                <Textarea
+                  label="Additional Caddyfile Configuration"
+                  name="advancedConfig"
+                  bind:value={advancedConfig}
+                  rows={4}
+                  placeholder="Enter Caddyfile directives (e.g., header /* &#123;X-Frame-Options SAMEORIGIN&#125;)"
+                />
               </div>
             {/if}
           </div>
@@ -508,10 +487,20 @@
             <ErrorAlert error={error.message} details={error.details} />
           {/if}
 
-          <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              on:click={() => {
+                showCreateModal = false;
+                resetForm();
+              }}
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
+              class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               disabled={isSubmitting}
             >
               {#if isSubmitting}
@@ -520,16 +509,6 @@
               {:else}
                 Create Host
               {/if}
-            </button>
-            <button
-              type="button"
-              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
-              on:click={() => {
-                showCreateModal = false;
-                resetForm();
-              }}
-            >
-              Cancel
             </button>
           </div>
         </form>
@@ -550,95 +529,105 @@
           method="POST"
           action="?/edit"
           use:enhance={handleEditSubmit}
-          class="space-y-4"
+          class="space-y-6"
         >
-          <Input
-            label="Domain Name"
-            name="domain"
-            type="text"
-            required
-            value={editingHost.domain}
-          />
-          <Input
-            label="Target Host"
-            name="targetHost"
-            type="text"
-            required
-            value={editingHost.targetHost}
-            on:input={(e) => handleTargetHostInput(e, 'targetPort')}
-          />
-          <Input
-            label="Target Port"
-            name="targetPort"
-            id="targetPort"
-            type="text"
-            required
-            value={editingHost.targetPort.toString()}
-          />
-
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium text-gray-900">SSL Settings</h4>
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="sslEnabled"
-                  bind:checked={sslEnabled}
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          <!-- Basic Configuration -->
+          <div class="space-y-4">
+            <h4 class="text-base font-medium text-gray-900">Basic Configuration</h4>
+            <Input
+              label="Domain Name"
+              name="domain"
+              type="text"
+              required
+              value={editingHost.domain}
+            />
+            
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
+              <div class="sm:col-span-3">
+                <Select
+                  label="Target Protocol"
+                  name="targetProtocol"
+                  bind:value={targetProtocol}
+                  options={[
+                    { value: 'http', label: 'HTTP' },
+                    { value: 'https', label: 'HTTPS' }
+                  ]}
                 />
-                <label for="sslEnabled" class="ml-2 text-sm text-gray-600">Enable SSL</label>
+              </div>
+              <div class="sm:col-span-6">
+                <Input
+                  label="Target Host"
+                  name="targetHost"
+                  type="text"
+                  required
+                  value={editingHost.targetHost}
+                  on:input={(e) => handleTargetHostInput(e, 'targetPort')}
+                />
+              </div>
+              <div class="sm:col-span-3">
+                <Input
+                  label="Target Port"
+                  name="targetPort"
+                  id="targetPort"
+                  type="number"
+                  required
+                  value={editingHost.targetPort.toString()}
+                />
               </div>
             </div>
+          </div>
+
+          <!-- SSL Configuration -->
+          <div class="border-t border-gray-200 pt-6">
+            <Toggle
+              bind:checked={sslEnabled}
+              label="SSL Configuration"
+              name="sslEnabled"
+            />
 
             {#if sslEnabled}
-              <div class="ml-4 space-y-2">
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="forceSSL"
-                    bind:checked={forceSSL}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              <div class="mt-4 space-y-4">
+                <Toggle
+                  bind:checked={forceSSL}
+                  label="Force SSL"
+                  description="Redirect all HTTP traffic to HTTPS"
+                  name="forceSSL"
+                />
+                {#if targetProtocol === 'https'}
+                  <Toggle
+                    bind:checked={ignoreInvalidCert}
+                    label="Ignore Invalid Certificate"
+                    description="Skip SSL certificate validation for target"
+                    name="ignoreInvalidCert"
                   />
-                  <label for="forceSSL" class="ml-2 text-sm text-gray-600">Force SSL</label>
-                </div>
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="http2Support"
-                    bind:checked={http2Support}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label for="http2Support" class="ml-2 text-sm text-gray-600">HTTP/2 Support</label>
-                </div>
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="http3Support"
-                    bind:checked={http3Support}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label for="http3Support" class="ml-2 text-sm text-gray-600">HTTP/3 Support</label>
-                </div>
+                {/if}
+                <Toggle
+                  bind:checked={http2Support}
+                  label="HTTP/2 Support"
+                  description="Enable HTTP/2 protocol support"
+                  name="http2Support"
+                />
+                <Toggle
+                  bind:checked={http3Support}
+                  label="HTTP/3 Support"
+                  description="Enable HTTP/3 protocol support"
+                  name="http3Support"
+                />
               </div>
             {/if}
           </div>
 
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium text-gray-900">Basic Authentication</h4>
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="basicAuthEnabled"
-                  bind:checked={basicAuthEnabled}
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <label for="basicAuthEnabled" class="ml-2 text-sm text-gray-600">Enable Basic Auth</label>
-              </div>
-            </div>
+          <!-- Security -->
+          <div class="border-t border-gray-200 pt-6">
+            <Toggle
+              bind:checked={basicAuthEnabled}
+              label="Security"
+              description="Enable basic authentication for this proxy"
+              name="basicAuthEnabled"
+            />
 
             {#if basicAuthEnabled}
-              <div class="ml-4 space-y-4">
+              <div class="mt-4 space-y-4">
                 <Input
                   label="Username"
                   name="basicAuthUsername"
@@ -656,58 +645,24 @@
             {/if}
           </div>
 
-          <div class="space-y-4 border-t border-gray-200 pt-4">
-            <div class="flex items-center justify-between">
-              <h4 class="text-sm font-medium text-gray-900">Advanced Settings</h4>
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="showAdvanced"
-                  bind:checked={showAdvanced}
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <label for="showAdvanced" class="ml-2 text-sm text-gray-600">Show Advanced Settings</label>
-              </div>
-            </div>
+          <!-- Advanced Configuration -->
+          <div class="border-t border-gray-200 pt-6">
+            <Toggle
+              bind:checked={showAdvanced}
+              label="Advanced Configuration"
+              description="Additional Caddyfile directives for advanced users"
+              name="showAdvanced"
+            />
 
             {#if showAdvanced}
-              <div class="ml-4 space-y-4">
-                <div>
-                  <label for="targetProtocol" class="block text-sm font-medium text-gray-700">Target Protocol</label>
-                  <select
-                    id="targetProtocol"
-                    name="targetProtocol"
-                    bind:value={targetProtocol}
-                    class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                  >
-                    <option value="http">HTTP</option>
-                    <option value="https">HTTPS</option>
-                  </select>
-                </div>
-
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="ignoreInvalidCert"
-                    bind:checked={ignoreInvalidCert}
-                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label for="ignoreInvalidCert" class="ml-2 text-sm text-gray-600">Ignore Invalid Certificate</label>
-                </div>
-
-                <div>
-                  <label for="advancedConfig" class="block text-sm font-medium text-gray-700">Advanced Configuration</label>
-                  <div class="mt-1">
-                    <textarea
-                      id="advancedConfig"
-                      name="advancedConfig"
-                      bind:value={advancedConfig}
-                      rows="4"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      placeholder="Enter advanced Caddyfile configuration"
-                    ></textarea>
-                  </div>
-                </div>
+              <div class="mt-4 space-y-4">
+                <Textarea
+                  label="Additional Caddyfile Configuration"
+                  name="advancedConfig"
+                  bind:value={advancedConfig}
+                  rows={4}
+                  placeholder="Enter Caddyfile directives (e.g., header /* &#123;X-Frame-Options SAMEORIGIN&#125;)"
+                />
               </div>
             {/if}
           </div>
@@ -716,10 +671,20 @@
             <ErrorAlert error={error.message} details={error.details} />
           {/if}
 
-          <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+          <div class="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              on:click={() => {
+                showEditModal = false;
+                editingHost = null;
+              }}
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              class="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
+              class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               disabled={isSubmitting}
             >
               {#if isSubmitting}
@@ -728,16 +693,6 @@
               {:else}
                 Save Changes
               {/if}
-            </button>
-            <button
-              type="button"
-              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
-              on:click={() => {
-                showEditModal = false;
-                editingHost = null;
-              }}
-            >
-              Cancel
             </button>
           </div>
         </form>

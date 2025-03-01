@@ -23,8 +23,9 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import Icon from './Icons.svelte';
+  import { clickOutside } from '$lib/actions/clickOutside';
 
   export let title: string;
   export let isOpen: boolean;
@@ -51,6 +52,10 @@
       document.body.style.overflow = 'unset';
     };
   });
+
+  function handleClickOutside() {
+    onClose();
+  }
 </script>
 
 {#if isOpen}
@@ -60,25 +65,21 @@
     aria-labelledby="modal-title" 
     aria-modal="true"
   >
-    <!-- Backdrop -->
+    <!-- Background backdrop -->
     <div 
-      in:fade={{ duration: 300 }}
-      out:fade={{ duration: 200 }}
       class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
-      aria-hidden="true"
-      on:click={onClose}
-    ></div>
+      transition:fade={{ duration: 200 }}
+    />
 
-    <!-- Modal container -->
-    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+    <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <!-- Modal panel -->
         <div
-          in:fly={{ y: 40, duration: 300, opacity: 0 }}
-          out:fly={{ y: 40, duration: 200, opacity: 0 }}
+          use:clickOutside
+          on:click_outside={handleClickOutside}
           class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"
+          transition:fade={{ duration: 200 }}
         >
-          <!-- Close button -->
           <div class="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
             <button
               type="button"
@@ -90,13 +91,12 @@
             </button>
           </div>
 
-          <!-- Content -->
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
               <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">
                 {title}
               </h3>
-              <div class="mt-2">
+              <div class="mt-4">
                 <slot />
               </div>
             </div>

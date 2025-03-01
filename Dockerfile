@@ -10,8 +10,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the application and initialize database
+RUN npm run build && \
+    mkdir -p /data && \
+    mv clearproxy.db /data/clearproxy.db
 
 # Production stage
 FROM node:20-alpine
@@ -22,10 +24,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --production
 
-# Copy the built application and migrations
+# Copy the built application, migrations, and initialized database
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/src/lib/db/migrations ./migrations
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /data/clearproxy.db /data/clearproxy.db
 
 # Create required directories and set permissions
 RUN mkdir -p /data /app/build/server/logs && \

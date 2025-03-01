@@ -34,7 +34,7 @@ RUN mkdir -p /data /app/build/server/logs && \
 # Create startup script
 RUN echo '#!/bin/sh\n\
 # Run migrations\n\
-npx drizzle-kit push:sqlite\n\
+npm run db:push\n\
 \n\
 # Start the application\n\
 exec node build' > /app/start.sh && \

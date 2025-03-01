@@ -4,9 +4,11 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as path from 'path';
 import { dbLogger } from '../logger';
 import * as schema from './schema';
+import { existsSync } from 'fs';
 
 const projectRoot = process.env.DATABASE_PATH || '.';
 const migrationsPath = process.env.MIGRATIONS_PATH || path.join(projectRoot, 'src/lib/db/migrations');
+const dbPath = path.join(projectRoot, 'clearproxy.db');
 
 /**
  * Initializes the database connection and runs migrations.
@@ -17,8 +19,14 @@ async function initializeDatabase() {
   dbLogger.info('Initializing database connection');
   
   try {
+    // Check if database exists
+    const dbExists = existsSync(dbPath);
+    if (!dbExists) {
+      dbLogger.info('Database file does not exist, it will be created');
+    }
+
     // Initialize the database connection
-    const sqlite = new Database(path.join(projectRoot, 'clearproxy.db'));
+    const sqlite = new Database(dbPath);
     const db = drizzle(sqlite, { schema });
     dbLogger.info('Database connection initialized successfully');
 

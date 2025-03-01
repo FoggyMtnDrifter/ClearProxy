@@ -16,12 +16,30 @@
 
 import { db } from '$lib/db';
 import { users } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { hashPassword } from '$lib/auth/password';
 import { createSession } from '$lib/auth/session';
 import { fail, redirect } from '@sveltejs/kit';
 import { authLogger } from '$lib/logger';
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+
+/**
+ * Load function to check if registration is allowed
+ */
+export const load: PageServerLoad = async ({ locals }) => {
+  // If user is already logged in, redirect to dashboard
+  if (locals.user) {
+    throw redirect(303, '/dashboard');
+  }
+
+  // Check if any users exist
+  const userCount = await db.select({ count: sql<number>`count(*)` }).from(users).get();
+  const registrationAllowed = (userCount?.count ?? 0) === 0;
+
+  return {
+    registrationAllowed
+  };
+};
 
 /**
  * Form actions for the registration page.
@@ -55,9 +73,16 @@ export const actions = {
       return fail(400, { error: 'All fields are required' });
     }
 
+    // Check if registration is allowed (no users exist)
+    const userCount = await db.select({ count: sql<number>`count(*)` }).from(users).get();
+    if ((userCount?.count ?? 0) > 0) {
+      authLogger.warn({ email }, 'Registration attempt when registration is disabled');
+      return fail(403, { error: 'Registration is currently disabled' });
+    }
+
     // Check if user already exists
-    const existingUser = await db.select().from(users).where(eq(users.email, email.toString()));
-    if (existingUser.length > 0) {
+    const existingUser = await db.select().from(users).where(eq(users.email, email.toString())).get();
+    if (existingUser) {
       authLogger.warn({ email }, 'Registration attempt with existing email');
       return fail(400, { error: 'Email already registered' });
     }
@@ -65,13 +90,15 @@ export const actions = {
     try {
       const passwordHash = await hashPassword(password.toString());
 
+      // First user is automatically an admin
       const [user] = await db.insert(users).values({
         email: email.toString(),
         passwordHash,
-        name: name.toString()
+        name: name.toString(),
+        isAdmin: true // First user is admin
       }).returning();
 
-      authLogger.info({ userId: user.id, email, name }, 'User registered successfully');
+      authLogger.info({ userId: user.id, email, name, isAdmin: true }, 'First user (admin) registered successfully');
       createSession({ cookies }, user.id);
 
       return redirect(303, '/dashboard');

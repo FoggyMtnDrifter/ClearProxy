@@ -1,5 +1,15 @@
 <script lang="ts">
   export let data;
+
+  function formatDate(date: Date | null) {
+    if (!date) return 'N/A';
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(date));
+  }
 </script>
 
 <div class="py-6">
@@ -47,33 +57,47 @@
 
     <!-- Recent Items -->
     <div class="mt-8">
-      <!-- Recent Proxy Hosts -->
+      <!-- Recent Activity -->
       <div class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Proxy Hosts</h3>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Activity</h3>
         </div>
         <ul class="divide-y divide-gray-200">
-          {#each data.recentHosts as host}
+          {#each data.recentLogs as log}
             <li class="px-4 py-4 sm:px-6">
               <div class="flex items-center justify-between">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <div class={`h-3 w-3 rounded-full ${host.enabled ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+                    <div class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                      <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {#if log.actionType === 'create'}
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        {:else if log.actionType === 'update'}
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        {:else if log.actionType === 'delete'}
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        {:else}
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        {/if}
+                      </svg>
+                    </div>
                   </div>
                   <div class="ml-4">
-                    <div class="text-sm font-medium text-indigo-600">{host.domain}</div>
-                    <div class="text-sm text-gray-500">{host.targetHost}:{host.targetPort}</div>
+                    <div class="text-sm font-medium text-gray-900">
+                      {log.actionType.charAt(0).toUpperCase() + log.actionType.slice(1)} {log.entityType}
+                      {#if log.entityId}#{log.entityId}{/if}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                      {formatDate(log.createdAt)}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <a href={`/proxy-hosts/${host.id}`} class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">View</a>
                 </div>
               </div>
             </li>
           {/each}
         </ul>
         <div class="px-4 py-4 border-t border-gray-200 sm:px-6">
-          <a href="/proxy-hosts" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">View all proxy hosts</a>
+          <a href="/audit-logs" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">View all activity</a>
         </div>
       </div>
     </div>

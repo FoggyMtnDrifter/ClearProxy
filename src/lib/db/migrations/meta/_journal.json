@@ -36,6 +36,13 @@
       "when": 1740825080493,
       "tag": "0004_nice_iron_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1740827775821,
+      "tag": "0005_striped_hitman",
+      "breakpoints": true
     }
   ]
 }

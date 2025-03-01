@@ -1,6 +1,7 @@
 import { db } from '$lib/db';
-import { proxyHosts } from '$lib/db/schema';
+import { proxyHosts, auditLogs } from '$lib/db/schema';
 import type { PageServerLoad } from './$types';
+import { desc } from 'drizzle-orm';
 
 export const load = (async () => {
   const hosts = await db.select().from(proxyHosts);
@@ -10,8 +11,14 @@ export const load = (async () => {
     activeHosts: hosts.filter(h => h.enabled).length
   };
 
+  const recentLogs = await db
+    .select()
+    .from(auditLogs)
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(5);
+
   return {
     stats,
-    recentHosts: hosts.slice(0, 5)
+    recentLogs
   };
 }) satisfies PageServerLoad; 

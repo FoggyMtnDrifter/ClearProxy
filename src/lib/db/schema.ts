@@ -53,6 +53,26 @@ export const proxyHosts = sqliteTable('proxy_hosts', {
 });
 
 /**
+ * Audit Logs table - Stores system activity logs
+ * 
+ * Each record represents an action taken in the system:
+ * - Action type (create, update, delete, toggle)
+ * - Entity type (proxy_host, etc.)
+ * - Entity ID
+ * - Changes made
+ * - User who performed the action
+ */
+export const auditLogs = sqliteTable('audit_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  actionType: text('action_type').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: integer('entity_id'),
+  changes: text('changes').notNull(), // JSON string of changes
+  userId: text('user_id'), // Nullable for system actions
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
+/**
  * Access Logs table - Stores request logs for monitoring
  * 
  * Each record represents a single HTTP request with:

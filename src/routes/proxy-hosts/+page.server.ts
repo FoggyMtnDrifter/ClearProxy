@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm';
 import { reloadCaddyConfig, getCaddyStatus, getCertificateStatus } from '$lib/caddy/config';
 import { apiLogger } from '$lib/logger';
 import type { Actions, PageServerLoad } from './$types';
+import { createAuditLog } from '$lib/db/audit';
 
 /**
  * Loads proxy host data and Caddy server status for the page.
@@ -136,26 +137,48 @@ export const actions = {
     try {
       // Start a transaction
       return await db.transaction(async (tx) => {
-        // Insert the new host within the transaction
-        await tx.insert(proxyHosts).values({
-          domain,
-          targetHost,
-          targetPort,
-          targetProtocol,
-          sslEnabled,
-          forceSSL,
-          http2Support,
-          http3Support,
-          advancedConfig,
-          basicAuthEnabled,
-          basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
-          basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
-          ignoreInvalidCert,
-          enabled: true
-        });
+        // Create the proxy host within the transaction
+        const [newHost] = await tx
+          .insert(proxyHosts)
+          .values({
+            domain,
+            targetHost,
+            targetPort,
+            targetProtocol,
+            sslEnabled,
+            forceSSL,
+            http2Support,
+            http3Support,
+            advancedConfig,
+            basicAuthEnabled,
+            basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
+            basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
+            ignoreInvalidCert,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+          .returning();
 
         // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts);
+
+        // Create audit log
+        await createAuditLog({
+          actionType: 'create',
+          entityType: 'proxy_host',
+          entityId: newHost.id,
+          changes: {
+            domain,
+            targetHost,
+            targetPort,
+            targetProtocol,
+            sslEnabled,
+            forceSSL,
+            http2Support,
+            http3Support,
+            basicAuthEnabled
+          }
+        });
 
         // Try to update Caddy configuration
         try {
@@ -251,6 +274,16 @@ export const actions = {
     try {
       // Start a transaction
       return await db.transaction(async (tx) => {
+        // Get the existing host
+        const [existingHost] = await tx
+          .select()
+          .from(proxyHosts)
+          .where(eq(proxyHosts.id, id));
+
+        if (!existingHost) {
+          throw new Error('Proxy host not found');
+        }
+
         // Update the proxy host within the transaction
         await tx
           .update(proxyHosts)
@@ -274,6 +307,24 @@ export const actions = {
 
         // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts);
+
+        // Create audit log with changes
+        await createAuditLog({
+          actionType: 'update',
+          entityType: 'proxy_host',
+          entityId: id,
+          changes: {
+            domain: domain !== existingHost.domain ? { from: existingHost.domain, to: domain } : undefined,
+            targetHost: targetHost !== existingHost.targetHost ? { from: existingHost.targetHost, to: targetHost } : undefined,
+            targetPort: targetPort !== existingHost.targetPort ? { from: existingHost.targetPort, to: targetPort } : undefined,
+            targetProtocol: targetProtocol !== existingHost.targetProtocol ? { from: existingHost.targetProtocol, to: targetProtocol } : undefined,
+            sslEnabled: sslEnabled !== existingHost.sslEnabled ? { from: existingHost.sslEnabled, to: sslEnabled } : undefined,
+            forceSSL: forceSSL !== existingHost.forceSSL ? { from: existingHost.forceSSL, to: forceSSL } : undefined,
+            http2Support: http2Support !== existingHost.http2Support ? { from: existingHost.http2Support, to: http2Support } : undefined,
+            http3Support: http3Support !== existingHost.http3Support ? { from: existingHost.http3Support, to: http3Support } : undefined,
+            basicAuthEnabled: basicAuthEnabled !== existingHost.basicAuthEnabled ? { from: existingHost.basicAuthEnabled, to: basicAuthEnabled } : undefined
+          }
+        });
 
         // Try to update Caddy configuration
         try {
@@ -311,18 +362,42 @@ export const actions = {
     apiLogger.info({ id }, 'Deleting proxy host');
 
     if (!id) {
-      apiLogger.warn('Missing host ID for deletion');
+      apiLogger.warn('Missing host ID for delete operation');
       return fail(400, { error: 'Host ID must be provided' });
     }
 
     try {
       // Start a transaction
       return await db.transaction(async (tx) => {
-        // Delete the proxy host within the transaction
-        await tx.delete(proxyHosts).where(eq(proxyHosts.id, id));
+        // Get the existing host
+        const [existingHost] = await tx
+          .select()
+          .from(proxyHosts)
+          .where(eq(proxyHosts.id, id));
 
-        // Get remaining hosts within the transaction
+        if (!existingHost) {
+          throw new Error('Proxy host not found');
+        }
+
+        // Delete the proxy host within the transaction
+        await tx
+          .delete(proxyHosts)
+          .where(eq(proxyHosts.id, id));
+
+        // Get all remaining hosts within the transaction
         const hosts = await tx.select().from(proxyHosts);
+
+        // Create audit log
+        await createAuditLog({
+          actionType: 'delete',
+          entityType: 'proxy_host',
+          entityId: id,
+          changes: {
+            domain: existingHost.domain,
+            targetHost: existingHost.targetHost,
+            targetPort: existingHost.targetPort
+          }
+        });
 
         // Try to update Caddy configuration
         try {
@@ -368,6 +443,16 @@ export const actions = {
     try {
       // Start a transaction
       return await db.transaction(async (tx) => {
+        // Get the existing host
+        const [existingHost] = await tx
+          .select()
+          .from(proxyHosts)
+          .where(eq(proxyHosts.id, id));
+
+        if (!existingHost) {
+          throw new Error('Proxy host not found');
+        }
+
         // Update the enabled status within the transaction
         await tx
           .update(proxyHosts)
@@ -376,6 +461,16 @@ export const actions = {
 
         // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts);
+
+        // Create audit log
+        await createAuditLog({
+          actionType: 'toggle',
+          entityType: 'proxy_host',
+          entityId: id,
+          changes: {
+            enabled: { from: existingHost.enabled, to: enabled }
+          }
+        });
 
         // Try to update Caddy configuration
         try {

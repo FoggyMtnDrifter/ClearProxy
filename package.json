@@ -16,7 +16,7 @@
 		"db:studio": "drizzle-kit studio"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "^4.0.0",
+		"@sveltejs/adapter-node": "^4.0.1",
 		"@sveltejs/kit": "^2.16.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"svelte": "^5.0.0",

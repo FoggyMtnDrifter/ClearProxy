@@ -4,9 +4,9 @@ set -e
 # Wait for a moment to ensure the database directory is available
 sleep 1
 
-# Run database migrations
-echo "Running database migrations..."
-npm run db:push
+# Run database initialization and migrations
+echo "Running database initialization and migrations..."
+node build/initialize.js
 
 # Start the application
 echo "Starting the application..."

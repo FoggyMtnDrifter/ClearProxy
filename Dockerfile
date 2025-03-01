@@ -12,25 +12,27 @@ COPY . .
 
 # Build the application
 RUN npm run build
-RUN ls -la /app/.svelte-kit/output
 
 # Production stage
-FROM caddy:2-alpine
+FROM node:20-alpine
 
-LABEL org.opencontainers.image.source=https://github.com/foggymtndrifter/clearproxy
+WORKDIR /app
+
+# Copy package files and install production dependencies
+COPY package*.json ./
+RUN npm ci --production
 
 # Copy the built application
-COPY --from=builder /app/.svelte-kit/output/client /srv
-COPY --from=builder /app/.svelte-kit/output/server /srv/server
-COPY --from=builder /app/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/package.json ./package.json
 
-# Expose ports
-EXPOSE 80
-EXPOSE 443
-EXPOSE 2019
+# Expose port
+EXPOSE 3000
 
 # Set environment variables
 ENV NODE_ENV=production
+ENV PORT=3000
+ENV ORIGIN=http://localhost
 
-# Start Caddy
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"] 
+# Start the application
+CMD ["node", "build"] 

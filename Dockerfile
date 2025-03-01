@@ -27,8 +27,9 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/src/lib/db/migrations ./src/lib/db/migrations
 COPY --from=builder /app/package.json ./package.json
 
-# Create data directory for SQLite database
-RUN mkdir -p /data && chown -R node:node /data
+# Create required directories and set permissions
+RUN mkdir -p /data /app/build/server/logs && \
+    chown -R node:node /data /app/build/server/logs
 
 # Expose port
 EXPOSE 3000

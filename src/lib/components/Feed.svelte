@@ -97,7 +97,7 @@
             <div class="min-w-0 flex-1">
               <div>
                 <div class="text-sm text-gray-500">
-                  <a href="#" class="font-medium text-gray-900">{item.user.name}</a>
+                  <span class="font-medium text-gray-900">{item.user.name}</span>
                   {getActionText(item.type, item.entityType)}
                 </div>
                 <p class="mt-0.5 text-sm text-gray-500">{item.timestamp}</p>

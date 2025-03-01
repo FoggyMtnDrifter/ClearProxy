@@ -14,8 +14,7 @@ const config = {
 		adapter: adapter(),
 		alias: {
 			$lib: './src/lib'
-		},
-		csrf: false  // Completely disable CSRF protection
+		}
 	}
 };
 

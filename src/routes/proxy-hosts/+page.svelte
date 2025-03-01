@@ -1,11 +1,18 @@
+<!--
+  @component
+  Proxy Hosts management page.
+  Displays a list of configured proxy hosts and allows adding, editing, and deleting them.
+-->
 <script lang="ts">
   import { enhance } from '$app/forms';
   import type { ProxyHostFormData } from './types';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Modal from '$lib/components/Modal.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import ErrorAlert from '$lib/components/ErrorAlert.svelte';
   
   export let data;
-  export let form: ProxyHostFormData | null = null;
+  export const form: ProxyHostFormData | null = null;
 
   let showCreateModal = false;
   let showEditModal = false;
@@ -18,6 +25,8 @@
   let basicAuthEnabled = false;
   let basicAuthUsername = '';
   let basicAuthPassword = '';
+  let isSubmitting = false;
+  let error: { message: string; details?: string } | null = null;
 
   // Watch sslEnabled and update forceSSL accordingly
   $: if (!sslEnabled) {
@@ -34,10 +43,19 @@
     formData.set('basicAuthUsername', basicAuthUsername);
     formData.set('basicAuthPassword', basicAuthPassword);
 
+    isSubmitting = true;
+    error = null;
+
     return async ({ result }) => {
+      isSubmitting = false;
       if (result.type === 'success') {
         showCreateModal = false;
         resetForm();
+      } else if (result.type === 'failure') {
+        error = {
+          message: result.data?.error || 'Failed to create proxy host',
+          details: result.data?.details
+        };
       }
     };
   };
@@ -53,10 +71,49 @@
     formData.set('basicAuthUsername', basicAuthUsername);
     formData.set('basicAuthPassword', basicAuthPassword);
 
+    isSubmitting = true;
+    error = null;
+
     return async ({ result }) => {
+      isSubmitting = false;
       if (result.type === 'success') {
         showEditModal = false;
         editingHost = null;
+      } else if (result.type === 'failure') {
+        error = {
+          message: result.data?.error || 'Failed to update proxy host',
+          details: result.data?.details
+        };
+      }
+    };
+  };
+
+  const handleToggle: SubmitFunction = () => {
+    isSubmitting = true;
+    error = null;
+
+    return async ({ result }) => {
+      isSubmitting = false;
+      if (result.type === 'failure') {
+        error = {
+          message: result.data?.error || 'Failed to toggle proxy host status',
+          details: result.data?.details
+        };
+      }
+    };
+  };
+
+  const handleDelete: SubmitFunction = () => {
+    isSubmitting = true;
+    error = null;
+
+    return async ({ result }) => {
+      isSubmitting = false;
+      if (result.type === 'failure') {
+        error = {
+          message: result.data?.error || 'Failed to delete proxy host',
+          details: result.data?.details
+        };
       }
     };
   };
@@ -72,6 +129,7 @@
     basicAuthUsername = host.basicAuthUsername || '';
     basicAuthPassword = host.basicAuthPassword || '';
     showEditModal = true;
+    error = null;
   }
 
   function resetForm() {
@@ -83,23 +141,142 @@
     basicAuthEnabled = false;
     basicAuthUsername = '';
     basicAuthPassword = '';
+    error = null;
   }
 </script>
 
 <div class="py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-semibold text-gray-900">Proxy Hosts</h1>
+      <div>
+        <h1 class="text-2xl font-semibold text-gray-900">Proxy Hosts</h1>
+        <div class="mt-1 flex items-center gap-2">
+          <div class={`h-2 w-2 rounded-full ${data.caddyStatus?.running ? 'bg-green-400' : 'bg-red-400'}`}></div>
+          <p class="text-sm text-gray-500">
+            {#if data.caddyStatus?.running}
+              Caddy server is running
+            {:else}
+              Caddy server is not running
+            {/if}
+          </p>
+        </div>
+      </div>
       <button
         on:click={() => {
           resetForm();
           showCreateModal = true;
         }}
         class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        disabled={isSubmitting || !data.caddyStatus?.running}
       >
         Add Proxy Host
       </button>
     </div>
+
+    {#if !data.caddyStatus?.running}
+      <div class="mt-4">
+        <ErrorAlert 
+          error="Caddy server is not running" 
+          details="Please make sure the Caddy server is running and accessible before managing proxy hosts."
+        />
+      </div>
+    {/if}
+
+    {#if error}
+      <div class="mt-4">
+        <ErrorAlert error={error.message} details={error.details} onDismiss={() => error = null} />
+      </div>
+    {/if}
+
+    {#if !data.hosts}
+      <div class="mt-8 flex justify-center">
+        <LoadingSpinner size="lg" center={true} />
+      </div>
+    {:else if data.hosts.length === 0}
+      <div class="mt-8 text-center text-gray-500">
+        No proxy hosts configured yet. Click "Add Proxy Host" to create one.
+      </div>
+    {:else}
+      <div class="mt-8 flex flex-col">
+        <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+              <table class="min-w-full divide-y divide-gray-300">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Domain</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Target</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">SSL</th>
+                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Certificate</th>
+                    <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                      <span class="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  {#each data.hosts as host}
+                    <tr>
+                      <td class="whitespace-nowrap px-3 py-4">
+                        <form method="POST" action="?/toggle" use:enhance={handleToggle}>
+                          <input type="hidden" name="id" value={host.id} />
+                          <input type="hidden" name="enabled" value={(!host.enabled).toString()} />
+                          <button
+                            type="submit"
+                            class={`inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded min-w-[4.5rem] justify-center ${
+                              host.enabled
+                                ? 'text-green-800 bg-green-100 hover:bg-green-200'
+                                : 'text-gray-800 bg-gray-100 hover:bg-gray-200'
+                            }`}
+                            disabled={isSubmitting}
+                          >
+                            {#if isSubmitting}
+                              <LoadingSpinner size="sm" label="Updating..." />
+                            {:else}
+                              {host.enabled ? 'Enabled' : 'Disabled'}
+                            {/if}
+                          </button>
+                        </form>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-4">{host.domain}</td>
+                      <td class="whitespace-nowrap px-3 py-4">{host.targetHost}:{host.targetPort}</td>
+                      <td class="whitespace-nowrap px-3 py-4">{host.sslEnabled ? 'Enabled' : 'Disabled'}</td>
+                      <td class="whitespace-nowrap px-3 py-4">{host.certInfo ? 'Certified' : 'Uncertified'}</td>
+                      <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        <div class="flex justify-end space-x-3">
+                          <button
+                            type="button"
+                            on:click={() => startEdit(host)}
+                            class="text-indigo-600 hover:text-indigo-900"
+                            disabled={isSubmitting}
+                          >
+                            Edit
+                          </button>
+                          <form method="POST" action="?/delete" use:enhance={handleDelete} class="inline-block">
+                            <input type="hidden" name="id" value={host.id} />
+                            <button
+                              type="submit"
+                              class="text-red-600 hover:text-red-900"
+                              disabled={isSubmitting}
+                            >
+                              {#if isSubmitting}
+                                <LoadingSpinner size="sm" label="Deleting..." />
+                              {:else}
+                                Delete
+                              {/if}
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <Modal
       title="Add Proxy Host"
@@ -319,30 +496,33 @@
           {/if}
         </div>
 
-        {#if form?.error}
-          <div class="mt-4 text-sm text-red-600">
-            <p>{form.error}</p>
-            {#if form.details}
-              <p class="mt-1 font-mono text-xs">{form.details}</p>
-            {/if}
-          </div>
-        {/if}
-
         <div class="mt-6 flex justify-end space-x-3">
           <button
             type="button"
             on:click={() => showCreateModal = false}
             class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 min-w-[5rem]"
+            disabled={isSubmitting}
           >
-            Create
+            {#if isSubmitting}
+              <LoadingSpinner size="sm" label="Creating..." />
+            {:else}
+              Create
+            {/if}
           </button>
         </div>
+
+        {#if error}
+          <div class="mt-4">
+            <ErrorAlert error={error.message} details={error.details} />
+          </div>
+        {/if}
       </form>
     </Modal>
 
@@ -568,101 +748,35 @@
             {/if}
           </div>
 
-          {#if form?.error}
-            <div class="mt-4 text-sm text-red-600">
-              <p>{form.error}</p>
-              {#if form.details}
-                <p class="mt-1 font-mono text-xs">{form.details}</p>
-              {/if}
-            </div>
-          {/if}
-
           <div class="mt-6 flex justify-end space-x-3">
             <button
               type="button"
               on:click={() => showEditModal = false}
               class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              class="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 min-w-[5rem]"
+              disabled={isSubmitting}
             >
-              Save Changes
+              {#if isSubmitting}
+                <LoadingSpinner size="sm" label="Saving..." />
+              {:else}
+                Save Changes
+              {/if}
             </button>
           </div>
+
+          {#if error}
+            <div class="mt-4">
+              <ErrorAlert error={error.message} details={error.details} />
+            </div>
+          {/if}
         </form>
       {/if}
     </Modal>
-
-    <div class="mt-8 flex flex-col">
-      <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-        <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-          <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-            <table class="min-w-full divide-y divide-gray-300">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Domain</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Target</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">SSL</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Certificate</th>
-                  <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                    <span class="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200 bg-white">
-                {#each data.hosts as host}
-                  <tr>
-                    <td class="whitespace-nowrap px-3 py-4">
-                      <form method="POST" action="?/toggle" use:enhance>
-                        <input type="hidden" name="id" value={host.id} />
-                        <input type="hidden" name="enabled" value={(!host.enabled).toString()} />
-                        <button
-                          type="submit"
-                          class={`inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded ${
-                            host.enabled
-                              ? 'text-green-800 bg-green-100 hover:bg-green-200'
-                              : 'text-gray-800 bg-gray-100 hover:bg-gray-200'
-                          }`}
-                        >
-                          {host.enabled ? 'Enabled' : 'Disabled'}
-                        </button>
-                      </form>
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-4">{host.domain}</td>
-                    <td class="whitespace-nowrap px-3 py-4">{host.targetHost}:{host.targetPort}</td>
-                    <td class="whitespace-nowrap px-3 py-4">{host.sslEnabled ? 'Enabled' : 'Disabled'}</td>
-                    <td class="whitespace-nowrap px-3 py-4">{host.certInfo ? 'Certified' : 'Uncertified'}</td>
-                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                      <div class="flex justify-end space-x-3">
-                        <button
-                          type="button"
-                          on:click={() => startEdit(host)}
-                          class="text-indigo-600 hover:text-indigo-900"
-                        >
-                          Edit
-                        </button>
-                        <form method="POST" action="?/delete" use:enhance class="inline-block">
-                          <input type="hidden" name="id" value={host.id} />
-                          <button
-                            type="submit"
-                            class="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>

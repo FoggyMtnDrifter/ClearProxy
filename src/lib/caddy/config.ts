@@ -185,7 +185,7 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
   try {
     const config: CaddyConfig = {
       admin: {
-        listen: '127.0.0.1:2019',
+        listen: '0.0.0.0:2019',
         disabled: false
       },
       apps: {
@@ -271,6 +271,7 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
     await retryWithBackoff(async () => {
+      caddyLogger.debug('Sending configuration to Caddy API');
       const response = await fetch(`${CADDY_API_URL}/load`, {
         method: 'POST',
         headers: {
@@ -281,6 +282,11 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
 
       if (!response.ok) {
         const error = await response.text();
+        caddyLogger.error({
+          statusCode: response.status,
+          statusText: response.statusText,
+          error
+        }, 'Caddy API returned error response');
         throw new CaddyError(
           `Failed to apply Caddy configuration: ${error}`,
           'CONFIG_APPLY_ERROR',
@@ -291,6 +297,15 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
       caddyLogger.info('Successfully applied Caddy configuration');
     });
   } catch (error) {
+    // Log the full error details
+    caddyLogger.error({
+      error,
+      errorName: error instanceof Error ? error.name : 'unknown',
+      errorMessage: error instanceof Error ? error.message : 'unknown',
+      errorStack: error instanceof Error ? error.stack : 'unknown',
+      errorCause: error instanceof Error ? error.cause : undefined
+    }, 'Failed to apply Caddy configuration');
+
     if (error instanceof CaddyError) {
       throw error;
     }

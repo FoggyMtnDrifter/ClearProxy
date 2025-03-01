@@ -116,25 +116,26 @@ export const actions = {
       advancedConfig,
       basicAuthEnabled,
       basicAuthUsername: basicAuthUsername ? '***' : '',
-      rawFormData: {
-        sslEnabled: data.get('sslEnabled'),
-        forceSSL: data.get('forceSSL'),
-        http2Support: data.get('http2Support'),
-        http3Support: data.get('http3Support')
-      }
+      rawFormData: Object.fromEntries(data.entries())
     }, 'Creating new proxy host');
 
     if (!domain || !targetHost || !targetPort) {
       apiLogger.warn({
         hasDomain: !!domain,
         hasTargetHost: !!targetHost,
-        hasTargetPort: !!targetPort,
-        targetPortValue: data.get('targetPort')
+        hasTargetPort: !!targetPort
       }, 'Missing required fields for proxy host creation');
       return fail(400, { error: 'All required fields must be provided' });
     }
 
     try {
+      // First check if Caddy is running
+      const caddyStatus = await getCaddyStatus();
+      if (!caddyStatus.running) {
+        apiLogger.error('Cannot create proxy host - Caddy server is not running');
+        return fail(503, { error: 'Caddy server is not running' });
+      }
+
       // Start a transaction
       return await db.transaction(async (tx) => {
         apiLogger.debug('Starting transaction for proxy host creation');
@@ -198,6 +199,11 @@ export const actions = {
             errorStack: error instanceof Error ? error.stack : 'unknown',
             newHost: { id: newHost.id, domain: newHost.domain }
           }, 'Failed to update Caddy configuration - rolling back transaction');
+          
+          // Delete the newly created host
+          await tx
+            .delete(proxyHosts)
+            .where(eq(proxyHosts.id, newHost.id));
           
           // Re-throw the error to trigger transaction rollback
           throw error;

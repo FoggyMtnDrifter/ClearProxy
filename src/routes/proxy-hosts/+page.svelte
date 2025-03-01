@@ -548,7 +548,7 @@
       >
         <form
           method="POST"
-          action="?/update"
+          action="?/edit"
           use:enhance={handleEditSubmit}
           class="space-y-4"
         >

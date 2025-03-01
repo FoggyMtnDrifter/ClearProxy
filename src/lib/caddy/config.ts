@@ -413,7 +413,7 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
   const routes: any[] = [];
 
   for (const host of hosts) {
-    if (!host.enabled) continue; // Skip disabled hosts
+    if (!host.enabled) continue;
 
     const route: any = {
       match: [{
@@ -432,43 +432,54 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
             accounts: [{
               username: host.basicAuthUsername,
               password: hashedPassword
-            }]
+            }],
+            realm: "Restricted"
           }
         }
       });
     }
 
-    // Clean the target host by removing any protocol prefixes and slashes
+    // Clean the target host
     const cleanTargetHost = host.targetHost
-      .replace(/^https?:\/\//, '')  // Remove any protocol prefix
-      .replace(/^\/+|\/+$/g, '')    // Remove leading and trailing slashes
-      .trim();                      // Remove any whitespace
+      .replace(/^https?:\/\//, '')
+      .replace(/^\/+|\/+$/g, '')
+      .trim();
     
-    // For the dial field, use host:port
     const dialAddress = `${cleanTargetHost}:${host.targetPort}`;
 
-    // Configure the reverse proxy handler
+    // Configure the reverse proxy handler with modern Caddy v2 syntax
     const proxyHandler: CaddyHandler = {
       handler: "reverse_proxy",
-      upstreams: [{ dial: dialAddress }]
+      upstreams: [{ dial: dialAddress }],
+      transport: {
+        protocol: host.targetProtocol,
+        ...(host.targetProtocol === 'https' && {
+          tls: {
+            insecure_skip_verify: host.ignoreInvalidCert || false
+          }
+        })
+      }
     };
 
-    // Add TLS transport config for HTTPS upstream
-    if (host.targetProtocol === 'https') {
-      proxyHandler.transport = {
-        protocol: "http",
-        tls: {
-          ...(host.ignoreInvalidCert && { insecure_skip_verify: true })
-        }
-      };
+    route.handle.push(proxyHandler);
+
+    // Add any advanced configuration routes
+    if (host.advancedConfig) {
+      const advancedRoutes = parseAdvancedConfig(host.advancedConfig);
+      // Add the domain to each advanced route's host match
+      advancedRoutes.forEach(advRoute => {
+        advRoute.match.forEach(match => {
+          match.host = [host.domain];
+        });
+      });
+      routes.push(...advancedRoutes);
     }
 
-    route.handle.push(proxyHandler);
     routes.push(route);
   }
 
-  // Create the complete Caddy configuration
-  return {
+  // Create the complete Caddy v2 configuration
+  const config = {
     admin: {
       listen: process.env.CADDY_ADMIN_LISTEN || "0.0.0.0:2019",
       enforce_origin: false,
@@ -489,7 +500,10 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
             routes: routes,
             automatic_https: {
               disable: false
-            }
+            },
+            ...(hosts.some(h => h.enabled && h.http2Support) && {
+              protocols: ["h1", "h2", "h3"]
+            })
           }
         }
       },
@@ -506,10 +520,15 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
               }
             }]
           }]
+        },
+        certificates: {
+          automate: hosts.filter(h => h.enabled && h.sslEnabled).map(h => h.domain)
         }
       }
     }
   };
+
+  return config;
 }
 
 /**

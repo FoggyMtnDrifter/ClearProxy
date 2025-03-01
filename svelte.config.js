@@ -16,7 +16,7 @@ const config = {
 			$lib: './src/lib'
 		},
 		csrf: {
-			checkOrigin: process.env.NODE_ENV === 'production'
+			checkOrigin: false  // Disable CSRF origin checks since we're handling it through ORIGIN env var
 		}
 	}
 };

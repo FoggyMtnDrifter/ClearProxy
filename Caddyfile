@@ -1,0 +1,11 @@
+{
+    admin localhost:2019
+    auto_https off
+}
+
+:80 {
+    root * /srv
+    encode gzip
+    try_files {path} /index.html
+    file_server
+} 

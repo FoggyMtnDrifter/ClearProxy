@@ -600,23 +600,52 @@
             <div class="mt-4">
               <label for="advancedConfig" class="block text-sm font-medium text-gray-700">
                 Advanced Configuration
-                <span class="text-xs text-gray-500 font-normal">(Caddyfile syntax)</span>
+                <span class="text-xs text-gray-500 font-normal">(JSON format)</span>
               </label>
               <div class="mt-1">
                 <textarea
                   id="advancedConfig"
                   name="advancedConfig"
-                  rows="6"
+                  rows="8"
                   bind:value={advancedConfig}
                   class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
-                  placeholder={`header {
-    Access-Control-Allow-Origin *
+                  placeholder={`{
+  "match": [
+    {
+      "path": ["/api/*"]
+    }
+  ],
+  "handle": [
+    {
+      "handler": "headers",
+      "response": {
+        "set": {
+          "Access-Control-Allow-Origin": ["*"],
+          "Cache-Control": ["public, max-age=3600"]
+        }
+      }
+    }
+  ]
 }`}
                 ></textarea>
               </div>
-              <p class="mt-1 text-xs text-gray-500">
-                Add custom Caddyfile directives here. They will be merged with the generated configuration.
-              </p>
+              <div class="mt-2 text-sm text-gray-500 space-y-2">
+                <p>Add custom Caddy configuration in JSON format. Supports:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                  <li><code>reverse_proxy</code>: Advanced proxy settings (load balancing, health checks)</li>
+                  <li><code>static_response</code>: Custom responses and redirects</li>
+                  <li><code>headers</code>: Request/response header manipulation</li>
+                  <li><code>rewrite</code>: URL rewriting</li>
+                  <li><code>handle_errors</code>: Custom error pages</li>
+                  <li><code>encode</code>: Response compression</li>
+                  <li>And more...</li>
+                </ul>
+                <p>
+                  <a href="https://caddyserver.com/docs/json/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500">
+                    View full documentation →
+                  </a>
+                </p>
+              </div>
             </div>
           {/if}
         </div>
@@ -914,23 +943,52 @@
               <div class="mt-4">
                 <label for="editAdvancedConfig" class="block text-sm font-medium text-gray-700">
                   Advanced Configuration
-                  <span class="text-xs text-gray-500 font-normal">(Caddyfile syntax)</span>
+                  <span class="text-xs text-gray-500 font-normal">(JSON format)</span>
                 </label>
                 <div class="mt-1">
                   <textarea
                     id="editAdvancedConfig"
                     name="advancedConfig"
-                    rows="6"
+                    rows="8"
                     bind:value={advancedConfig}
                     class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
-                    placeholder={`header {
-    Access-Control-Allow-Origin *
+                    placeholder={`{
+  "match": [
+    {
+      "path": ["/api/*"]
+    }
+  ],
+  "handle": [
+    {
+      "handler": "headers",
+      "response": {
+        "set": {
+          "Access-Control-Allow-Origin": ["*"],
+          "Cache-Control": ["public, max-age=3600"]
+        }
+      }
+    }
+  ]
 }`}
                   ></textarea>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">
-                  Add custom Caddyfile directives here. They will be merged with the generated configuration.
-                </p>
+                <div class="mt-2 text-sm text-gray-500 space-y-2">
+                  <p>Add custom Caddy configuration in JSON format. Supports:</p>
+                  <ul class="list-disc pl-5 space-y-1">
+                    <li><code>reverse_proxy</code>: Advanced proxy settings (load balancing, health checks)</li>
+                    <li><code>static_response</code>: Custom responses and redirects</li>
+                    <li><code>headers</code>: Request/response header manipulation</li>
+                    <li><code>rewrite</code>: URL rewriting</li>
+                    <li><code>handle_errors</code>: Custom error pages</li>
+                    <li><code>encode</code>: Response compression</li>
+                    <li>And more...</li>
+                  </ul>
+                  <p>
+                    <a href="https://caddyserver.com/docs/json/" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500">
+                      View full documentation →
+                    </a>
+                  </p>
+                </div>
               </div>
             {/if}
           </div>

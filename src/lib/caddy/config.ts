@@ -38,26 +38,123 @@ type ProxyHost = InferModel<typeof proxyHosts>;
 interface CaddyMatch {
   host: string[];
   protocol?: string;
+  path?: string[];
 }
 
 interface CaddyHandler {
-  handler: "reverse_proxy" | "authentication" | "static_response";
+  handler: "reverse_proxy" | "authentication" | "static_response" | "file_server" | "php_fastcgi" | "rewrite" | "uri" | "handle" | "handle_path" | "handle_errors" | "headers" | "encode" | "templates" | "respond";
+  
+  // reverse_proxy handler options
   upstreams?: { dial: string }[];
-  providers?: {
-    http_basic: {
-      accounts: { username: string; password: string }[];
-    };
-  };
-  status_code?: number;
-  headers?: {
-    Location: string[];
-  };
   transport?: {
     protocol: string;
     tls?: {
       insecure_skip_verify?: boolean;
+      server_name?: string;
+      trusted_ca_certs?: string[];
+      client_certificate?: {
+        cert: string;
+        key: string;
+      };
+    };
+    dial_timeout?: string;
+    dial_fallback_delay?: string;
+    response_header_timeout?: string;
+    read_buffer?: string;
+    write_buffer?: string;
+    max_response_header?: string;
+    compression?: boolean;
+  };
+  load_balancing?: {
+    selection_policy?: { name: string; options?: Record<string, any> };
+    try_duration?: string;
+    try_interval?: string;
+    retries?: number;
+  };
+  health_checks?: {
+    active?: {
+      uri?: string;
+      port?: number;
+      interval?: string;
+      timeout?: string;
+      max_size?: string;
+      expect_status?: number;
+      expect_body?: string;
+      headers?: Record<string, string[]>;
+    };
+    passive?: {
+      fail_duration?: string;
+      max_fails?: number;
+      unhealthy_status?: number[];
+      unhealthy_latency?: string;
     };
   };
+  buffer?: {
+    request?: { max_size?: string };
+    response?: { max_size?: string };
+  };
+
+  // static_response handler options
+  status_code?: number;
+  headers?: Record<string, string[]>;
+  body?: string;
+  close?: boolean;
+
+  // file_server handler options
+  root?: string;
+  hide?: string[];
+  index_names?: string[];
+  browse?: {
+    template_file?: string;
+  };
+
+  // authentication handler options
+  providers?: {
+    http_basic?: {
+      accounts: { username: string; password: string }[];
+      realm?: string;
+      hash?: boolean;
+    };
+  };
+
+  // handle_errors handler options
+  error_pages?: Record<string, string>;
+  
+  // headers handler options
+  response?: {
+    set?: Record<string, string[]>;
+    add?: Record<string, string[]>;
+    delete?: string[];
+    replace?: Record<string, { search: string; replace: string }>;
+  };
+  request?: {
+    set?: Record<string, string[]>;
+    add?: Record<string, string[]>;
+    delete?: string[];
+    replace?: Record<string, { search: string; replace: string }>;
+  };
+
+  // encode handler options
+  encodings?: {
+    gzip?: boolean;
+    zstd?: boolean;
+  };
+
+  // rewrite handler options
+  uri_substring?: string;
+  strip_path_prefix?: string;
+  strip_path_suffix?: string;
+  uri_replace?: {
+    search: string;
+    replace: string;
+  }[];
+
+  // templates handler options
+  mime_types?: string[];
+
+  // Additional common fields
+  match?: any[];
+  terminal?: boolean;
 }
 
 interface CaddyRoute {
@@ -195,6 +292,97 @@ async function retryWithBackoff<T>(
 }
 
 /**
+ * Parses and validates the advanced configuration JSON
+ * @param config - The advanced configuration string
+ * @returns Array of CaddyRoute objects
+ */
+function parseAdvancedConfig(config: string): CaddyRoute[] {
+  if (!config) return [];
+  
+  try {
+    const parsedConfig = JSON.parse(config);
+    const routes: CaddyRoute[] = [];
+
+    // Handle array of routes
+    if (Array.isArray(parsedConfig)) {
+      for (const routeConfig of parsedConfig) {
+        if (routeConfig.match && routeConfig.handle) {
+          // Initialize match with empty host array if not provided
+          const match = Array.isArray(routeConfig.match) ? routeConfig.match : [routeConfig.match];
+          match.forEach((m: CaddyMatch) => {
+            if (!m.host) m.host = [];
+          });
+
+          routes.push({
+            match,
+            handle: routeConfig.handle,
+            terminal: routeConfig.terminal
+          });
+        }
+      }
+      return routes;
+    }
+
+    // Handle legacy redirect format
+    if (parsedConfig.redir && Array.isArray(parsedConfig.redir)) {
+      for (const redir of parsedConfig.redir) {
+        if (redir.from && redir.to) {
+          routes.push({
+            match: [{
+              host: [],  // Initialize with empty array, will be populated later
+              path: [redir.from]
+            }],
+            handle: [{
+              handler: "static_response",
+              status_code: redir.status_code || 301,  // Default to 301 if not specified
+              headers: {
+                Location: [redir.to]
+              }
+            }],
+            terminal: true
+          });
+        }
+      }
+      return routes;
+    }
+
+    // Handle single route configuration
+    if (parsedConfig.match && parsedConfig.handle) {
+      // Initialize match with empty host array if not provided
+      const match = Array.isArray(parsedConfig.match) ? parsedConfig.match : [parsedConfig.match];
+      match.forEach((m: CaddyMatch) => {
+        if (!m.host) m.host = [];
+      });
+
+      routes.push({
+        match,
+        handle: parsedConfig.handle,
+        terminal: parsedConfig.terminal
+      });
+      return routes;
+    }
+
+    // Handle direct handler configuration (without explicit route)
+    if (parsedConfig.handler) {
+      routes.push({
+        match: [{
+          host: []  // Will be populated later
+        }],
+        handle: [parsedConfig],
+        terminal: parsedConfig.terminal
+      });
+      return routes;
+    }
+
+    caddyLogger.warn({ config }, 'Advanced configuration format not recognized');
+    return [];
+  } catch (error) {
+    caddyLogger.error({ error, config }, 'Failed to parse advanced configuration');
+    return [];
+  }
+}
+
+/**
  * Generates a complete Caddy server configuration from a list of enabled proxy hosts.
  * 
  * This function:
@@ -213,6 +401,16 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
   const routes: CaddyRoute[] = [];
 
   for (const host of enabledHosts) {
+    // Parse and add advanced configuration routes first
+    if (host.advancedConfig) {
+      const advancedRoutes = parseAdvancedConfig(host.advancedConfig);
+      // Add host matching to each advanced route
+      for (const route of advancedRoutes) {
+        route.match[0].host = [host.domain];
+        routes.push(route);
+      }
+    }
+
     // Clean the target host by removing any protocol prefixes and slashes
     const cleanTargetHost = host.targetHost
       .replace(/^https?:\/\//, '')  // Remove any protocol prefix
@@ -292,7 +490,7 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
         });
       }
     } else {
-      // Non-SSL host configuration with explicit TLS disable
+      // Non-SSL host configuration
       const httpRoute: CaddyRoute = {
         match: [
           {

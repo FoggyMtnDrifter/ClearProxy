@@ -1,0 +1,1 @@
+ALTER TABLE `proxy_hosts` ADD `ignore_invalid_cert` integer DEFAULT false NOT NULL;

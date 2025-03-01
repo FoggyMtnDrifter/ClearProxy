@@ -1,0 +1,1 @@
+ALTER TABLE `proxy_hosts` ADD `target_protocol` text DEFAULT 'http' NOT NULL;

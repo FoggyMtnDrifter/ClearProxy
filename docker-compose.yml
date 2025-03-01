@@ -23,6 +23,8 @@ services:
     container_name: clearproxy-caddy
     restart: unless-stopped
     command: caddy run --config /config/caddy/caddy.json
+    environment:
+      - CADDY_ADMIN_LISTEN=0.0.0.0:2019
     security_opt:
       - no-new-privileges:true
     ports:

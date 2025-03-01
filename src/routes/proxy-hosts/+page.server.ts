@@ -82,8 +82,9 @@ export const actions = {
   create: async ({ request }) => {
     const data = await request.formData();
     const domain = data.get('domain')?.toString();
-    const targetHost = data.get('targetHost')?.toString();
+    let targetHost = data.get('targetHost')?.toString();
     const targetPort = parseInt(data.get('targetPort')?.toString() || '');
+    const targetProtocol = data.get('targetProtocol')?.toString() || 'http';
     const sslEnabled = data.get('sslEnabled') === 'true';
     const forceSSL = data.get('forceSSL') === 'true';
     const http2Support = data.get('http2Support') === 'true';
@@ -92,11 +93,21 @@ export const actions = {
     const basicAuthEnabled = data.get('basicAuthEnabled') === 'true';
     const basicAuthUsername = data.get('basicAuthUsername')?.toString() || '';
     const basicAuthPassword = data.get('basicAuthPassword')?.toString() || '';
+    const ignoreInvalidCert = data.get('ignoreInvalidCert') === 'true';
+
+    // Clean the target host by removing any protocol prefixes and slashes
+    if (targetHost) {
+      targetHost = targetHost
+        .replace(/^https?:\/\//, '')  // Remove any protocol prefix
+        .replace(/^\/+|\/+$/g, '')    // Remove leading and trailing slashes
+        .trim();                      // Remove any whitespace
+    }
 
     apiLogger.info({
       domain,
       targetHost,
       targetPort,
+      targetProtocol,
       sslEnabled,
       forceSSL,
       http2Support,
@@ -130,6 +141,7 @@ export const actions = {
           domain,
           targetHost,
           targetPort,
+          targetProtocol,
           sslEnabled,
           forceSSL,
           http2Support,
@@ -138,6 +150,7 @@ export const actions = {
           basicAuthEnabled,
           basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
           basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
+          ignoreInvalidCert,
           enabled: true
         });
 
@@ -189,8 +202,9 @@ export const actions = {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const domain = data.get('domain')?.toString();
-    const targetHost = data.get('targetHost')?.toString();
+    let targetHost = data.get('targetHost')?.toString();
     const targetPort = parseInt(data.get('targetPort')?.toString() || '');
+    const targetProtocol = data.get('targetProtocol')?.toString() || 'http';
     const sslEnabled = data.get('sslEnabled') === 'true';
     const forceSSL = data.get('forceSSL') === 'true';
     const http2Support = data.get('http2Support') === 'true';
@@ -199,12 +213,22 @@ export const actions = {
     const basicAuthEnabled = data.get('basicAuthEnabled') === 'true';
     const basicAuthUsername = data.get('basicAuthUsername')?.toString() || '';
     const basicAuthPassword = data.get('basicAuthPassword')?.toString() || '';
+    const ignoreInvalidCert = data.get('ignoreInvalidCert') === 'true';
+
+    // Clean the target host by removing any protocol prefixes and slashes
+    if (targetHost) {
+      targetHost = targetHost
+        .replace(/^https?:\/\//, '')  // Remove any protocol prefix
+        .replace(/^\/+|\/+$/g, '')    // Remove leading and trailing slashes
+        .trim();                      // Remove any whitespace
+    }
 
     apiLogger.info({
       id,
       domain,
       targetHost,
       targetPort,
+      targetProtocol,
       sslEnabled,
       forceSSL,
       http2Support,
@@ -234,6 +258,7 @@ export const actions = {
             domain,
             targetHost,
             targetPort,
+            targetProtocol,
             sslEnabled,
             forceSSL,
             http2Support,
@@ -242,6 +267,7 @@ export const actions = {
             basicAuthEnabled,
             basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
             basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
+            ignoreInvalidCert,
             updatedAt: new Date()
           })
           .where(eq(proxyHosts.id, id));

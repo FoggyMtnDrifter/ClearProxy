@@ -66,8 +66,10 @@
   let basicAuthEnabled = false;
   let basicAuthUsername = '';
   let basicAuthPassword = '';
+  let targetProtocol = 'http';
   let isSubmitting = false;
   let error: { message: string; details?: string } | null = null;
+  let ignoreInvalidCert = false;
 
   // Watch sslEnabled and update dependent settings
   $: if (!sslEnabled) {
@@ -86,6 +88,8 @@
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
     formData.set('basicAuthUsername', basicAuthUsername);
     formData.set('basicAuthPassword', basicAuthPassword);
+    formData.set('targetProtocol', targetProtocol);
+    formData.set('ignoreInvalidCert', ignoreInvalidCert.toString());
 
     isSubmitting = true;
     error = null;
@@ -116,6 +120,8 @@
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
     formData.set('basicAuthUsername', basicAuthUsername);
     formData.set('basicAuthPassword', basicAuthPassword);
+    formData.set('targetProtocol', targetProtocol);
+    formData.set('ignoreInvalidCert', ignoreInvalidCert.toString());
 
     isSubmitting = true;
     error = null;
@@ -180,6 +186,8 @@
     basicAuthEnabled = host.basicAuthEnabled;
     basicAuthUsername = host.basicAuthUsername || '';
     basicAuthPassword = host.basicAuthPassword || '';
+    targetProtocol = host.targetProtocol;
+    ignoreInvalidCert = host.ignoreInvalidCert;
     showEditModal = true;
     error = null;
   }
@@ -194,6 +202,8 @@
     basicAuthEnabled = false;
     basicAuthUsername = '';
     basicAuthPassword = '';
+    targetProtocol = 'http';
+    ignoreInvalidCert = false;
     error = null;
   }
 </script>
@@ -292,7 +302,7 @@
                         </form>
                       </td>
                       <td class="whitespace-nowrap px-3 py-4">{host.domain}</td>
-                      <td class="whitespace-nowrap px-3 py-4">{host.targetHost}:{host.targetPort}</td>
+                      <td class="whitespace-nowrap px-3 py-4">{host.targetProtocol}://{host.targetHost}:{host.targetPort}</td>
                       <td class="whitespace-nowrap px-3 py-4">{host.sslEnabled ? 'Enabled' : 'Disabled'}</td>
                       <td class="whitespace-nowrap px-3 py-4">{host.certInfo ? 'Certified' : 'Uncertified'}</td>
                       <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
@@ -353,6 +363,19 @@
 
           <!-- Target Host and Port -->
           <div class="flex gap-4">
+            <div class="w-24">
+              <label for="targetProtocol" class="block text-sm font-medium text-gray-700">Protocol</label>
+              <select
+                name="targetProtocol"
+                id="targetProtocol"
+                bind:value={targetProtocol}
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              >
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+              </select>
+            </div>
+
             <div class="flex-1">
               <label for="targetHost" class="block text-sm font-medium text-gray-700">Target Host</label>
               <input
@@ -378,6 +401,26 @@
               />
             </div>
           </div>
+
+          <!-- Add the ignore invalid cert checkbox when protocol is HTTPS -->
+          {#if targetProtocol === 'https'}
+            <div class="mt-4">
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="ignoreInvalidCert"
+                  bind:checked={ignoreInvalidCert}
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label for="ignoreInvalidCert" class="ml-2 block text-sm text-gray-900">
+                  Ignore invalid certificates
+                </label>
+              </div>
+              <p class="mt-1 text-sm text-gray-500">
+                Enable this if the target uses a self-signed or invalid certificate
+              </p>
+            </div>
+          {/if}
 
           <!-- Toggles -->
           <div class="space-y-4">
@@ -632,6 +675,19 @@
 
             <!-- Target Host and Port -->
             <div class="flex gap-4">
+              <div class="w-24">
+                <label for="editTargetProtocol" class="block text-sm font-medium text-gray-700">Protocol</label>
+                <select
+                  name="targetProtocol"
+                  id="editTargetProtocol"
+                  bind:value={targetProtocol}
+                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
+                </select>
+              </div>
+
               <div class="flex-1">
                 <label for="editTargetHost" class="block text-sm font-medium text-gray-700">Target Host</label>
                 <input
@@ -659,6 +715,26 @@
                 />
               </div>
             </div>
+
+            <!-- Add the ignore invalid cert checkbox when protocol is HTTPS -->
+            {#if targetProtocol === 'https'}
+              <div class="mt-4">
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="editIgnoreInvalidCert"
+                    bind:checked={ignoreInvalidCert}
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label for="editIgnoreInvalidCert" class="ml-2 block text-sm text-gray-900">
+                    Ignore invalid certificates
+                  </label>
+                </div>
+                <p class="mt-1 text-sm text-gray-500">
+                  Enable this if the target uses a self-signed or invalid certificate
+                </p>
+              </div>
+            {/if}
 
             <!-- Toggles -->
             <div class="space-y-4">

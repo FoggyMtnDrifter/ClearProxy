@@ -22,6 +22,11 @@ import { caddyLogger } from '../logger';
 // Get Caddy API URL from environment variable, fallback to localhost for development
 const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019';
 
+// Retry configuration
+const MAX_RETRIES = 2; // Reduced from 3
+const INITIAL_RETRY_DELAY = 500; // Reduced from 1000ms to 500ms
+const MAX_RETRY_DELAY = 2000; // Cap the maximum retry delay
+
 type ProxyHost = InferModel<typeof proxyHosts>;
 
 /**
@@ -121,9 +126,6 @@ class CaddyError extends Error {
   }
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
-
 /**
  * Creates a promise that resolves after the specified delay.
  * @param ms - The delay in milliseconds
@@ -133,29 +135,33 @@ async function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Retries an operation with exponential backoff.
+ * Retries an operation with linear backoff and maximum delay cap.
  * 
  * @param operation - The async operation to retry
  * @param retries - Number of retries remaining (default: MAX_RETRIES)
- * @param delay - Current delay in milliseconds (default: RETRY_DELAY)
+ * @param delay - Current delay in milliseconds (default: INITIAL_RETRY_DELAY)
  * @throws The last error encountered if all retries fail
  */
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
   retries: number = MAX_RETRIES,
-  delay: number = RETRY_DELAY
+  delay: number = INITIAL_RETRY_DELAY
 ): Promise<T> {
   try {
     return await operation();
   } catch (error) {
     if (retries <= 0) throw error;
     
+    // Use linear backoff with a maximum delay cap
+    const nextDelay = Math.min(delay + INITIAL_RETRY_DELAY, MAX_RETRY_DELAY);
+    
     caddyLogger.warn(
-      { error, retriesLeft: retries - 1, nextDelay: delay * 2 },
+      { error, retriesLeft: retries - 1, nextDelay },
       'Operation failed, retrying...'
     );
+    
     await sleep(delay);
-    return retryWithBackoff(operation, retries - 1, delay * 2);
+    return retryWithBackoff(operation, retries - 1, nextDelay);
   }
 }
 
@@ -282,16 +288,7 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
         );
       }
 
-      // Try to verify the config was applied
-      const verifyResponse = await fetch(`${CADDY_API_URL}/config/`);
-      if (verifyResponse.ok) {
-        const currentConfig = await verifyResponse.json();
-        console.info('Caddy configuration verified', {
-          configApplied: currentConfig !== null
-        });
-      }
-
-      console.info('Successfully applied Caddy configuration');
+      caddyLogger.info('Successfully applied Caddy configuration');
     });
   } catch (error) {
     if (error instanceof CaddyError) {
@@ -314,12 +311,12 @@ export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
   try {
     const config = generateCaddyConfig(hosts);
     await applyCaddyConfig(config);
-    console.info('Successfully reloaded Caddy configuration', {
+    caddyLogger.info('Successfully reloaded Caddy configuration', {
       hostCount: hosts.length,
       activeHosts: hosts.filter(h => h.enabled).length
     });
   } catch (error) {
-    console.error('Failed to reload Caddy configuration', { error });
+    caddyLogger.error('Failed to reload Caddy configuration', { error });
     throw error;
   }
 }
@@ -330,38 +327,33 @@ export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
  */
 export async function getCaddyStatus(): Promise<{ running: boolean; version: string; config?: CaddyConfig }> {
   try {
-    // Try to get the current config
-    const response = await retryWithBackoff(() => 
-      fetch(`${CADDY_API_URL}/config/`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' }
-      })
-    );
+    const response = await fetch(`${CADDY_API_URL}/config/`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
 
     if (!response.ok) {
-      console.warn('Failed to get Caddy config', {
-        status: response.status
-      });
-      // Still consider Caddy running if we can connect
-      return { running: true, version: 'unknown' };
+      if (response.status === 404) {
+        // Fresh Caddy instance with no config
+        return { running: true, version: 'unknown' };
+      }
+      throw new Error(`Failed to get Caddy config: ${response.statusText}`);
     }
 
     const config = await response.json();
-    // A null config is valid - it means Caddy is fresh/empty
     return { 
       running: true, 
       version: 'unknown',
       config: config === null ? undefined : config
     };
   } catch (error) {
-    // Only return not running if we couldn't connect at all
     if (error instanceof Error && 'code' in error && error.code === 'ECONNREFUSED') {
-      console.error('Failed to connect to Caddy admin API', { error });
+      caddyLogger.error('Failed to connect to Caddy admin API', { error });
       return { running: false, version: 'unknown' };
     }
 
-    // If we got any response at all, Caddy is running
-    console.warn('Error getting Caddy status, but server appears to be running', { error });
+    // For other errors, assume Caddy is running but having temporary issues
+    caddyLogger.warn('Error getting Caddy status, but server appears to be running', { error });
     return { running: true, version: 'unknown' };
   }
 }
@@ -394,7 +386,7 @@ export async function getCertificateStatus(domain: string): Promise<CertificateI
       error: data.error
     };
   } catch (error) {
-    console.warn('Failed to get certificate status', { domain, error });
+    caddyLogger.warn('Failed to get certificate status', { domain, error });
     return null;
   }
 } 

@@ -13,6 +13,42 @@ import { apiLogger } from '$lib/logger';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
+ * Cache for Caddy status to prevent too frequent checks
+ */
+let caddyStatusCache: { 
+  status: { running: boolean; version: string } | null;
+  timestamp: number;
+} = {
+  status: null,
+  timestamp: 0
+};
+
+const CADDY_STATUS_CACHE_TTL = 5000; // 5 seconds
+
+/**
+ * Gets Caddy status with caching
+ */
+async function getCachedCaddyStatus(): Promise<{ running: boolean; version: string }> {
+  const now = Date.now();
+  if (caddyStatusCache.status && (now - caddyStatusCache.timestamp) < CADDY_STATUS_CACHE_TTL) {
+    return caddyStatusCache.status;
+  }
+
+  const status = await getCaddyStatus();
+  const newStatus = {
+    running: status.running,
+    version: status.version
+  };
+  
+  caddyStatusCache = {
+    status: newStatus,
+    timestamp: now
+  };
+  
+  return newStatus;
+}
+
+/**
  * Loads proxy host data and Caddy server status for the page.
  * Retrieves all configured proxy hosts from the database, ordered by creation date.
  * For SSL-enabled hosts, fetches their certificate status.
@@ -26,7 +62,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load = (async () => {
   const [hosts, caddyStatus] = await Promise.all([
     db.select().from(proxyHosts).orderBy(proxyHosts.createdAt),
-    getCaddyStatus()
+    getCachedCaddyStatus()
   ]);
 
   apiLogger.debug({ hosts: hosts.map(h => ({
@@ -50,16 +86,12 @@ export const load = (async () => {
 
   apiLogger.info({
     running: caddyStatus.running,
-    version: caddyStatus.version,
-    hasConfig: !!caddyStatus.config
+    version: caddyStatus.version
   }, 'Caddy status check completed');
 
   return { 
     hosts: hostsWithCerts,
-    caddyStatus: {
-      running: caddyStatus.running,
-      version: caddyStatus.version
-    }
+    caddyStatus
   };
 }) satisfies PageServerLoad;
 
@@ -120,21 +152,8 @@ export const actions = {
     }
 
     try {
-      // Check if Caddy is running before making any changes
-      const caddyStatus = await getCaddyStatus();
-      apiLogger.info({
-        running: caddyStatus.running,
-        version: caddyStatus.version,
-        hasConfig: !!caddyStatus.config
-      }, 'Caddy status check before create');
-
-      if (!caddyStatus.running) {
-        apiLogger.warn('Caddy server is not running during create operation');
-        return fail(503, { error: 'Caddy server is not running' });
-      }
-
-      apiLogger.debug('Inserting proxy host into database');
-      const result = await db.insert(proxyHosts).values({
+      // Insert the new host
+      await db.insert(proxyHosts).values({
         domain,
         targetHost,
         targetPort,
@@ -147,20 +166,13 @@ export const actions = {
         basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
         enabled: true
       });
-      apiLogger.debug({ result }, 'Database insert completed');
 
-      // Verify the inserted data
-      const inserted = await db.select().from(proxyHosts).where(eq(proxyHosts.domain, domain));
-      apiLogger.debug({ host: inserted[0] }, 'Verified inserted host');
-
-      // Reload Caddy configuration with updated hosts
-      apiLogger.debug('Fetching all hosts for Caddy config update');
+      // Reload Caddy configuration with all hosts
       const hosts = await db.select().from(proxyHosts);
-      apiLogger.debug({ hostCount: hosts.length }, 'Retrieved hosts from database');
-      
-      apiLogger.info('Reloading Caddy configuration');
       await reloadCaddyConfig(hosts);
-      apiLogger.info('Caddy configuration reloaded successfully');
+
+      // Invalidate Caddy status cache
+      caddyStatusCache.status = null;
 
       return { success: true };
     } catch (error) {
@@ -168,33 +180,12 @@ export const actions = {
         error,
         errorName: error instanceof Error ? error.name : 'unknown',
         errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown',
-        formData: {
-          domain,
-          targetHost,
-          targetPort,
-          sslEnabled,
-          forceSSL,
-          http2Support,
-          advancedConfig,
-          basicAuthEnabled,
-          basicAuthUsername: basicAuthUsername ? '***' : '',
-          basicAuthPassword: basicAuthPassword ? '***' : ''
-        }
+        errorStack: error instanceof Error ? error.stack : 'unknown'
       }, 'Failed to create proxy host');
       
-      if (error instanceof Error) {
-        // Check if it's a Caddy-specific error
-        if (error.name === 'CaddyError') {
-          return fail(503, { 
-            error: 'Failed to update Caddy configuration. Please check the server logs.',
-            details: error.message
-          });
-        }
-
-        // Return the actual error message for debugging
-        return fail(500, { 
-          error: 'Failed to create proxy host',
+      if (error instanceof Error && error.name === 'CaddyError') {
+        return fail(503, { 
+          error: 'Failed to update Caddy configuration',
           details: error.message
         });
       }
@@ -253,15 +244,7 @@ export const actions = {
     }
 
     try {
-      // Check if Caddy is running before making any changes
-      const caddyStatus = await getCaddyStatus();
-      if (!caddyStatus.running) {
-        apiLogger.warn('Caddy server is not running during update operation');
-        return fail(503, { error: 'Caddy server is not running' });
-      }
-
       // Update the proxy host
-      apiLogger.debug({ id }, 'Updating proxy host in database');
       await db
         .update(proxyHosts)
         .set({
@@ -279,18 +262,12 @@ export const actions = {
         })
         .where(eq(proxyHosts.id, id));
 
-      // Verify the update
-      const updated = await db.select().from(proxyHosts).where(eq(proxyHosts.id, id));
-      apiLogger.debug({ host: updated[0] }, 'Verified updated host');
-
-      // Reload Caddy configuration with updated hosts
-      apiLogger.debug('Fetching all hosts for Caddy config update');
+      // Reload Caddy configuration with all hosts
       const hosts = await db.select().from(proxyHosts);
-      apiLogger.debug({ hostCount: hosts.length }, 'Retrieved hosts from database');
-
-      apiLogger.info('Reloading Caddy configuration');
       await reloadCaddyConfig(hosts);
-      apiLogger.info('Caddy configuration reloaded successfully');
+
+      // Invalidate Caddy status cache
+      caddyStatusCache.status = null;
 
       return { success: true };
     } catch (error) {
@@ -298,34 +275,12 @@ export const actions = {
         error,
         errorName: error instanceof Error ? error.name : 'unknown',
         errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown',
-        formData: {
-          id,
-          domain,
-          targetHost,
-          targetPort,
-          sslEnabled,
-          forceSSL,
-          http2Support,
-          advancedConfig,
-          basicAuthEnabled,
-          basicAuthUsername: basicAuthUsername ? '***' : '',
-          basicAuthPassword: basicAuthPassword ? '***' : ''
-        }
+        errorStack: error instanceof Error ? error.stack : 'unknown'
       }, 'Failed to update proxy host');
 
-      if (error instanceof Error) {
-        // Check if it's a Caddy-specific error
-        if (error.name === 'CaddyError') {
-          return fail(503, { 
-            error: 'Failed to update Caddy configuration. Please check the server logs.',
-            details: error.message
-          });
-        }
-
-        // Return the actual error message for debugging
-        return fail(500, { 
-          error: 'Failed to update proxy host',
+      if (error instanceof Error && error.name === 'CaddyError') {
+        return fail(503, { 
+          error: 'Failed to update Caddy configuration',
           details: error.message
         });
       }
@@ -346,25 +301,15 @@ export const actions = {
     }
 
     try {
-      // Check if Caddy is running before making any changes
-      const caddyStatus = await getCaddyStatus();
-      if (!caddyStatus.running) {
-        apiLogger.warn('Caddy server is not running during delete operation');
-        return fail(503, { error: 'Caddy server is not running' });
-      }
-
       // Delete the proxy host
-      apiLogger.debug({ id }, 'Deleting proxy host from database');
       await db.delete(proxyHosts).where(eq(proxyHosts.id, id));
 
-      // Reload Caddy configuration with updated hosts
-      apiLogger.debug('Fetching remaining hosts for Caddy config update');
+      // Reload Caddy configuration with remaining hosts
       const hosts = await db.select().from(proxyHosts);
-      apiLogger.debug({ hostCount: hosts.length }, 'Retrieved hosts from database');
-
-      apiLogger.info('Reloading Caddy configuration');
       await reloadCaddyConfig(hosts);
-      apiLogger.info('Caddy configuration reloaded successfully');
+
+      // Invalidate Caddy status cache
+      caddyStatusCache.status = null;
 
       return { success: true };
     } catch (error) {
@@ -372,22 +317,12 @@ export const actions = {
         error,
         errorName: error instanceof Error ? error.name : 'unknown',
         errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown',
-        hostId: id
+        errorStack: error instanceof Error ? error.stack : 'unknown'
       }, 'Failed to delete proxy host');
 
-      if (error instanceof Error) {
-        // Check if it's a Caddy-specific error
-        if (error.name === 'CaddyError') {
-          return fail(503, { 
-            error: 'Failed to update Caddy configuration. Please check the server logs.',
-            details: error.message
-          });
-        }
-
-        // Return the actual error message for debugging
-        return fail(500, { 
-          error: 'Failed to delete proxy host',
+      if (error instanceof Error && error.name === 'CaddyError') {
+        return fail(503, { 
+          error: 'Failed to update Caddy configuration',
           details: error.message
         });
       }
@@ -409,32 +344,18 @@ export const actions = {
     }
 
     try {
-      // Check if Caddy is running before making any changes
-      const caddyStatus = await getCaddyStatus();
-      if (!caddyStatus.running) {
-        apiLogger.warn('Caddy server is not running during toggle operation');
-        return fail(503, { error: 'Caddy server is not running' });
-      }
-
       // Update the enabled status
-      apiLogger.debug({ id, enabled }, 'Updating proxy host enabled status');
       await db
         .update(proxyHosts)
         .set({ enabled, updatedAt: new Date() })
         .where(eq(proxyHosts.id, id));
 
-      // Verify the update
-      const updated = await db.select().from(proxyHosts).where(eq(proxyHosts.id, id));
-      apiLogger.debug({ host: updated[0] }, 'Verified updated host status');
-
       // Reload Caddy configuration with updated hosts
-      apiLogger.debug('Fetching all hosts for Caddy config update');
       const hosts = await db.select().from(proxyHosts);
-      apiLogger.debug({ hostCount: hosts.length }, 'Retrieved hosts from database');
-
-      apiLogger.info('Reloading Caddy configuration');
       await reloadCaddyConfig(hosts);
-      apiLogger.info('Caddy configuration reloaded successfully');
+
+      // Invalidate Caddy status cache
+      caddyStatusCache.status = null;
 
       return { success: true };
     } catch (error) {
@@ -442,22 +363,12 @@ export const actions = {
         error,
         errorName: error instanceof Error ? error.name : 'unknown',
         errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown',
-        formData: { id, enabled }
+        errorStack: error instanceof Error ? error.stack : 'unknown'
       }, 'Failed to toggle proxy host status');
 
-      if (error instanceof Error) {
-        // Check if it's a Caddy-specific error
-        if (error.name === 'CaddyError') {
-          return fail(503, { 
-            error: 'Failed to update Caddy configuration. Please check the server logs.',
-            details: error.message
-          });
-        }
-
-        // Return the actual error message for debugging
-        return fail(500, { 
-          error: 'Failed to toggle proxy host status',
+      if (error instanceof Error && error.name === 'CaddyError') {
+        return fail(503, { 
+          error: 'Failed to update Caddy configuration',
           details: error.message
         });
       }

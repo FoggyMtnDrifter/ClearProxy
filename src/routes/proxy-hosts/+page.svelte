@@ -84,7 +84,7 @@
     formData.set('forceSSL', forceSSL.toString());
     formData.set('http2Support', http2Support.toString());
     formData.set('http3Support', http3Support.toString());
-    formData.set('advancedConfig', advancedConfig);
+    formData.set('advancedConfig', showAdvanced ? advancedConfig : '');
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
     formData.set('basicAuthUsername', basicAuthUsername);
     formData.set('basicAuthPassword', basicAuthPassword);
@@ -116,7 +116,7 @@
     formData.set('forceSSL', forceSSL.toString());
     formData.set('http2Support', http2Support.toString());
     formData.set('http3Support', http3Support.toString());
-    formData.set('advancedConfig', advancedConfig);
+    formData.set('advancedConfig', showAdvanced ? advancedConfig : '');
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
     formData.set('basicAuthUsername', basicAuthUsername);
     formData.set('basicAuthPassword', basicAuthPassword);

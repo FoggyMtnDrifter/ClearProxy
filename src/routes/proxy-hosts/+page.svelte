@@ -247,7 +247,7 @@
 
     {#if error}
       <div class="mt-4">
-        <ErrorAlert error={error.message} details={error.details} onDismiss={() => error = null} />
+        <ErrorAlert error={error.message} details={error.details} />
       </div>
     {/if}
 

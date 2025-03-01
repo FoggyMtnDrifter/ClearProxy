@@ -11,6 +11,7 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=file:/data/clearproxy.db
       - CADDY_API_URL=http://caddy:2019
+      - ORIGIN=${ORIGIN:-*}
     volumes:
       - ./data:/data
     networks:

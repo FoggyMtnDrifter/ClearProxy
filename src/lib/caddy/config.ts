@@ -24,9 +24,9 @@ import { generateCaddyHash } from '../auth/password';
 const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019';
 
 // Retry configuration
-const MAX_RETRIES = 2; // Reduced from 3
-const INITIAL_RETRY_DELAY = 500; // Reduced from 1000ms to 500ms
-const MAX_RETRY_DELAY = 2000; // Cap the maximum retry delay
+const MAX_RETRIES = 3;  // Increased from 2
+const INITIAL_RETRY_DELAY = 1000;  // Increased from 500ms
+const MAX_RETRY_DELAY = 5000;  // Increased from 2000ms
 
 type ProxyHost = InferModel<typeof proxyHosts>;
 
@@ -487,13 +487,18 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
     await retryWithBackoff(async () => {
-      caddyLogger.debug('Sending configuration to Caddy API');
+      const configJson = JSON.stringify(config);
+      caddyLogger.debug({
+        url: `${CADDY_API_URL}/load`,
+        configLength: configJson.length
+      }, 'Sending configuration to Caddy API');
+
       const response = await fetch(`${CADDY_API_URL}/load`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(config)
+        body: configJson
       });
 
       if (!response.ok) {
@@ -501,7 +506,9 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
         caddyLogger.error({
           statusCode: response.status,
           statusText: response.statusText,
-          error
+          error,
+          requestUrl: `${CADDY_API_URL}/load`,
+          requestBody: configJson
         }, 'Caddy API returned error response');
         throw new CaddyError(
           `Failed to apply Caddy configuration: ${error}`,
@@ -519,7 +526,8 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
       errorName: error instanceof Error ? error.name : 'unknown',
       errorMessage: error instanceof Error ? error.message : 'unknown',
       errorStack: error instanceof Error ? error.stack : 'unknown',
-      errorCause: error instanceof Error ? error.cause : undefined
+      errorCause: error instanceof Error ? error.cause : undefined,
+      caddyApiUrl: CADDY_API_URL
     }, 'Failed to apply Caddy configuration');
 
     if (error instanceof CaddyError) {
@@ -540,14 +548,36 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
  */
 export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
   try {
+    caddyLogger.debug({ hosts: hosts.map(h => ({
+      id: h.id,
+      domain: h.domain,
+      enabled: h.enabled,
+      targetHost: h.targetHost,
+      targetPort: h.targetPort
+    })) }, 'Attempting to reload Caddy configuration');
+
     const config = await generateCaddyConfig(hosts);
+    caddyLogger.debug({ config }, 'Generated Caddy configuration');
+    
     await applyCaddyConfig(config);
     caddyLogger.info('Successfully reloaded Caddy configuration', {
       hostCount: hosts.length,
       activeHosts: hosts.filter(h => h.enabled).length
     });
   } catch (error) {
-    caddyLogger.error('Failed to reload Caddy configuration', { error });
+    caddyLogger.error({
+      error,
+      errorName: error instanceof Error ? error.name : 'unknown',
+      errorMessage: error instanceof Error ? error.message : 'unknown',
+      errorStack: error instanceof Error ? error.stack : 'unknown',
+      hosts: hosts.map(h => ({
+        id: h.id,
+        domain: h.domain,
+        enabled: h.enabled,
+        targetHost: h.targetHost,
+        targetPort: h.targetPort
+      }))
+    }, 'Failed to reload Caddy configuration');
     throw error;
   }
 }

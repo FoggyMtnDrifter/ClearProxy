@@ -137,6 +137,8 @@ export const actions = {
     try {
       // Start a transaction
       return await db.transaction(async (tx) => {
+        apiLogger.debug('Starting transaction for proxy host creation');
+        
         // Create the proxy host within the transaction
         const [newHost] = await tx
           .insert(proxyHosts)
@@ -158,6 +160,8 @@ export const actions = {
             updatedAt: new Date()
           })
           .returning();
+
+        apiLogger.debug({ newHost: { id: newHost.id, domain: newHost.domain } }, 'Created new proxy host in database');
 
         // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts);
@@ -183,9 +187,19 @@ export const actions = {
 
         // Try to update Caddy configuration
         try {
+          apiLogger.debug('Attempting to reload Caddy configuration');
           await reloadCaddyConfig(hosts);
+          apiLogger.info('Successfully reloaded Caddy configuration');
         } catch (error) {
-          // If Caddy update fails, the transaction will be rolled back
+          apiLogger.error({
+            error,
+            errorName: error instanceof Error ? error.name : 'unknown',
+            errorMessage: error instanceof Error ? error.message : 'unknown',
+            errorStack: error instanceof Error ? error.stack : 'unknown',
+            newHost: { id: newHost.id, domain: newHost.domain }
+          }, 'Failed to update Caddy configuration - rolling back transaction');
+          
+          // Re-throw the error to trigger transaction rollback
           throw error;
         }
 
@@ -196,7 +210,10 @@ export const actions = {
         error,
         errorName: error instanceof Error ? error.name : 'unknown',
         errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown'
+        errorStack: error instanceof Error ? error.stack : 'unknown',
+        domain,
+        targetHost,
+        targetPort
       }, 'Failed to create proxy host');
       
       if (error instanceof Error && error.name === 'CaddyError') {

@@ -7,6 +7,7 @@ Welcome to the ClearProxy documentation. This directory contains detailed inform
 ### Core Documentation
 
 - [Database Management](database.md) - Database setup, migrations, and best practices
+- [Docker Configuration](docker.md) - Docker setup, configuration, and troubleshooting
 - [Logging System](logging.md) - Logging configuration, formats, and management
 
 ### Additional Resources

@@ -49,7 +49,55 @@ cat > data/caddy/config/caddy/caddy.json << 'EOF'
 EOF
 ```
 
-3. Start the application:
+3. Create or modify docker-compose.yml:
+```yaml
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY:-foggymtndrifter/clearproxy}:latest
+    container_name: clearproxy-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/data/clearproxy.db
+      - CADDY_API_URL=http://caddy:2019
+    volumes:
+      - ./data:/data
+    networks:
+      - proxy-network
+    depends_on:
+      - caddy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: clearproxy-caddy
+    restart: unless-stopped
+    command: caddy run --config /config/caddy/caddy.json
+    environment:
+      - CADDY_ADMIN_LISTEN=0.0.0.0:2019  # Required for admin API access
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"  # Admin API port (can be changed, e.g., "3019:2019")
+    volumes:
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+      - ./data/certificates:/certificates
+    networks:
+      - proxy-network
+
+networks:
+  proxy-network:
+    name: proxy-network
+    driver: bridge
+```
+
+4. Start the application:
 ```bash
 docker compose up -d
 ```

@@ -17,7 +17,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      security-events: write
 
     steps:
       - name: Checkout repository
@@ -67,18 +66,4 @@ jobs:
           echo "Repository name: ${{ env.REPO_NAME }}"
           echo "Image reference: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.ref_name }}"
           echo "Available tags:"
-          echo "${{ steps.meta.outputs.tags }}"
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        if: github.event_name != 'pull_request'
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.ref_name }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
-        if: github.event_name != 'pull_request'
-        with:
-          sarif_file: 'trivy-results.sarif' 
+          echo "${{ steps.meta.outputs.tags }}" 

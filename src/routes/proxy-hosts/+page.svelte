@@ -17,6 +17,25 @@
   let form: ProxyHostFormData | null = null;
   let statusCheckInterval: ReturnType<typeof setInterval>;
 
+  // Add function to handle target host input changes
+  function handleTargetHostInput(event: Event, targetPortId: string) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    
+    // Check for port in the host (e.g., localhost:3000)
+    const match = value.match(/:(\d+)$/);
+    if (match) {
+      // Remove the port from the host
+      input.value = value.replace(/:(\d+)$/, '');
+      
+      // Set the port value
+      const portInput = document.getElementById(targetPortId) as HTMLInputElement;
+      if (portInput && !portInput.value) {
+        portInput.value = match[1];
+      }
+    }
+  }
+
   // Set up periodic status check
   onMount(() => {
     // Initial check
@@ -343,6 +362,7 @@
                 required
                 class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="localhost"
+                on:input={(e) => handleTargetHostInput(e, 'targetPort')}
               />
             </div>
 
@@ -622,6 +642,7 @@
                   value={editingHost.targetHost}
                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="localhost"
+                  on:input={(e) => handleTargetHostInput(e, 'editTargetPort')}
                 />
               </div>
 

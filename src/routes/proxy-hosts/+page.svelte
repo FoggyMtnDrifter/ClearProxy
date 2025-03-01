@@ -405,6 +405,17 @@
             </div>
           </div>
 
+          {#if targetProtocol === 'https'}
+            <div class="mt-4">
+              <Toggle
+                bind:checked={ignoreInvalidCert}
+                label="Ignore Invalid Certificate"
+                description="Skip SSL certificate validation for target"
+                name="ignoreInvalidCert"
+              />
+            </div>
+          {/if}
+
           <!-- SSL Configuration -->
           <div class="border-t border-gray-200 pt-6">
             <Toggle
@@ -421,14 +432,6 @@
                   description="Redirect all HTTP traffic to HTTPS"
                   name="forceSSL"
                 />
-                {#if targetProtocol === 'https'}
-                  <Toggle
-                    bind:checked={ignoreInvalidCert}
-                    label="Ignore Invalid Certificate"
-                    description="Skip SSL certificate validation for target"
-                    name="ignoreInvalidCert"
-                  />
-                {/if}
                 <Toggle
                   bind:checked={http2Support}
                   label="HTTP/2 Support"
@@ -587,6 +590,17 @@
             </div>
           </div>
 
+          {#if targetProtocol === 'https'}
+            <div class="mt-4">
+              <Toggle
+                bind:checked={ignoreInvalidCert}
+                label="Ignore Invalid Certificate"
+                description="Skip SSL certificate validation for target"
+                name="ignoreInvalidCert"
+              />
+            </div>
+          {/if}
+
           <!-- SSL Configuration -->
           <div class="border-t border-gray-200 pt-6">
             <Toggle
@@ -603,14 +617,6 @@
                   description="Redirect all HTTP traffic to HTTPS"
                   name="forceSSL"
                 />
-                {#if targetProtocol === 'https'}
-                  <Toggle
-                    bind:checked={ignoreInvalidCert}
-                    label="Ignore Invalid Certificate"
-                    description="Skip SSL certificate validation for target"
-                    name="ignoreInvalidCert"
-                  />
-                {/if}
                 <Toggle
                   bind:checked={http2Support}
                   label="HTTP/2 Support"

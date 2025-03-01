@@ -380,14 +380,9 @@ export async function getCaddyStatus(): Promise<{ running: boolean; version: str
       config: config === null ? undefined : config
     };
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ECONNREFUSED') {
-      caddyLogger.error('Failed to connect to Caddy admin API', { error });
-      return { running: false, version: 'unknown' };
-    }
-
-    // For other errors, assume Caddy is running but having temporary issues
-    caddyLogger.warn('Error getting Caddy status, but server appears to be running', { error });
-    return { running: true, version: 'unknown' };
+    // Any error reaching the Caddy API means Caddy is not running
+    caddyLogger.error('Failed to connect to Caddy admin API', { error });
+    return { running: false, version: 'unknown' };
   }
 }
 

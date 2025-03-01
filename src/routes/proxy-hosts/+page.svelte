@@ -6,6 +6,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
+  import { onMount, onDestroy } from 'svelte';
   import type { ProxyHostFormData } from './types';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Modal from '$lib/components/Modal.svelte';
@@ -13,7 +14,26 @@
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
   
   export let data;
-  export const form: ProxyHostFormData | null = null;
+  let form: ProxyHostFormData | null = null;
+  let statusCheckInterval: ReturnType<typeof setInterval>;
+
+  // Set up periodic status check
+  onMount(() => {
+    // Initial check
+    invalidate('app:caddy-status');
+    
+    // Set up interval for subsequent checks
+    statusCheckInterval = setInterval(() => {
+      invalidate('app:caddy-status');
+    }, 5000);
+  });
+
+  // Clean up interval when component is destroyed
+  onDestroy(() => {
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+    }
+  });
 
   let showCreateModal = false;
   let showEditModal = false;
@@ -47,12 +67,12 @@
     isSubmitting = true;
     error = null;
 
-    return async ({ result }) => {
+    return async ({ result, update }) => {
       isSubmitting = false;
       if (result.type === 'success') {
         showCreateModal = false;
         resetForm();
-        await invalidate('app:proxy-hosts');
+        await update();
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to create proxy host',
@@ -76,12 +96,12 @@
     isSubmitting = true;
     error = null;
 
-    return async ({ result }) => {
+    return async ({ result, update }) => {
       isSubmitting = false;
       if (result.type === 'success') {
         showEditModal = false;
         editingHost = null;
-        await invalidate('app:proxy-hosts');
+        await update();
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to update proxy host',
@@ -95,10 +115,10 @@
     isSubmitting = true;
     error = null;
 
-    return async ({ result }) => {
+    return async ({ result, update }) => {
       isSubmitting = false;
       if (result.type === 'success') {
-        await invalidate('app:proxy-hosts');
+        await update();
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to toggle proxy host status',
@@ -112,10 +132,10 @@
     isSubmitting = true;
     error = null;
 
-    return async ({ result }) => {
+    return async ({ result, update }) => {
       isSubmitting = false;
       if (result.type === 'success') {
-        await invalidate('app:proxy-hosts');
+        await update();
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to delete proxy host',

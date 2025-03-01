@@ -13,42 +13,6 @@ import { apiLogger } from '$lib/logger';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Cache for Caddy status to prevent too frequent checks
- */
-let caddyStatusCache: { 
-  status: { running: boolean; version: string } | null;
-  timestamp: number;
-} = {
-  status: null,
-  timestamp: 0
-};
-
-const CADDY_STATUS_CACHE_TTL = 5000; // 5 seconds
-
-/**
- * Gets Caddy status with caching
- */
-async function getCachedCaddyStatus(): Promise<{ running: boolean; version: string }> {
-  const now = Date.now();
-  if (caddyStatusCache.status && (now - caddyStatusCache.timestamp) < CADDY_STATUS_CACHE_TTL) {
-    return caddyStatusCache.status;
-  }
-
-  const status = await getCaddyStatus();
-  const newStatus = {
-    running: status.running,
-    version: status.version
-  };
-  
-  caddyStatusCache = {
-    status: newStatus,
-    timestamp: now
-  };
-  
-  return newStatus;
-}
-
-/**
  * Loads proxy host data and Caddy server status for the page.
  * Retrieves all configured proxy hosts from the database, ordered by creation date.
  * For SSL-enabled hosts, fetches their certificate status.
@@ -59,10 +23,14 @@ async function getCachedCaddyStatus(): Promise<{ running: boolean; version: stri
  *   caddyStatus: { running: boolean, version: string }
  * }>} Object containing proxy hosts with certificate info and Caddy status
  */
-export const load = (async () => {
+export const load = (async ({ depends }) => {
+  // Tell SvelteKit this load function depends on these custom invalidation keys
+  depends('app:proxy-hosts');
+  depends('app:caddy-status');
+
   const [hosts, caddyStatus] = await Promise.all([
     db.select().from(proxyHosts).orderBy(proxyHosts.createdAt),
-    getCachedCaddyStatus()
+    getCaddyStatus()
   ]);
 
   apiLogger.debug({ hosts: hosts.map(h => ({
@@ -111,7 +79,7 @@ export const actions = {
    * @throws Will return a 503 status if Caddy server is not running
    * @throws Will return a 500 status for other errors
    */
-  create: async ({ request, locals }) => {
+  create: async ({ request }) => {
     const data = await request.formData();
     const domain = data.get('domain')?.toString();
     const targetHost = data.get('targetHost')?.toString();
@@ -171,12 +139,6 @@ export const actions = {
       const hosts = await db.select().from(proxyHosts);
       await reloadCaddyConfig(hosts);
 
-      // Invalidate Caddy status cache
-      caddyStatusCache.status = null;
-
-      // Force page data refresh
-      locals.invalidateAll?.();
-
       return { success: true };
     } catch (error) {
       apiLogger.error({
@@ -209,7 +171,7 @@ export const actions = {
    * @throws Will return a 503 status if Caddy server is not running
    * @throws Will return a 500 status for other errors
    */
-  edit: async ({ request, locals }) => {
+  edit: async ({ request }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const domain = data.get('domain')?.toString();
@@ -269,12 +231,6 @@ export const actions = {
       const hosts = await db.select().from(proxyHosts);
       await reloadCaddyConfig(hosts);
 
-      // Invalidate Caddy status cache
-      caddyStatusCache.status = null;
-
-      // Force page data refresh
-      locals.invalidateAll?.();
-
       return { success: true };
     } catch (error) {
       apiLogger.error({
@@ -295,7 +251,7 @@ export const actions = {
     }
   },
 
-  delete: async ({ request, locals }) => {
+  delete: async ({ request }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
 
@@ -313,12 +269,6 @@ export const actions = {
       // Reload Caddy configuration with remaining hosts
       const hosts = await db.select().from(proxyHosts);
       await reloadCaddyConfig(hosts);
-
-      // Invalidate Caddy status cache
-      caddyStatusCache.status = null;
-
-      // Force page data refresh
-      locals.invalidateAll?.();
 
       return { success: true };
     } catch (error) {
@@ -340,7 +290,7 @@ export const actions = {
     }
   },
 
-  toggle: async ({ request, locals }) => {
+  toggle: async ({ request }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const enabled = data.get('enabled') === 'true';
@@ -362,12 +312,6 @@ export const actions = {
       // Reload Caddy configuration with updated hosts
       const hosts = await db.select().from(proxyHosts);
       await reloadCaddyConfig(hosts);
-
-      // Invalidate Caddy status cache
-      caddyStatusCache.status = null;
-
-      // Force page data refresh
-      locals.invalidateAll?.();
 
       return { success: true };
     } catch (error) {

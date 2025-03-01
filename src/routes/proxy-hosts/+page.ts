@@ -1,11 +1,9 @@
-import type { PageData } from './$types';
+import type { PageLoad } from './$types';
 
-export const load = (async ({ data, depends }: { data: PageData; depends: Function }) => {
-  // Mark this load function as dependent on the proxy-hosts data
+export const load = (({ data, depends }) => {
+  // Mark this load function as dependent on both proxy-hosts and caddy-status
   depends('app:proxy-hosts');
-
-  return {
-    ...data,
-    loading: false
-  };
-}); 
+  depends('app:caddy-status');
+  
+  return data;
+}) satisfies PageLoad; 

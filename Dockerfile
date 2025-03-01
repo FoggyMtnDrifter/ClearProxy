@@ -31,6 +31,16 @@ COPY --from=builder /app/package.json ./package.json
 RUN mkdir -p /data /app/build/server/logs && \
     chown -R node:node /data /app/build/server/logs
 
+# Create startup script
+RUN echo '#!/bin/sh\n\
+# Run migrations\n\
+npx drizzle-kit push:sqlite\n\
+\n\
+# Start the application\n\
+exec node build' > /app/start.sh && \
+    chmod +x /app/start.sh && \
+    chown node:node /app/start.sh
+
 # Expose port
 EXPOSE 3000
 
@@ -43,5 +53,5 @@ ENV DATABASE_PATH=/data
 # Switch to non-root user
 USER node
 
-# Start the application
-CMD ["node", "build"] 
+# Start the application using the startup script
+CMD ["/app/start.sh"] 

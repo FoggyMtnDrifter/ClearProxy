@@ -535,32 +535,7 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
         adminConfig: config.admin
       }, 'Sending configuration to Caddy API');
 
-      // First try to validate the config
-      const validateResponse = await fetch(`${CADDY_API_URL}/load/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: configJson
-      });
-
-      if (!validateResponse.ok) {
-        const error = await validateResponse.text();
-        caddyLogger.error({
-          statusCode: validateResponse.status,
-          statusText: validateResponse.statusText,
-          error,
-          requestUrl: `${CADDY_API_URL}/load/config`,
-          configSample: configJson.substring(0, 500) + '...' // Log first 500 chars
-        }, 'Caddy config validation failed');
-        throw new CaddyError(
-          `Invalid Caddy configuration: ${error}`,
-          'CONFIG_VALIDATION_ERROR',
-          { statusCode: validateResponse.status, error }
-        );
-      }
-
-      // If validation passed, apply the config
+      // Apply the config
       const response = await fetch(`${CADDY_API_URL}/load`, {
         method: 'POST',
         headers: {

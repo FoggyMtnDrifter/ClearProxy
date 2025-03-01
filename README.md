@@ -46,7 +46,7 @@ The application uses SQLite for data storage and communicates with Caddy's admin
 
 ### Environment Variables
 
-- `CADDY_ADMIN_API`: URL of Caddy's admin API (default: `http://localhost:2019`)
+- `CADDY_API_URL`: URL of Caddy's admin API (default: `http://localhost:2019`)
 - `DATABASE_PATH`: Path to SQLite database file (default: `./clearproxy.db`)
 
 ### Database Migrations

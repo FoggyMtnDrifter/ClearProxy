@@ -17,6 +17,8 @@ RUN ls -la /app/.svelte-kit/output
 # Production stage
 FROM caddy:2-alpine
 
+LABEL org.opencontainers.image.source=https://github.com/foggymtndrifter/clearproxy
+
 # Copy the built application
 COPY --from=builder /app/.svelte-kit/output/client /srv
 COPY --from=builder /app/.svelte-kit/output/server /srv/server

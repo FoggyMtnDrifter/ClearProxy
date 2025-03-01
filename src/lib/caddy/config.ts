@@ -19,6 +19,9 @@ import { proxyHosts } from '../db/schema';
 import type { InferModel } from 'drizzle-orm';
 import { caddyLogger } from '../logger';
 
+// Get Caddy API URL from environment variable, fallback to localhost for development
+const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019';
+
 type ProxyHost = InferModel<typeof proxyHosts>;
 
 /**
@@ -262,7 +265,7 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
     await retryWithBackoff(async () => {
-      const response = await fetch('http://localhost:2019/load', {
+      const response = await fetch(`${CADDY_API_URL}/load`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -280,7 +283,7 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
       }
 
       // Try to verify the config was applied
-      const verifyResponse = await fetch('http://localhost:2019/config/');
+      const verifyResponse = await fetch(`${CADDY_API_URL}/config/`);
       if (verifyResponse.ok) {
         const currentConfig = await verifyResponse.json();
         console.info('Caddy configuration verified', {
@@ -329,7 +332,7 @@ export async function getCaddyStatus(): Promise<{ running: boolean; version: str
   try {
     // Try to get the current config
     const response = await retryWithBackoff(() => 
-      fetch('http://localhost:2019/config/', {
+      fetch(`${CADDY_API_URL}/config/`, {
         method: 'GET',
         headers: { Accept: 'application/json' }
       })
@@ -370,7 +373,7 @@ export async function getCaddyStatus(): Promise<{ running: boolean; version: str
  */
 export async function getCertificateStatus(domain: string): Promise<CertificateInfo | null> {
   try {
-    const response = await fetch(`http://localhost:2019/certificates/${domain}`, {
+    const response = await fetch(`${CADDY_API_URL}/certificates/${domain}`, {
       method: 'GET',
       headers: { Accept: 'application/json' }
     });

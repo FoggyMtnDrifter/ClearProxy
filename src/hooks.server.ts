@@ -38,6 +38,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     throw redirect(303, '/dashboard');
   }
 
+  // Handle CSRF protection
+  if (event.request.method === 'POST') {
+    const origin = event.request.headers.get('origin');
+    const host = event.request.headers.get('host');
+    
+    // Allow requests from same origin or when ORIGIN is set to '*'
+    const allowedOrigin = process.env.ORIGIN === '*' ? true : 
+      origin ? new URL(origin).host === host : true;
+
+    if (!allowedOrigin) {
+      authLogger.warn('Invalid origin for POST request', { origin, host });
+      return new Response('Invalid origin', { status: 400 });
+    }
+  }
+
   const response = await resolve(event);
   return response;
 }; 

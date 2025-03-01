@@ -39,7 +39,7 @@ EXPOSE 3000
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV ORIGIN=http://localhost
+ENV ORIGIN=*
 
 # Start the application using the entrypoint script
 ENTRYPOINT ["docker-entrypoint.sh"] 

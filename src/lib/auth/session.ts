@@ -80,14 +80,16 @@ export async function getUserFromSession(event: SessionEvent) {
  */
 export function createSession(event: SessionEvent, userId: number) {
   const session = `${userId}:${Date.now()}`;
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   event.cookies.set('session', session, {
     path: '/',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
     maxAge: 60 * 60 * 24 // 24 hours
   });
-  authLogger.debug({ userId }, 'Created new session');
+  authLogger.debug({ userId, isProduction }, 'Created new session');
 }
 
 /**

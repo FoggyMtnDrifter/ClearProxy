@@ -41,6 +41,7 @@
   let sslEnabled = true;
   let forceSSL = true;
   let http2Support = true;
+  let http3Support = true;
   let showAdvanced = false;
   let advancedConfig = '';
   let basicAuthEnabled = false;
@@ -49,9 +50,11 @@
   let isSubmitting = false;
   let error: { message: string; details?: string } | null = null;
 
-  // Watch sslEnabled and update forceSSL accordingly
+  // Watch sslEnabled and update dependent settings
   $: if (!sslEnabled) {
     forceSSL = false;
+    http2Support = false;
+    http3Support = false;
   }
 
   const handleSubmit: SubmitFunction = ({ formData }) => {
@@ -59,6 +62,7 @@
     formData.set('sslEnabled', sslEnabled.toString());
     formData.set('forceSSL', forceSSL.toString());
     formData.set('http2Support', http2Support.toString());
+    formData.set('http3Support', http3Support.toString());
     formData.set('advancedConfig', advancedConfig);
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
     formData.set('basicAuthUsername', basicAuthUsername);
@@ -88,6 +92,7 @@
     formData.set('sslEnabled', sslEnabled.toString());
     formData.set('forceSSL', forceSSL.toString());
     formData.set('http2Support', http2Support.toString());
+    formData.set('http3Support', http3Support.toString());
     formData.set('advancedConfig', advancedConfig);
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
     formData.set('basicAuthUsername', basicAuthUsername);
@@ -150,6 +155,7 @@
     sslEnabled = host.sslEnabled;
     forceSSL = host.forceSSL;
     http2Support = host.http2Support;
+    http3Support = host.http3Support;
     advancedConfig = host.advancedConfig || '';
     showAdvanced = !!host.advancedConfig;
     basicAuthEnabled = host.basicAuthEnabled;
@@ -163,6 +169,7 @@
     sslEnabled = true;
     forceSSL = true;
     http2Support = true;
+    http3Support = true;
     showAdvanced = false;
     advancedConfig = '';
     basicAuthEnabled = false;
@@ -411,13 +418,41 @@
                 on:click={() => http2Support = !http2Support}
                 class={`${
                   http2Support ? 'bg-indigo-600' : 'bg-gray-200'
-                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
+                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={!sslEnabled}
               >
                 <span class="sr-only">HTTP/2 Support</span>
                 <span
                   aria-hidden="true"
                   class={`${
                     http2Support ? 'translate-x-5' : 'translate-x-0'
+                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                ></span>
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <label for="http3Support" class="text-sm font-medium text-gray-700">HTTP/3 Support</label>
+              <button 
+                type="button"
+                role="switch"
+                aria-checked={http3Support}
+                id="http3Support"
+                on:click={() => http3Support = !http3Support}
+                class={`${
+                  http3Support ? 'bg-indigo-600' : 'bg-gray-200'
+                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={!sslEnabled}
+              >
+                <span class="sr-only">HTTP/3 Support</span>
+                <span
+                  aria-hidden="true"
+                  class={`${
+                    http3Support ? 'translate-x-5' : 'translate-x-0'
                   } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
                 ></span>
               </button>
@@ -663,13 +698,41 @@
                   on:click={() => http2Support = !http2Support}
                   class={`${
                     http2Support ? 'bg-indigo-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
+                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  disabled={!sslEnabled}
                 >
                   <span class="sr-only">HTTP/2 Support</span>
                   <span
                     aria-hidden="true"
                     class={`${
                       http2Support ? 'translate-x-5' : 'translate-x-0'
+                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                  ></span>
+                </button>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <label for="editHttp3Support" class="text-sm font-medium text-gray-700">HTTP/3 Support</label>
+                <button 
+                  type="button"
+                  role="switch"
+                  aria-checked={http3Support}
+                  id="editHttp3Support"
+                  on:click={() => http3Support = !http3Support}
+                  class={`${
+                    http3Support ? 'bg-indigo-600' : 'bg-gray-200'
+                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    !sslEnabled ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  disabled={!sslEnabled}
+                >
+                  <span class="sr-only">HTTP/3 Support</span>
+                  <span
+                    aria-hidden="true"
+                    class={`${
+                      http3Support ? 'translate-x-5' : 'translate-x-0'
                     } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
                   ></span>
                 </button>

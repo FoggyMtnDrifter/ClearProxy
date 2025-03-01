@@ -35,40 +35,29 @@ type ProxyHost = InferModel<typeof proxyHosts>;
  * 
  * @see https://caddyserver.com/docs/json/apps/http/servers/routes/
  */
+interface CaddyMatch {
+  host: string[];
+  protocol?: string;
+}
+
+interface CaddyHandler {
+  handler: "reverse_proxy" | "authentication" | "static_response";
+  upstreams?: { dial: string }[];
+  providers?: {
+    http_basic: {
+      accounts: { username: string; password: string }[];
+    };
+  };
+  status_code?: number;
+  headers?: {
+    Location: string[];
+  };
+}
+
 interface CaddyRoute {
-  match: { host: string[] }[];
-  handle: (
-    | {
-        handler: 'reverse_proxy';
-        upstreams: { dial: string }[];
-        transport?: {
-          protocol: string;
-          tls?: Record<string, never>;
-        };
-      }
-    | {
-        handler: 'authentication';
-        providers: {
-          http_basic: {
-            hash?: {
-              algorithm: string;
-            };
-            accounts: {
-              username: string;
-              password: string;
-              salt?: string;
-            }[];
-          };
-        };
-      }
-  )[];
-  terminal: boolean;
-  tls_connection_policies?: {
-    match: { sni: string[] };
-    protocol_min: string;
-    protocol_max: string;
-    alpn: string[];
-  }[];
+  match: CaddyMatch[];
+  handle: CaddyHandler[];
+  terminal?: boolean;
 }
 
 /**
@@ -77,16 +66,13 @@ interface CaddyRoute {
  * 
  * @see https://caddyserver.com/docs/json/apps/http/servers/
  */
-interface CaddyServer {
+interface CaddyServerConfig {
   listen: string[];
   routes: CaddyRoute[];
-  automatic_https?: {
-    disable?: boolean;
+  automatic_https: {
+    disable: boolean;
   };
-  tls_connection_policies?: {
-    match: { sni: string[] };
-    alpn?: string[];
-  }[];
+  tls_connection_policies?: {}[];
 }
 
 /**
@@ -95,17 +81,44 @@ interface CaddyServer {
  * 
  * @see https://caddyserver.com/docs/json/
  */
+interface CaddyTLSConfig {
+  certificates?: {
+    automate: string[];
+  };
+  automation?: {
+    policies: {
+      subjects: string[];
+      issuers: {
+        module: string;
+        challenges: {
+          http: {
+            alternate_port: number;
+          };
+        };
+      }[];
+    }[];
+  };
+}
+
 interface CaddyConfig {
   admin: {
     listen: string;
-    disabled?: boolean;
+    disabled: boolean;
+  };
+  logging?: {
+    logs: {
+      default: {
+        level: string;
+      };
+    };
   };
   apps: {
     http: {
       servers: {
-        [key: string]: CaddyServer;
+        [key: string]: CaddyServerConfig;
       };
     };
+    tls?: CaddyTLSConfig;
   };
 }
 
@@ -180,105 +193,176 @@ async function retryWithBackoff<T>(
  * 
  * This function:
  * - Creates routes for each enabled host
- * - Configures SSL/TLS settings
+ * - Configures SSL/TLS settings per host
  * - Sets up basic authentication if enabled
  * - Applies advanced configurations
  * - Handles HTTP/2 support
  * 
- * @param enabledHosts - List of enabled proxy host configurations
+ * @param hosts - List of enabled proxy host configurations
  * @returns Complete Caddy configuration object
  * @throws Error if configuration generation fails
  */
-export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
-  caddyLogger.info({ hostCount: enabledHosts.length }, 'Generating Caddy configuration');
-  
-  try {
-    const config: CaddyConfig = {
-      admin: {
-        listen: '0.0.0.0:2019',
-        disabled: false
-      },
-      apps: {
-        http: {
-          servers: {
-            srv0: {
-              listen: [":80", ":443"],
-              routes: enabledHosts.map(host => {
-                caddyLogger.debug({ host: host.domain }, 'Configuring host');
-                
-                const route: any = {
-                  match: [{ host: [host.domain] }],
-                  handle: [],
-                  terminal: true
-                };
+export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
+  const enabledHosts = hosts.filter((host) => host.enabled);
+  const routes: CaddyRoute[] = [];
 
-                // Add basic auth if enabled
-                if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
-                  caddyLogger.debug({ host: host.domain }, 'Configuring basic auth');
-                  route.handle.push({
-                    handler: "authentication",
-                    providers: {
-                      http_basic: {
-                        accounts: [{
-                          username: host.basicAuthUsername,
-                          password: host.basicAuthPassword
-                        }]
-                      }
-                    }
-                  });
-                }
+  for (const host of enabledHosts) {
+    if (host.sslEnabled) {
+      // SSL-enabled host configuration
+      const httpsRoute: CaddyRoute = {
+        match: [
+          {
+            host: [host.domain],
+            protocol: "https",
+          },
+        ],
+        handle: [
+          {
+            handler: "reverse_proxy",
+            upstreams: [{ dial: `${host.targetHost}:${host.targetPort}` }],
+          },
+        ],
+      };
 
-                // Add reverse proxy configuration
-                const proxyHandler: {
-                  handler: 'reverse_proxy';
-                  upstreams: { dial: string }[];
-                  transport?: {
-                    protocol: string;
-                    tls?: Record<string, never>;
-                  };
-                } = {
-                  handler: "reverse_proxy",
-                  upstreams: [{ dial: `${host.targetHost}:${host.targetPort}` }]
-                };
-
-                // Add HTTP/2 support if enabled
-                if (host.http2Support && host.sslEnabled) {
-                  proxyHandler.transport = {
-                    protocol: "http",
-                    tls: {}
-                  };
-                }
-
-                route.handle.push(proxyHandler);
-
-                return route;
-              }),
-              // Server-wide TLS configuration
-              tls_connection_policies: enabledHosts
-                .filter(host => host.sslEnabled)
-                .map(host => ({
-                  match: { sni: [host.domain] },
-                  alpn: host.http2Support ? ["h2", "http/1.1"] : ["http/1.1"]
-                })),
-              automatic_https: {
-                disable: false
-              }
-            }
-          }
-        }
+      // Add basic auth if enabled
+      if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
+        httpsRoute.handle.unshift({
+          handler: "authentication",
+          providers: {
+            http_basic: {
+              accounts: [
+                {
+                  username: host.basicAuthUsername,
+                  password: host.basicAuthPassword,
+                },
+              ],
+            },
+          },
+        });
       }
-    };
 
-    caddyLogger.info('Caddy configuration generated successfully');
-    return config;
-  } catch (error) {
-    caddyLogger.error({ error }, 'Failed to generate Caddy configuration');
-    throw new CaddyError(
-      'Failed to generate Caddy configuration',
-      'CONFIG_GENERATION_ERROR',
-      error
-    );
+      routes.push(httpsRoute);
+
+      // Add HTTP to HTTPS redirect if forceSSL is enabled
+      if (host.forceSSL) {
+        routes.push({
+          match: [
+            {
+              host: [host.domain],
+              protocol: "http",
+            },
+          ],
+          handle: [
+            {
+              handler: "static_response",
+              status_code: 308,
+              headers: {
+                Location: [
+                  `https://{http.request.host}{http.request.uri}`,
+                ],
+              },
+            },
+          ],
+        });
+      }
+    } else {
+      // Non-SSL host configuration with explicit TLS disable
+      const httpRoute: CaddyRoute = {
+        match: [
+          {
+            host: [host.domain],
+          },
+        ],
+        handle: [
+          {
+            handler: "reverse_proxy",
+            upstreams: [{ dial: `${host.targetHost}:${host.targetPort}` }],
+          },
+        ],
+        terminal: true,
+      };
+
+      // Add basic auth if enabled
+      if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
+        httpRoute.handle.unshift({
+          handler: "authentication",
+          providers: {
+            http_basic: {
+              accounts: [
+                {
+                  username: host.basicAuthUsername,
+                  password: host.basicAuthPassword,
+                },
+              ],
+            },
+          },
+        });
+      }
+
+      routes.push(httpRoute);
+    }
   }
+
+  // Only include TLS configuration for SSL-enabled hosts
+  const sslHosts = enabledHosts.filter((host) => host.sslEnabled);
+
+  return {
+    admin: {
+      listen: "0.0.0.0:2019",
+      disabled: false,
+    },
+    logging: {
+      logs: {
+        default: {
+          level: "INFO",
+        },
+      },
+    },
+    apps: {
+      http: {
+        servers: {
+          srv0: {
+            listen: [":80", ":443"],
+            routes: routes,
+            automatic_https: {
+              disable: true, // Disable automatic HTTPS globally
+            },
+            ...(sslHosts.length > 0 && {
+              tls_connection_policies: sslHosts.map(host => ({
+                match: {
+                  sni: [host.domain],
+                },
+                protocol_min: "1.2",
+                protocol_max: "1.3",
+                alpn: [
+                  ...(host.http2Support ? ["h2"] : []),
+                  ...(host.http3Support ? ["h3"] : []),
+                  "http/1.1"
+                ],
+              })),
+            }),
+          },
+        },
+      },
+      ...(sslHosts.length > 0 && {
+        tls: {
+          automation: {
+            policies: [{
+              subjects: sslHosts.map(host => host.domain),
+              issuers: [{
+                module: "acme",
+                challenges: {
+                  http: {
+                    alternate_port: 80,
+                  },
+                },
+              }],
+            }],
+          },
+        },
+      }),
+    },
+  };
 }
 
 /**

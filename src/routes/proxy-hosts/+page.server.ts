@@ -87,6 +87,7 @@ export const actions = {
     const sslEnabled = data.get('sslEnabled') === 'true';
     const forceSSL = data.get('forceSSL') === 'true';
     const http2Support = data.get('http2Support') === 'true';
+    const http3Support = data.get('http3Support') === 'true';
     const advancedConfig = data.get('advancedConfig')?.toString() || '';
     const basicAuthEnabled = data.get('basicAuthEnabled') === 'true';
     const basicAuthUsername = data.get('basicAuthUsername')?.toString() || '';
@@ -99,13 +100,15 @@ export const actions = {
       sslEnabled,
       forceSSL,
       http2Support,
+      http3Support,
       advancedConfig,
       basicAuthEnabled,
       basicAuthUsername: basicAuthUsername ? '***' : '',
       rawFormData: {
         sslEnabled: data.get('sslEnabled'),
         forceSSL: data.get('forceSSL'),
-        http2Support: data.get('http2Support')
+        http2Support: data.get('http2Support'),
+        http3Support: data.get('http3Support')
       }
     }, 'Creating new proxy host');
 
@@ -120,26 +123,37 @@ export const actions = {
     }
 
     try {
-      // Insert the new host
-      await db.insert(proxyHosts).values({
-        domain,
-        targetHost,
-        targetPort,
-        sslEnabled,
-        forceSSL,
-        http2Support,
-        advancedConfig,
-        basicAuthEnabled,
-        basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
-        basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
-        enabled: true
+      // Start a transaction
+      return await db.transaction(async (tx) => {
+        // Insert the new host within the transaction
+        await tx.insert(proxyHosts).values({
+          domain,
+          targetHost,
+          targetPort,
+          sslEnabled,
+          forceSSL,
+          http2Support,
+          http3Support,
+          advancedConfig,
+          basicAuthEnabled,
+          basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
+          basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
+          enabled: true
+        });
+
+        // Get all hosts within the transaction
+        const hosts = await tx.select().from(proxyHosts);
+
+        // Try to update Caddy configuration
+        try {
+          await reloadCaddyConfig(hosts);
+        } catch (error) {
+          // If Caddy update fails, the transaction will be rolled back
+          throw error;
+        }
+
+        return { success: true };
       });
-
-      // Reload Caddy configuration with all hosts
-      const hosts = await db.select().from(proxyHosts);
-      await reloadCaddyConfig(hosts);
-
-      return { success: true };
     } catch (error) {
       apiLogger.error({
         error,
@@ -180,6 +194,7 @@ export const actions = {
     const sslEnabled = data.get('sslEnabled') === 'true';
     const forceSSL = data.get('forceSSL') === 'true';
     const http2Support = data.get('http2Support') === 'true';
+    const http3Support = data.get('http3Support') === 'true';
     const advancedConfig = data.get('advancedConfig')?.toString() || '';
     const basicAuthEnabled = data.get('basicAuthEnabled') === 'true';
     const basicAuthUsername = data.get('basicAuthUsername')?.toString() || '';
@@ -193,6 +208,7 @@ export const actions = {
       sslEnabled,
       forceSSL,
       http2Support,
+      http3Support,
       advancedConfig,
       basicAuthEnabled,
       basicAuthUsername: basicAuthUsername ? '***' : ''
@@ -209,29 +225,40 @@ export const actions = {
     }
 
     try {
-      // Update the proxy host
-      await db
-        .update(proxyHosts)
-        .set({
-          domain,
-          targetHost,
-          targetPort,
-          sslEnabled,
-          forceSSL,
-          http2Support,
-          advancedConfig,
-          basicAuthEnabled,
-          basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
-          basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
-          updatedAt: new Date()
-        })
-        .where(eq(proxyHosts.id, id));
+      // Start a transaction
+      return await db.transaction(async (tx) => {
+        // Update the proxy host within the transaction
+        await tx
+          .update(proxyHosts)
+          .set({
+            domain,
+            targetHost,
+            targetPort,
+            sslEnabled,
+            forceSSL,
+            http2Support,
+            http3Support,
+            advancedConfig,
+            basicAuthEnabled,
+            basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
+            basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
+            updatedAt: new Date()
+          })
+          .where(eq(proxyHosts.id, id));
 
-      // Reload Caddy configuration with all hosts
-      const hosts = await db.select().from(proxyHosts);
-      await reloadCaddyConfig(hosts);
+        // Get all hosts within the transaction
+        const hosts = await tx.select().from(proxyHosts);
 
-      return { success: true };
+        // Try to update Caddy configuration
+        try {
+          await reloadCaddyConfig(hosts);
+        } catch (error) {
+          // If Caddy update fails, the transaction will be rolled back
+          throw error;
+        }
+
+        return { success: true };
+      });
     } catch (error) {
       apiLogger.error({
         error,
@@ -263,14 +290,24 @@ export const actions = {
     }
 
     try {
-      // Delete the proxy host
-      await db.delete(proxyHosts).where(eq(proxyHosts.id, id));
+      // Start a transaction
+      return await db.transaction(async (tx) => {
+        // Delete the proxy host within the transaction
+        await tx.delete(proxyHosts).where(eq(proxyHosts.id, id));
 
-      // Reload Caddy configuration with remaining hosts
-      const hosts = await db.select().from(proxyHosts);
-      await reloadCaddyConfig(hosts);
+        // Get remaining hosts within the transaction
+        const hosts = await tx.select().from(proxyHosts);
 
-      return { success: true };
+        // Try to update Caddy configuration
+        try {
+          await reloadCaddyConfig(hosts);
+        } catch (error) {
+          // If Caddy update fails, the transaction will be rolled back
+          throw error;
+        }
+
+        return { success: true };
+      });
     } catch (error) {
       apiLogger.error({
         error,
@@ -303,17 +340,27 @@ export const actions = {
     }
 
     try {
-      // Update the enabled status
-      await db
-        .update(proxyHosts)
-        .set({ enabled, updatedAt: new Date() })
-        .where(eq(proxyHosts.id, id));
+      // Start a transaction
+      return await db.transaction(async (tx) => {
+        // Update the enabled status within the transaction
+        await tx
+          .update(proxyHosts)
+          .set({ enabled, updatedAt: new Date() })
+          .where(eq(proxyHosts.id, id));
 
-      // Reload Caddy configuration with updated hosts
-      const hosts = await db.select().from(proxyHosts);
-      await reloadCaddyConfig(hosts);
+        // Get all hosts within the transaction
+        const hosts = await tx.select().from(proxyHosts);
 
-      return { success: true };
+        // Try to update Caddy configuration
+        try {
+          await reloadCaddyConfig(hosts);
+        } catch (error) {
+          // If Caddy update fails, the transaction will be rolled back
+          throw error;
+        }
+
+        return { success: true };
+      });
     } catch (error) {
       apiLogger.error({
         error,

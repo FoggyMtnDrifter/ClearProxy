@@ -1,0 +1,1 @@
+ALTER TABLE `proxy_hosts` ADD `http3_support` integer DEFAULT true NOT NULL;

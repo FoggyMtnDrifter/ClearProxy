@@ -40,6 +40,7 @@ export const proxyHosts = sqliteTable('proxy_hosts', {
   sslEnabled: integer('ssl_enabled', { mode: 'boolean' }).notNull().default(true),
   forceSSL: integer('force_ssl', { mode: 'boolean' }).notNull().default(true),
   http2Support: integer('http2_support', { mode: 'boolean' }).notNull().default(true),
+  http3Support: integer('http3_support', { mode: 'boolean' }).notNull().default(true),
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   advancedConfig: text('advanced_config'),
   basicAuthEnabled: integer('basic_auth_enabled', { mode: 'boolean' }).notNull().default(false),

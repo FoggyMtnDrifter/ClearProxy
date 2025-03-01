@@ -52,6 +52,12 @@ interface CaddyHandler {
   headers?: {
     Location: string[];
   };
+  transport?: {
+    protocol: string;
+    tls?: {
+      insecure_skip_verify?: boolean;
+    };
+  };
 }
 
 interface CaddyRoute {
@@ -207,6 +213,31 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
   const routes: CaddyRoute[] = [];
 
   for (const host of enabledHosts) {
+    // Clean the target host by removing any protocol prefixes and slashes
+    const cleanTargetHost = host.targetHost
+      .replace(/^https?:\/\//, '')  // Remove any protocol prefix
+      .replace(/^\/+|\/+$/g, '')    // Remove leading and trailing slashes
+      .trim();                      // Remove any whitespace
+    
+    // For the dial field, just use host:port without protocol
+    const dialAddress = `${cleanTargetHost}:${host.targetPort}`;
+
+    // Configure the handler with proper transport settings
+    const proxyHandler: CaddyHandler = {
+      handler: "reverse_proxy",
+      upstreams: [{ dial: dialAddress }]
+    };
+
+    // Add TLS transport config for HTTPS upstream
+    if (host.targetProtocol === 'https') {
+      proxyHandler.transport = {
+        protocol: "http",
+        tls: {
+          ...(host.ignoreInvalidCert && { insecure_skip_verify: true })
+        }
+      };
+    }
+
     if (host.sslEnabled) {
       // SSL-enabled host configuration
       const httpsRoute: CaddyRoute = {
@@ -216,12 +247,7 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
             protocol: "https",
           },
         ],
-        handle: [
-          {
-            handler: "reverse_proxy",
-            upstreams: [{ dial: `${host.targetHost}:${host.targetPort}` }],
-          },
-        ],
+        handle: [proxyHandler],
       };
 
       // Add basic auth if enabled
@@ -273,12 +299,7 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
             host: [host.domain],
           },
         ],
-        handle: [
-          {
-            handler: "reverse_proxy",
-            upstreams: [{ dial: `${host.targetHost}:${host.targetPort}` }],
-          },
-        ],
+        handle: [proxyHandler],
         terminal: true,
       };
 

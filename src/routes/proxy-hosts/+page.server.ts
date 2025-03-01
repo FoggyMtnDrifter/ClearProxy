@@ -111,7 +111,7 @@ export const actions = {
    * @throws Will return a 503 status if Caddy server is not running
    * @throws Will return a 500 status for other errors
    */
-  create: async ({ request }) => {
+  create: async ({ request, locals }) => {
     const data = await request.formData();
     const domain = data.get('domain')?.toString();
     const targetHost = data.get('targetHost')?.toString();
@@ -174,6 +174,9 @@ export const actions = {
       // Invalidate Caddy status cache
       caddyStatusCache.status = null;
 
+      // Force page data refresh
+      locals.invalidateAll?.();
+
       return { success: true };
     } catch (error) {
       apiLogger.error({
@@ -206,7 +209,7 @@ export const actions = {
    * @throws Will return a 503 status if Caddy server is not running
    * @throws Will return a 500 status for other errors
    */
-  edit: async ({ request }) => {
+  edit: async ({ request, locals }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const domain = data.get('domain')?.toString();
@@ -269,6 +272,9 @@ export const actions = {
       // Invalidate Caddy status cache
       caddyStatusCache.status = null;
 
+      // Force page data refresh
+      locals.invalidateAll?.();
+
       return { success: true };
     } catch (error) {
       apiLogger.error({
@@ -289,7 +295,7 @@ export const actions = {
     }
   },
 
-  delete: async ({ request }) => {
+  delete: async ({ request, locals }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
 
@@ -311,6 +317,9 @@ export const actions = {
       // Invalidate Caddy status cache
       caddyStatusCache.status = null;
 
+      // Force page data refresh
+      locals.invalidateAll?.();
+
       return { success: true };
     } catch (error) {
       apiLogger.error({
@@ -331,7 +340,7 @@ export const actions = {
     }
   },
 
-  toggle: async ({ request }) => {
+  toggle: async ({ request, locals }) => {
     const data = await request.formData();
     const id = parseInt(data.get('id')?.toString() || '');
     const enabled = data.get('enabled') === 'true';
@@ -356,6 +365,9 @@ export const actions = {
 
       // Invalidate Caddy status cache
       caddyStatusCache.status = null;
+
+      // Force page data refresh
+      locals.invalidateAll?.();
 
       return { success: true };
     } catch (error) {

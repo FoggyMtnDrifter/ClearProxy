@@ -9,10 +9,13 @@ declare global {
 				email: string;
 				name: string;
 			};
+			invalidateAll?: () => void;
 		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}
+		// interface Session {}
+		// interface Stuff {}
 	}
 }
 

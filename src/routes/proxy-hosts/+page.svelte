@@ -9,6 +9,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { ProxyHostFormData } from './types';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import type { ComponentType, SvelteComponent } from 'svelte';
   import Modal from '$lib/components/Modal.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorAlert from '$lib/components/ErrorAlert.svelte';
@@ -64,7 +65,7 @@
       srLabel: (host: typeof data.hosts[number]) => `Edit ${host.domain}`,
       onClick: (host: typeof data.hosts[number]) => startEdit(host),
       class: 'p-2 hover:bg-gray-50 rounded-full',
-      component: Icon,
+      component: Icon as unknown as ComponentType<SvelteComponent>,
       props: {
         type: 'edit',
         className: 'size-4 text-gray-500 hover:text-gray-700'
@@ -88,7 +89,7 @@
         }
       },
       class: 'p-2 hover:bg-gray-50 rounded-full',
-      component: Icon,
+      component: Icon as unknown as ComponentType<SvelteComponent>,
       props: {
         type: 'delete',
         className: 'size-4 text-red-500 hover:text-red-700'

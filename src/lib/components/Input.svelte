@@ -11,6 +11,7 @@
   - Visual feedback for different states (error, disabled)
   - Responsive design with Tailwind CSS
   - Consistent styling across the application
+  - Two-way binding support with bind:value
   
   @prop {string} [label] - Label text for the input field
   @prop {string} [type='text'] - HTML input type attribute
@@ -48,13 +49,18 @@
     required={true}
     autocomplete="email"
     error={emailError}
-    value={email}
-    on:input={(e) => email = e.target.value}
+    bind:value={email}
   />
   ```
 -->
 <script lang="ts">
   import Icon from './Icons.svelte';
+  import { createEventDispatcher } from 'svelte';
+
+  const dispatch = createEventDispatcher<{
+    input: { value: string };
+    change: { value: string };
+  }>();
 
   type AutoComplete = 
     | 'off' | 'on' 
@@ -88,6 +94,18 @@
     error && `${id}-error`,
     cornerHint && `${id}-corner-hint`
   ].filter(Boolean).join(' ');
+
+  function handleInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    value = target.value;
+    dispatch('input', { value });
+  }
+
+  function handleChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    value = target.value;
+    dispatch('change', { value });
+  }
 </script>
 
 <div>
@@ -105,7 +123,9 @@
       {type}
       {name}
       {id}
-      {value}
+      bind:value
+      on:input={handleInput}
+      on:change={handleChange}
       {disabled}
       {placeholder}
       {required}

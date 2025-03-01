@@ -167,6 +167,9 @@
   let isSubmitting = false;
   let error: { message: string; details?: string } | null = null;
   let ignoreInvalidCert = false;
+  let editDomain = '';
+  let editTargetHost = '';
+  let editTargetPort = '';
 
   // Watch sslEnabled and update dependent settings
   $: if (!sslEnabled) {
@@ -175,16 +178,33 @@
     http3Support = false;
   }
 
+  function handleBasicAuthToggle(event: CustomEvent<boolean>) {
+    basicAuthEnabled = event.detail;
+    
+    if (!basicAuthEnabled) {
+      // When disabling, clear the username and password
+      basicAuthUsername = '';
+      basicAuthPassword = '';
+    }
+  }
+
   const handleSubmit: SubmitFunction = ({ formData }) => {
-    // Set the actual boolean values
+    // Set the form values
     formData.set('sslEnabled', sslEnabled.toString());
     formData.set('forceSSL', forceSSL.toString());
     formData.set('http2Support', http2Support.toString());
     formData.set('http3Support', http3Support.toString());
     formData.set('advancedConfig', showAdvanced ? advancedConfig : '');
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
-    formData.set('basicAuthUsername', basicAuthUsername);
-    formData.set('basicAuthPassword', basicAuthPassword);
+    
+    // Set username and password values from binding
+    formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '');
+    
+    // Only set the password if it's not empty
+    if (basicAuthPassword && basicAuthPassword.trim() !== '') {
+      formData.set('basicAuthPassword', basicAuthPassword);
+    }
+    
     formData.set('targetProtocol', targetProtocol);
     formData.set('ignoreInvalidCert', ignoreInvalidCert.toString());
 
@@ -208,15 +228,28 @@
 
   const handleEditSubmit: SubmitFunction = ({ formData }) => {
     if (!editingHost) return;
+    
+    // Set the form values
     formData.set('id', editingHost.id.toString());
+    formData.set('domain', editDomain);
+    formData.set('targetHost', editTargetHost);
+    formData.set('targetPort', editTargetPort);
     formData.set('sslEnabled', sslEnabled.toString());
     formData.set('forceSSL', forceSSL.toString());
     formData.set('http2Support', http2Support.toString());
     formData.set('http3Support', http3Support.toString());
     formData.set('advancedConfig', showAdvanced ? advancedConfig : '');
     formData.set('basicAuthEnabled', basicAuthEnabled.toString());
-    formData.set('basicAuthUsername', basicAuthUsername);
-    formData.set('basicAuthPassword', basicAuthPassword);
+    formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '');
+    
+    // Only set the password if it's not empty
+    // Otherwise, delete the field to indicate keeping the existing password
+    if (basicAuthPassword && basicAuthPassword.trim() !== '') {
+      formData.set('basicAuthPassword', basicAuthPassword);
+    } else {
+      formData.delete('basicAuthPassword');
+    }
+    
     formData.set('targetProtocol', targetProtocol);
     formData.set('ignoreInvalidCert', ignoreInvalidCert.toString());
 
@@ -273,18 +306,27 @@
   };
 
   function startEdit(host: typeof data.hosts[number]) {
+    // Store the host reference
     editingHost = host;
+    
+    // Set all fields directly
+    basicAuthEnabled = Boolean(host.basicAuthEnabled);
+    basicAuthUsername = host.basicAuthUsername || '';
+    basicAuthPassword = ''; // Leave password empty as it's already hashed
     sslEnabled = host.sslEnabled;
     forceSSL = host.forceSSL;
     http2Support = host.http2Support;
     http3Support = host.http3Support;
     advancedConfig = host.advancedConfig || '';
     showAdvanced = !!host.advancedConfig;
-    basicAuthEnabled = host.basicAuthEnabled;
-    basicAuthUsername = host.basicAuthUsername || '';
-    basicAuthPassword = host.basicAuthPassword || '';
     targetProtocol = host.targetProtocol;
     ignoreInvalidCert = host.ignoreInvalidCert;
+    
+    // Set local variables for form fields
+    editDomain = host.domain;
+    editTargetHost = host.targetHost;
+    editTargetPort = host.targetPort.toString();
+    
     showEditModal = true;
     error = null;
   }
@@ -455,6 +497,7 @@
               label="Security"
               description="Enable basic authentication for this proxy"
               name="basicAuthEnabled"
+              on:change={handleBasicAuthToggle}
             />
 
             {#if basicAuthEnabled}
@@ -462,15 +505,18 @@
                 <Input
                   label="Username"
                   name="basicAuthUsername"
+                  id="basicAuthUsername"
+                  type="text"
                   bind:value={basicAuthUsername}
                   required={basicAuthEnabled}
                 />
                 <Input
                   label="Password"
                   name="basicAuthPassword"
+                  id="basicAuthPassword"
                   type="password"
                   bind:value={basicAuthPassword}
-                  required={basicAuthEnabled}
+                  helpText="Enter a new password"
                 />
               </div>
             {/if}
@@ -552,7 +598,7 @@
               name="domain"
               type="text"
               required
-              value={editingHost.domain}
+              bind:value={editDomain}
             />
             
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
@@ -573,7 +619,7 @@
                   name="targetHost"
                   type="text"
                   required
-                  value={editingHost.targetHost}
+                  bind:value={editTargetHost}
                   on:input={(e) => handleTargetHostInput(e, 'targetPort')}
                 />
               </div>
@@ -584,7 +630,7 @@
                   id="targetPort"
                   type="number"
                   required
-                  value={editingHost.targetPort.toString()}
+                  bind:value={editTargetPort}
                 />
               </div>
             </div>
@@ -640,6 +686,7 @@
               label="Security"
               description="Enable basic authentication for this proxy"
               name="basicAuthEnabled"
+              on:change={handleBasicAuthToggle}
             />
 
             {#if basicAuthEnabled}
@@ -647,15 +694,18 @@
                 <Input
                   label="Username"
                   name="basicAuthUsername"
+                  id="editBasicAuthUsername"
+                  type="text"
                   bind:value={basicAuthUsername}
                   required={basicAuthEnabled}
                 />
                 <Input
                   label="Password"
                   name="basicAuthPassword"
+                  id="editBasicAuthPassword"
                   type="password"
                   bind:value={basicAuthPassword}
-                  required={basicAuthEnabled}
+                  helpText="Enter a new password or leave blank to keep the existing one"
                 />
               </div>
             {/if}

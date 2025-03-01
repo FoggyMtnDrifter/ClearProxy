@@ -57,6 +57,7 @@ import { proxyHosts } from '../db/schema';
 import type { InferModel } from 'drizzle-orm';
 import { caddyLogger } from '../logger';
 import { generateCaddyHash } from '../auth/password';
+import { fixNullObjectPasswords } from '../db';
 
 // Get Caddy API URL from environment variable, fallback to localhost for development
 const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019';
@@ -487,9 +488,40 @@ function parseAdvancedConfig(config: string): CaddyRoute[] {
  */
 export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
   const routes: any[] = [];
+  
+  // Fix any null object passwords in the hosts array
+  const fixedHosts = fixNullObjectPasswords(hosts);
 
-  for (const host of hosts) {
-    if (!host.enabled) continue;
+  caddyLogger.info({
+    hostCount: hosts.length,
+    enabledHostCount: fixedHosts.filter(h => h.enabled).length,
+    basicAuthHostCount: fixedHosts.filter(h => h.enabled && h.basicAuthEnabled).length,
+    hostsWithValidAuth: fixedHosts.filter(h => 
+      h.enabled && 
+      h.basicAuthEnabled && 
+      h.basicAuthUsername && 
+      h.basicAuthPassword && 
+      typeof h.basicAuthPassword === 'string' &&
+      h.basicAuthPassword.startsWith('$2')
+    ).length
+  }, 'Generating Caddy configuration');
+
+  for (const host of fixedHosts) {
+    if (!host.enabled) {
+      caddyLogger.debug({ domain: host.domain }, 'Skipping disabled host');
+      continue;
+    }
+
+    caddyLogger.debug({
+      domain: host.domain,
+      targetHost: host.targetHost,
+      targetPort: host.targetPort,
+      basicAuthEnabled: host.basicAuthEnabled,
+      hasUsername: !!host.basicAuthUsername,
+      hasPassword: !!host.basicAuthPassword,
+      passwordType: typeof host.basicAuthPassword,
+      validBcrypt: host.basicAuthPassword?.startsWith('$2')
+    }, 'Processing host for Caddy configuration');
 
     const route: any = {
       match: [{
@@ -499,20 +531,92 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
     };
 
     // Add basic auth if configured
-    if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
-      const hashedPassword = await generateCaddyHash(host.basicAuthPassword);
-      route.handle.push({
-        handler: "authentication",
-        providers: {
-          http_basic: {
-            accounts: [{
-              username: host.basicAuthUsername,
-              password: hashedPassword
-            }],
-            realm: "Restricted"
+    if (host.basicAuthEnabled && host.basicAuthUsername) {
+      // Check for a valid bcrypt hash (starts with $2)
+      const isValidPasswordHash = 
+        host.basicAuthPassword !== null && 
+        host.basicAuthPassword !== undefined &&
+        typeof host.basicAuthPassword === 'string' && 
+        host.basicAuthPassword.length > 0 &&
+        host.basicAuthPassword.startsWith('$2');
+      
+      // Additional checking for object NULL from SQLite
+      const isNullPassword = 
+        host.basicAuthPassword === null || 
+        (typeof host.basicAuthPassword === 'object' && host.basicAuthPassword === null);
+      
+      // Only add authentication if we have a username and a valid password hash
+      if (isValidPasswordHash) {
+        caddyLogger.debug({
+          domain: host.domain,
+          basicAuthEnabled: host.basicAuthEnabled,
+          hasUsername: !!host.basicAuthUsername,
+          username: host.basicAuthUsername,
+          hasValidHash: isValidPasswordHash,
+          passwordType: typeof host.basicAuthPassword,
+          passwordHashStart: host.basicAuthPassword?.substring(0, 6) + '...',
+          isNullPassword
+        }, 'Setting up basic auth with valid bcrypt hash');
+        
+        // Ensure we're using a properly formatted password hash
+        const passwordHash = typeof host.basicAuthPassword === 'string' ? host.basicAuthPassword : '';
+        
+        route.handle.push({
+          handler: "authentication",
+          providers: {
+            http_basic: {
+              hash: {
+                algorithm: "bcrypt"
+              },
+              accounts: [{
+                username: host.basicAuthUsername,
+                password: passwordHash
+              }],
+              realm: "Restricted"
+            }
           }
-        }
-      });
+        });
+        
+        caddyLogger.debug({
+          authHandler: JSON.stringify(route.handle[route.handle.length-1].handler),
+          realm: route.handle[route.handle.length-1].providers?.http_basic?.realm,
+          accountCount: route.handle[route.handle.length-1].providers?.http_basic?.accounts?.length,
+          bcryptHashFormat: passwordHash.startsWith('$2')
+        }, 'Added authentication handler to route');
+      } else {
+        // If no valid password hash is provided, we can't set up authentication properly
+        caddyLogger.warn({
+          domain: host.domain,
+          basicAuthEnabled: host.basicAuthEnabled,
+          hasUsername: !!host.basicAuthUsername,
+          username: host.basicAuthUsername,
+          passwordExists: !!host.basicAuthPassword,
+          passwordType: typeof host.basicAuthPassword,
+          passwordIsNull: host.basicAuthPassword === null,
+          passwordIsUndefined: host.basicAuthPassword === undefined,
+          passwordRawValue: host.basicAuthPassword === null ? 'null' : 
+                         host.basicAuthPassword === undefined ? 'undefined' : 
+                         typeof host.basicAuthPassword === 'object' ? 'object (possibly SQLite NULL)' :
+                         host.basicAuthPassword === '' ? 'empty string' : 
+                         (host.basicAuthPassword?.startsWith('$2') ? 'valid bcrypt' : 'invalid format'),
+          passwordLength: typeof host.basicAuthPassword === 'string' ? host.basicAuthPassword.length : 0,
+          validationChecks: {
+            notNull: host.basicAuthPassword !== null,
+            notUndefined: host.basicAuthPassword !== undefined,
+            isString: typeof host.basicAuthPassword === 'string',
+            startsWithBcrypt: typeof host.basicAuthPassword === 'string' && host.basicAuthPassword.startsWith('$2'),
+            isNullPassword
+          }
+        }, 'Cannot set up basic auth without a valid bcrypt password hash. Authentication will not be applied.');
+      }
+    } else if (host.basicAuthEnabled) {
+      caddyLogger.warn({
+        domain: host.domain,
+        basicAuthEnabled: host.basicAuthEnabled,
+        hasUsername: !!host.basicAuthUsername,
+        hasPassword: !!host.basicAuthPassword,
+        usernameValue: host.basicAuthUsername || 'undefined'
+      }, 'Basic auth is enabled but missing username. Authentication will not be applied.');
     }
 
     // Clean the target host
@@ -638,8 +742,18 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
       caddyLogger.debug({
         url: `${CADDY_API_URL}/load`,
         configLength: configJson.length,
-        adminConfig: config.admin
-      }, 'Sending configuration to Caddy API');
+        adminConfig: config.admin,
+        routeCount: config.apps?.http?.servers?.srv0?.routes?.length,
+        routeWithAuth: config.apps?.http?.servers?.srv0?.routes?.some(r => 
+          r.handle?.some(h => h.handler === 'authentication')
+        ),
+        authHandlers: config.apps?.http?.servers?.srv0?.routes
+          ?.filter(r => r.handle?.some(h => h.handler === 'authentication'))
+          ?.map(r => ({
+            domain: r.match?.[0]?.host?.[0],
+            auth: r.handle?.find(h => h.handler === 'authentication')
+          }))
+      }, 'Sending configuration to Caddy API with authentication details');
 
       // Apply the config
       const response = await fetch(`${CADDY_API_URL}/load`, {
@@ -735,27 +849,61 @@ export async function getCertificateStatus(domain: string): Promise<CertificateI
 }
 
 /**
- * Reloads the Caddy configuration with the current proxy host settings
- * @param hosts - Array of proxy host configurations
- * @throws {CaddyError} If configuration reload fails
+ * Reloads Caddy configuration with the provided host settings.
+ * This is the main entry point for updating Caddy's configuration.
+ * 
+ * @async
+ * @param {ProxyHost[]} hosts - List of proxy host configurations
+ * @returns {Promise<void>}
+ * @throws {CaddyError} When configuration reload fails
+ * 
+ * @example
+ * ```typescript
+ * const hosts = await db.select().from(proxyHosts);
+ * await reloadCaddyConfig(hosts);
+ * ```
  */
 export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
   try {
-    caddyLogger.debug({ hosts: hosts.map(h => ({
+    // Fix any null object passwords in the hosts array
+    const fixedHosts = fixNullObjectPasswords(hosts);
+    
+    caddyLogger.debug({ hosts: fixedHosts.map(h => ({
       id: h.id,
       domain: h.domain,
       enabled: h.enabled,
       targetHost: h.targetHost,
-      targetPort: h.targetPort
-    })) }, 'Attempting to reload Caddy configuration');
+      targetPort: h.targetPort,
+      basicAuthEnabled: h.basicAuthEnabled,
+      hasUsername: !!h.basicAuthUsername,
+      username: h.basicAuthUsername || 'none',
+      hasPassword: !!h.basicAuthPassword,
+      passwordType: typeof h.basicAuthPassword,
+      passwordTypeCheck: {
+        isString: typeof h.basicAuthPassword === 'string',
+        isNull: h.basicAuthPassword === null,
+        isObject: typeof h.basicAuthPassword === 'object' && h.basicAuthPassword !== null
+      },
+      passwordValue: h.basicAuthPassword === null ? 'null' : 
+                   h.basicAuthPassword === undefined ? 'undefined' :
+                   typeof h.basicAuthPassword !== 'string' ? `non-string (${typeof h.basicAuthPassword})` :
+                   h.basicAuthPassword === '' ? 'empty string' : 'has value',
+      validBcrypt: typeof h.basicAuthPassword === 'string' && h.basicAuthPassword.startsWith('$2'),
+      passwordLength: typeof h.basicAuthPassword === 'string' ? h.basicAuthPassword.length : 0
+    })) }, 'Attempting to reload Caddy configuration with detailed host info');
 
-    const config = await generateCaddyConfig(hosts);
-    caddyLogger.debug({ config }, 'Generated Caddy configuration');
+    // generateCaddyConfig will also apply fixNullObjectPasswords
+    const config = await generateCaddyConfig(fixedHosts);
+    caddyLogger.debug({ 
+      config,
+      configStr: JSON.stringify(config).substring(0, 200) + '...' 
+    }, 'Generated Caddy configuration');
     
     await applyCaddyConfig(config);
     caddyLogger.info('Successfully reloaded Caddy configuration', {
       hostCount: hosts.length,
-      activeHosts: hosts.filter(h => h.enabled).length
+      activeHosts: fixedHosts.filter(h => h.enabled).length,
+      hostsWithBasicAuth: fixedHosts.filter(h => h.enabled && h.basicAuthEnabled).length
     });
   } catch (error) {
     caddyLogger.error({
@@ -791,18 +939,17 @@ export async function getCaddyStatus(): Promise<{ running: boolean; version: str
         // Fresh Caddy instance with no config
         return { running: true, version: 'unknown' };
       }
-      throw new Error(`Failed to get Caddy config: ${response.statusText}`);
+      throw new Error(`Failed to get Caddy status: ${response.statusText}`);
     }
 
-    const config = await response.json();
-    return { 
-      running: true, 
-      version: 'unknown',
-      config: config === null ? undefined : config
+    const data = await response.json();
+    return {
+      running: true,
+      version: data.server.version,
+      config: data
     };
   } catch (error) {
-    // Any error reaching the Caddy API means Caddy is not running
-    caddyLogger.error('Failed to connect to Caddy admin API', { error });
+    caddyLogger.warn('Failed to get Caddy status', { error });
     return { running: false, version: 'unknown' };
   }
-} 
+}

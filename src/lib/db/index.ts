@@ -13,6 +13,7 @@ import * as path from 'path';
 import { dbLogger } from '../logger';
 import * as schema from './schema';
 import { existsSync } from 'fs';
+import { proxyHosts } from './schema';
 
 /** Path to the project root directory, configurable via DATABASE_PATH environment variable */
 const projectRoot = process.env.DATABASE_PATH || '.';
@@ -89,4 +90,20 @@ export { db };
 export { sqlite };
 
 /** Any error that occurred during migration, null if successful */
-export { migrationError }; 
+export { migrationError };
+
+// Add a custom middleware function to fix null object passwords
+// We'll use this after any query that might retrieve proxy hosts
+export function fixNullObjectPasswords<T extends Record<string, any>>(rows: T[]): T[] {
+  return rows.map(row => {
+    // If the row has a basicAuthPassword property that's a null object, fix it
+    if (row && 
+        typeof row === 'object' && 
+        'basicAuthPassword' in row && 
+        row.basicAuthPassword !== null && 
+        typeof row.basicAuthPassword === 'object') {
+      return { ...row, basicAuthPassword: null };
+    }
+    return row;
+  });
+} 

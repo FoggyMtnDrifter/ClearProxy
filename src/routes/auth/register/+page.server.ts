@@ -103,15 +103,17 @@ export const actions = {
 
       return redirect(303, '/dashboard');
     } catch (error) {
-      if (!(error instanceof Response)) {
-        authLogger.error({
-          error,
-          email,
-          name,
-          errorName: error instanceof Error ? error.name : 'unknown',
-          errorMessage: error instanceof Error ? error.message : 'unknown'
-        }, 'Failed to register user');
+      if (error instanceof Response) {
+        // Don't log redirects as errors
+        throw error;
       }
+      authLogger.error({
+        error,
+        email,
+        name,
+        errorName: error instanceof Error ? error.name : 'unknown',
+        errorMessage: error instanceof Error ? error.message : 'unknown'
+      }, 'Failed to register user');
       throw error;
     }
   }

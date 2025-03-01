@@ -27,7 +27,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Check if route requires authentication
   if (!publicRoutes.includes(path) && !path.startsWith('/auth/')) {
     if (!event.locals.user) {
-      authLogger.warn('Unauthenticated access attempt to protected route', { path });
+      // Only log warning if not a redirect from login/register
+      const referrer = event.request.headers.get('referer') || '';
+      if (!referrer.includes('/auth/login') && !referrer.includes('/auth/register')) {
+        authLogger.warn('Unauthenticated access attempt to protected route', { path });
+      }
       throw redirect(303, '/auth/login');
     }
   }

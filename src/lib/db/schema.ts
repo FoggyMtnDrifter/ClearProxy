@@ -68,7 +68,7 @@ export const auditLogs = sqliteTable('audit_logs', {
   entityType: text('entity_type').notNull(),
   entityId: integer('entity_id'),
   changes: text('changes').notNull(), // JSON string of changes
-  userId: text('user_id'), // Nullable for system actions
+  userId: integer('user_id'), // Nullable for system actions
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 

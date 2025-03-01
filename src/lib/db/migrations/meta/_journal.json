@@ -43,6 +43,13 @@
       "when": 1740827775821,
       "tag": "0005_striped_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1740837146356,
+      "tag": "0006_dry_kang",
+      "breakpoints": true
     }
   ]
 }

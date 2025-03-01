@@ -6,7 +6,7 @@ export interface CreateAuditLogParams {
   entityType: string;
   entityId?: number;
   changes: Record<string, any>;
-  userId?: string;
+  userId?: number;
 }
 
 /**

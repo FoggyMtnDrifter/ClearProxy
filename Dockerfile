@@ -37,7 +37,7 @@ RUN mkdir -p /data /app/build/server/logs && \
 # Create startup script
 RUN echo '#!/bin/sh\n\
 # Start the application\n\
-exec node build' > /app/start.sh && \
+exec node build/index.js' > /app/start.sh && \
     chmod +x /app/start.sh && \
     chown node:node /app/start.sh
 

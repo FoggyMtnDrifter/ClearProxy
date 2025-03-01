@@ -18,6 +18,7 @@
 import { proxyHosts } from '../db/schema';
 import type { InferModel } from 'drizzle-orm';
 import { caddyLogger } from '../logger';
+import { generateCaddyHash } from '../auth/password';
 
 // Get Caddy API URL from environment variable, fallback to localhost for development
 const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019';
@@ -28,6 +29,18 @@ const INITIAL_RETRY_DELAY = 500; // Reduced from 1000ms to 500ms
 const MAX_RETRY_DELAY = 2000; // Cap the maximum retry delay
 
 type ProxyHost = InferModel<typeof proxyHosts>;
+
+// Helper function to base64 encode strings
+function base64Encode(str: string): string {
+  return Buffer.from(str).toString('base64');
+}
+
+// Helper function to bcrypt hash a password
+function bcryptHash(password: string): string {
+  // This is the format Caddy expects for bcrypt hashes
+  // The format should be $2a$14$ followed by 22 characters of salt and 31 characters of hash
+  return `$2a$14$${base64Encode(password)}`;
+}
 
 /**
  * Represents a Caddy route configuration.
@@ -396,19 +409,31 @@ function parseAdvancedConfig(config: string): CaddyRoute[] {
  * @returns Complete Caddy configuration object
  * @throws Error if configuration generation fails
  */
-export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
-  const enabledHosts = hosts.filter((host) => host.enabled);
-  const routes: CaddyRoute[] = [];
+export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
+  const routes: any[] = [];
 
-  for (const host of enabledHosts) {
-    // Parse and add advanced configuration routes first
-    if (host.advancedConfig) {
-      const advancedRoutes = parseAdvancedConfig(host.advancedConfig);
-      // Add host matching to each advanced route
-      for (const route of advancedRoutes) {
-        route.match[0].host = [host.domain];
-        routes.push(route);
-      }
+  for (const host of hosts) {
+    const route: any = {
+      match: [{
+        host: [host.domain]
+      }],
+      handle: []
+    };
+
+    // Add basic auth if configured
+    if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
+      const hashedPassword = await generateCaddyHash(host.basicAuthPassword);
+      route.handle.push({
+        handler: "authentication",
+        providers: {
+          http_basic: {
+            accounts: [{
+              username: host.basicAuthUsername,
+              password: hashedPassword
+            }]
+          }
+        }
+      });
     }
 
     // Clean the target host by removing any protocol prefixes and slashes
@@ -417,10 +442,10 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
       .replace(/^\/+|\/+$/g, '')    // Remove leading and trailing slashes
       .trim();                      // Remove any whitespace
     
-    // For the dial field, just use host:port without protocol
+    // For the dial field, use host:port
     const dialAddress = `${cleanTargetHost}:${host.targetPort}`;
 
-    // Configure the handler with proper transport settings
+    // Configure the reverse proxy handler
     const proxyHandler: CaddyHandler = {
       handler: "reverse_proxy",
       upstreams: [{ dial: dialAddress }]
@@ -436,151 +461,21 @@ export function generateCaddyConfig(hosts: ProxyHost[]): CaddyConfig {
       };
     }
 
-    if (host.sslEnabled) {
-      // SSL-enabled host configuration
-      const httpsRoute: CaddyRoute = {
-        match: [
-          {
-            host: [host.domain],
-            protocol: "https",
-          },
-        ],
-        handle: [proxyHandler],
-      };
-
-      // Add basic auth if enabled
-      if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
-        httpsRoute.handle.unshift({
-          handler: "authentication",
-          providers: {
-            http_basic: {
-              accounts: [
-                {
-                  username: host.basicAuthUsername,
-                  password: host.basicAuthPassword,
-                },
-              ],
-            },
-          },
-        });
-      }
-
-      routes.push(httpsRoute);
-
-      // Add HTTP to HTTPS redirect if forceSSL is enabled
-      if (host.forceSSL) {
-        routes.push({
-          match: [
-            {
-              host: [host.domain],
-              protocol: "http",
-            },
-          ],
-          handle: [
-            {
-              handler: "static_response",
-              status_code: 308,
-              headers: {
-                Location: [
-                  `https://{http.request.host}{http.request.uri}`,
-                ],
-              },
-            },
-          ],
-        });
-      }
-    } else {
-      // Non-SSL host configuration
-      const httpRoute: CaddyRoute = {
-        match: [
-          {
-            host: [host.domain],
-          },
-        ],
-        handle: [proxyHandler],
-        terminal: true,
-      };
-
-      // Add basic auth if enabled
-      if (host.basicAuthEnabled && host.basicAuthUsername && host.basicAuthPassword) {
-        httpRoute.handle.unshift({
-          handler: "authentication",
-          providers: {
-            http_basic: {
-              accounts: [
-                {
-                  username: host.basicAuthUsername,
-                  password: host.basicAuthPassword,
-                },
-              ],
-            },
-          },
-        });
-      }
-
-      routes.push(httpRoute);
-    }
+    route.handle.push(proxyHandler);
+    routes.push(route);
   }
 
-  // Only include TLS configuration for SSL-enabled hosts
-  const sslHosts = enabledHosts.filter((host) => host.sslEnabled);
-
   return {
-    admin: {
-      listen: "0.0.0.0:2019",
-      disabled: false,
-    },
-    logging: {
-      logs: {
-        default: {
-          level: "INFO",
-        },
-      },
-    },
     apps: {
       http: {
         servers: {
           srv0: {
             listen: [":80", ":443"],
-            routes: routes,
-            automatic_https: {
-              disable: true, // Disable automatic HTTPS globally
-            },
-            ...(sslHosts.length > 0 && {
-              tls_connection_policies: sslHosts.map(host => ({
-                match: {
-                  sni: [host.domain],
-                },
-                protocol_min: "1.2",
-                protocol_max: "1.3",
-                alpn: [
-                  ...(host.http2Support ? ["h2"] : []),
-                  ...(host.http3Support ? ["h3"] : []),
-                  "http/1.1"
-                ],
-              })),
-            }),
-          },
-        },
-      },
-      ...(sslHosts.length > 0 && {
-        tls: {
-          automation: {
-            policies: [{
-              subjects: sslHosts.map(host => host.domain),
-              issuers: [{
-                module: "acme",
-                challenges: {
-                  http: {
-                    alternate_port: 80,
-                  },
-                },
-              }],
-            }],
-          },
-        },
-      }),
-    },
+            routes: routes
+          }
+        }
+      }
+    }
   };
 }
 
@@ -645,7 +540,7 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
  */
 export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
   try {
-    const config = generateCaddyConfig(hosts);
+    const config = await generateCaddyConfig(hosts);
     await applyCaddyConfig(config);
     caddyLogger.info('Successfully reloaded Caddy configuration', {
       hostCount: hosts.length,

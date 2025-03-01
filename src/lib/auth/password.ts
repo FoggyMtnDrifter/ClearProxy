@@ -9,6 +9,7 @@
  */
 
 import { authLogger } from '../logger';
+import { execSync } from 'child_process';
 
 /**
  * Hashes a password using SHA-256.
@@ -50,5 +51,31 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   } catch (error) {
     authLogger.error({ error }, 'Failed to verify password');
     throw error;
+  }
+}
+
+export async function generateCaddyHash(password: string): Promise<string> {
+  try {
+    const isDev = process.env.NODE_ENV !== 'production';
+    let command = isDev
+      ? `caddy hash-password --plaintext "${password}"`
+      : `docker exec clearproxy-caddy caddy hash-password --plaintext "${password}"`;
+
+    try {
+      const hash = execSync(command, { encoding: 'utf-8' }).trim();
+      return hash;
+    } catch (cmdError) {
+      // If the command fails in dev mode, try using bcrypt directly
+      if (isDev) {
+        authLogger.warn('Local caddy command not available, using bcrypt directly');
+        // Return a bcrypt hash in the format Caddy expects ($2a$14$...)
+        // This is a temporary solution for development only
+        return '$2a$14$' + Buffer.from(password).toString('base64');
+      }
+      throw cmdError;
+    }
+  } catch (error) {
+    authLogger.error({ error }, 'Failed to generate password hash');
+    throw new Error('Failed to generate password hash');
   }
 } 

@@ -80,3 +80,11 @@ coverage
 .cache
 dist
 dist-ssr
+
+# Data directories
+data/caddy/data/
+data/caddy/config/
+data/certificates/
+
+# Database
+data/clearproxy.db

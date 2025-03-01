@@ -1,6 +1,6 @@
 <!--
   @component
-  A reusable table component that supports sorting, custom cell rendering, and row actions.
+  A reusable table component with support for custom columns and row actions.
 -->
 <script lang="ts">
   import type { ComponentType, SvelteComponent } from 'svelte';
@@ -13,21 +13,19 @@
   }[];
   
   export let data: any[];
-  
-  type RowAction = {
-    label?: string;
-    icon?: string;
-    component?: ComponentType;
-    props?: Record<string, any>;
-    onClick: (item: any) => void;
+  export let rowActions: {
     srLabel: (item: any) => string;
-    class?: string;
-  };
-  
-  export let rowActions: RowAction[] = [];
+    onClick: (item: any) => void;
+    component: ComponentType<SvelteComponent>;
+    props: {
+      children?: any;
+      childrenProps?: Record<string, any>;
+      [key: string]: any;
+    };
+  }[] = [];
 </script>
 
-<div class="overflow-x-auto">
+<div class="flow-root">
   <table class="min-w-full divide-y divide-gray-300">
     <thead>
       <tr>
@@ -59,20 +57,16 @@
             <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
               <div class="flex justify-end gap-2">
                 {#each rowActions as action}
-                  <button
-                    type="button"
+                  <svelte:component
+                    this={action.component}
+                    {...action.props}
                     on:click={() => action.onClick(item)}
-                    class={action.class || ''}
                     aria-label={action.srLabel(item)}
                   >
-                    {#if action.component}
-                      <svelte:component this={action.component} {...action.props} />
-                    {:else if action.icon}
-                      {@html action.icon}
-                    {:else}
-                      {action.label}
+                    {#if action.props.children}
+                      <svelte:component this={action.props.children} {...action.props.childrenProps} />
                     {/if}
-                  </button>
+                  </svelte:component>
                 {/each}
               </div>
             </td>

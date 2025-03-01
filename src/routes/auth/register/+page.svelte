@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import type { ActionData } from './$types';
   import Input from '$lib/components/Input.svelte';
+  import Button from '$lib/components/Button.svelte';
 
   export let form: ActionData;
 </script>
@@ -44,12 +45,14 @@
       />
 
       <div>
-        <button
+        <Button
           type="submit"
-          class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          variant="primary"
+          size="md"
+          class_name="w-full justify-center"
         >
           Create account
-        </button>
+        </Button>
       </div>
     </form>
 

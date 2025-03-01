@@ -19,6 +19,7 @@
   import Select from '$lib/components/Select.svelte';
   import Toggle from '$lib/components/Toggle.svelte';
   import Textarea from '$lib/components/Textarea.svelte';
+  import Button from '$lib/components/Button.svelte';
   
   export let data;
   let form: ProxyHostFormData | null = null;
@@ -67,11 +68,16 @@
     {
       srLabel: (host: typeof data.hosts[number]) => `Edit ${host.domain}`,
       onClick: (host: typeof data.hosts[number]) => startEdit(host),
-      class: 'p-2 hover:bg-gray-50 rounded-full',
-      component: Icon as unknown as ComponentType<SvelteComponent>,
+      component: Button,
       props: {
-        type: 'edit',
-        className: 'size-4 text-gray-500 hover:text-gray-700'
+        variant: 'soft',
+        size: 'sm',
+        class_name: 'p-2 hover:bg-gray-50 rounded-full',
+        children: Icon,
+        childrenProps: {
+          type: 'edit',
+          className: 'size-4 text-gray-500 hover:text-gray-700'
+        }
       }
     },
     {
@@ -91,11 +97,16 @@
           }
         }
       },
-      class: 'p-2 hover:bg-gray-50 rounded-full',
-      component: Icon as unknown as ComponentType<SvelteComponent>,
+      component: Button,
       props: {
-        type: 'delete',
-        className: 'size-4 text-red-500 hover:text-red-700'
+        variant: 'soft',
+        size: 'sm',
+        class_name: 'p-2 hover:bg-gray-50 rounded-full',
+        children: Icon,
+        childrenProps: {
+          type: 'delete',
+          className: 'size-4 text-red-500 hover:text-red-700'
+        }
       }
     }
   ];
@@ -305,24 +316,25 @@
             <p class="mt-1 max-w-2xl text-sm text-gray-500">Configure and manage your proxy host settings.</p>
           </div>
           <div class="flex gap-4">
-            <div class="relative">
+            <div>
               <input
                 type="text"
                 bind:value={searchQuery}
                 placeholder="Search hosts..."
-                class="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                class="block rounded-md border-0 py-2 px-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="xl"
+              class_name="py-2 px-4"
               on:click={() => {
                 showCreateModal = true;
                 resetForm();
               }}
-              class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
               Add Host
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -488,28 +500,26 @@
           {/if}
 
           <div class="mt-6 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            <Button
+              variant="secondary"
+              size="xl"
               on:click={() => {
                 showCreateModal = false;
                 resetForm();
               }}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              variant="primary"
+              size="xl"
               disabled={isSubmitting}
+              loading={isSubmitting}
+              loadingText="Creating..."
             >
-              {#if isSubmitting}
-                <LoadingSpinner size="sm" label="Loading..." center />
-                Creating...
-              {:else}
-                Create Host
-              {/if}
-            </button>
+              Create Host
+            </Button>
           </div>
         </form>
       </Modal>
@@ -672,28 +682,26 @@
           {/if}
 
           <div class="mt-6 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            <Button
+              variant="secondary"
+              size="xl"
               on:click={() => {
                 showEditModal = false;
                 editingHost = null;
               }}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              variant="primary"
+              size="xl"
               disabled={isSubmitting}
+              loading={isSubmitting}
+              loadingText="Saving..."
             >
-              {#if isSubmitting}
-                <LoadingSpinner size="sm" label="Loading..." center />
-                Saving...
-              {:else}
-                Save Changes
-              {/if}
-            </button>
+              Save Changes
+            </Button>
           </div>
         </form>
       </Modal>

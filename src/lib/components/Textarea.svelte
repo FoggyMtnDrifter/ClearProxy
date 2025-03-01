@@ -36,7 +36,7 @@
       class:outline-red-600={error}
       aria-invalid={!!error}
       aria-describedby={error ? `${id}-error` : description ? `${id}-description` : undefined}
-    />
+    ></textarea>
   </div>
   {#if error}
     <p class="mt-2 text-sm text-red-600" id="{id}-error">{error}</p>

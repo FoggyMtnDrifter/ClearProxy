@@ -76,7 +76,7 @@
     <span
       aria-hidden="true"
       class="pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {checked ? 'translate-x-5' : 'translate-x-0'}"
-    />
+    ></span>
   </button>
 </div>
 

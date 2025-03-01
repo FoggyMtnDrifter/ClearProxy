@@ -18,6 +18,7 @@
   import { page } from '$app/stores';
   import { isMobileMenuOpen } from '$lib/stores/navigation';
   import Icon from '$lib/components/Icons.svelte';
+  import Button from '$lib/components/Button.svelte';
   
   $: isAuthPage = $page.url.pathname.startsWith('/auth/');
   $: currentPath = $page.url.pathname;
@@ -62,12 +63,14 @@
           <div class="hidden md:block">
             <div class="ml-4 flex items-center md:ml-6">
               <form action="/auth/logout" method="POST">
-                <button
+                <Button
                   type="submit"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
+                  variant="soft"
+                  size="md"
+                  class_name="text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
                   Sign out
-                </button>
+                </Button>
               </form>
             </div>
           </div>
@@ -107,12 +110,14 @@
         <div class="border-t border-gray-700 pb-3 pt-4">
           <div class="space-y-1 px-2">
             <form action="/auth/logout" method="POST">
-              <button
+              <Button
                 type="submit"
-                class="block w-full text-left rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-gray-700 hover:text-white"
+                variant="soft"
+                size="md"
+                class_name="block w-full text-left text-gray-400 hover:bg-gray-700 hover:text-white"
               >
                 Sign out
-              </button>
+              </Button>
             </form>
           </div>
         </div>

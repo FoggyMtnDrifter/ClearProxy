@@ -528,12 +528,10 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
       handler: "reverse_proxy",
       upstreams: [{ dial: dialAddress }],
       transport: {
-        protocol: host.targetProtocol,
-        ...(host.targetProtocol === 'https' && {
-          tls: {
-            insecure_skip_verify: host.ignoreInvalidCert || false
-          }
-        })
+        protocol: 'http',
+        tls: host.targetProtocol === 'https' ? {
+          insecure_skip_verify: host.ignoreInvalidCert || false
+        } : undefined
       }
     };
 

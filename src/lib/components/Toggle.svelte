@@ -1,22 +1,48 @@
 <!--
   @component
   A reusable toggle switch component with optional label and description.
+  Provides an accessible and animated switch control for boolean values.
   
   Features:
-  - Optional label and description
-  - Accessible (proper ARIA attributes)
-  - Smooth transitions
-  - TypeScript support
-  - Customizable colors via Tailwind classes
+  - Optional label and description text
+  - Full accessibility support with ARIA attributes
+  - Smooth transition animations
+  - Support for disabled state
+  - Hidden form input for form submission
+  - Keyboard navigation support
+  - Focus ring for keyboard users
+  - TypeScript event typing
+  - Tailwind CSS styling
   
-  Usage:
+  @prop {boolean} [checked=false] - The current state of the toggle
+  @prop {string} [label] - Optional label text to display
+  @prop {string} [description] - Optional description text to display below the label
+  @prop {string} [name] - Name attribute for the hidden form input
+  @prop {boolean} [disabled=false] - Whether the toggle is disabled
+  
+  @event {boolean} change - Fired when the toggle state changes, detail contains the new state
+  
+  @example
   ```svelte
   <Toggle
-    bind:checked
+    bind:checked={featureEnabled}
     label="Enable Feature"
-    description="Optional description text"
+    description="This will enable the experimental feature"
     name="feature-toggle"
+    disabled={!hasPermission}
+    on:change={(e) => handleFeatureToggle(e.detail)}
   />
+  ```
+  
+  @example Form Usage
+  ```svelte
+  <form on:submit={handleSubmit}>
+    <Toggle
+      name="notifications"
+      bind:checked={notificationsEnabled}
+      label="Enable Notifications"
+    />
+  </form>
   ```
 -->
 <script lang="ts">

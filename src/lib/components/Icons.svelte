@@ -1,7 +1,43 @@
 <!--
   @component
-  A collection of commonly used icons throughout the application.
-  Each icon is a Svelte component that accepts size and color classes.
+  A comprehensive icon system component that provides a collection of commonly used SVG icons throughout the application.
+  
+  @features
+  - Pre-defined set of commonly used icons (create, update, delete, error, close, menu, edit)
+  - Consistent styling and sizing across the application
+  - Customizable size through className prop
+  - Support for both filled and stroke variants
+  - Accessible SVG implementation with aria-hidden
+  - Optimized SVG paths for performance
+  - TypeScript support with type safety for icon names
+  
+  @typedef {Object} IconType
+  @property {string} create - Plus icon for creation actions
+  @property {string} update - Pencil icon for update actions
+  @property {string} delete - Trash bin icon for deletion actions
+  @property {string} error - Circle with X for error states
+  @property {string} close - X icon for closing/dismissing
+  @property {string} menu - Hamburger menu icon
+  @property {string} edit - Pencil icon for editing
+  
+  @prop {keyof IconType} type - The type of icon to display
+  @prop {string} [className='size-5'] - CSS classes for styling the icon (primarily size)
+  @prop {boolean} [stroke=false] - Whether to render the icon with stroke style instead of fill
+  
+  @example
+  ```typescript
+  // Basic usage
+  type="create"
+  
+  // Custom size
+  type="delete" className="size-6"
+  
+  // Stroke variant
+  type="menu" stroke={true}
+  
+  // With custom color
+  type="error" className="size-5 text-red-500"
+  ```
 -->
 <script lang="ts" context="module">
   export const Icons = {

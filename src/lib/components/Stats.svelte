@@ -1,10 +1,58 @@
 <!--
   @component
-  A reusable stats component that displays statistics in a grid layout.
+  A reusable stats component for displaying key metrics and statistics.
+  Provides a responsive grid layout with consistent styling for statistical data.
   
-  Props:
-  - stats: Array of stat objects with label and value
-  - columns: Number of columns to display (1-4)
+  Features:
+  - Responsive grid layout
+  - Configurable number of columns
+  - Consistent card styling
+  - Shadow and hover effects
+  - Truncation for long labels
+  - Semantic HTML structure
+  - Accessible markup
+  - Mobile-first design
+  
+  @typedef {Object} Stat
+  @property {string} label - The label or title for the statistic
+  @property {string | number} value - The value to display
+  
+  @prop {Stat[]} [stats=[]] - Array of statistics to display
+  @prop {1 | 2 | 3 | 4} [columns=4] - Number of columns in the grid
+  
+  @example Basic Usage
+  ```svelte
+  <Stats
+    stats={[
+      { label: 'Total Users', value: 1234 },
+      { label: 'Active Now', value: 56 },
+      { label: 'Revenue', value: '$12,345' },
+      { label: 'Conversion Rate', value: '12.3%' }
+    ]}
+  />
+  ```
+  
+  @example Custom Columns
+  ```svelte
+  <Stats
+    stats={[
+      { label: 'Total Proxies', value: 42 },
+      { label: 'Active Proxies', value: 38 }
+    ]}
+    columns={2}
+  />
+  ```
+  
+  @example Dynamic Stats
+  ```svelte
+  <Stats
+    stats={metrics.map(metric => ({
+      label: metric.name,
+      value: formatMetricValue(metric.value)
+    }))}
+    columns={3}
+  />
+  ```
 -->
 <script lang="ts">
   interface Stat {

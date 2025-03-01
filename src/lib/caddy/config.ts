@@ -1,18 +1,56 @@
 /**
  * Caddy Server Configuration Management
  * 
- * This module handles the generation and management of Caddy server configurations.
- * It provides a type-safe interface for creating and applying Caddy configurations,
- * with support for:
+ * This module provides a comprehensive TypeScript interface for managing Caddy server configurations.
+ * It handles the generation, application, and monitoring of Caddy server settings with full type safety.
  * 
- * - Reverse proxy configuration
- * - SSL/TLS management
- * - Basic authentication
- * - HTTP/2 support
- * - Advanced custom configurations
+ * Features:
+ * - Type-safe configuration generation
+ * - Reverse proxy setup with load balancing
+ * - SSL/TLS certificate management
+ * - Basic authentication integration
+ * - HTTP/2 and HTTP/3 support
+ * - Health checks and monitoring
  * - Automatic retries with exponential backoff
+ * - Error handling with custom error types
+ * - Certificate status monitoring
+ * - Advanced custom configurations
+ * 
+ * Configuration Options:
+ * - Proxy routing and load balancing
+ * - SSL/TLS certificate automation
+ * - Basic authentication with bcrypt hashing
+ * - Custom error pages
+ * - Header manipulation
+ * - Response compression
+ * - URL rewriting
+ * - Static file serving
+ * 
+ * Error Handling:
+ * - Custom CaddyError class for detailed error information
+ * - Automatic retries for transient failures
+ * - Exponential backoff for retry attempts
+ * - Detailed error logging via pino logger
  * 
  * @module caddy/config
+ * 
+ * @example Basic proxy configuration
+ * ```typescript
+ * const config = await generateCaddyConfig([{
+ *   domain: 'example.com',
+ *   target: 'localhost:3000',
+ *   basicAuth: { username: 'user', password: 'pass' }
+ * }]);
+ * await applyCaddyConfig(config);
+ * ```
+ * 
+ * @example Certificate status check
+ * ```typescript
+ * const status = await getCertificateStatus('example.com');
+ * if (status?.managed) {
+ *   console.log(`Certificate valid until ${status.notAfter}`);
+ * }
+ * ```
  */
 
 import { proxyHosts } from '../db/schema';
@@ -30,12 +68,23 @@ const MAX_RETRY_DELAY = 5000;  // Increased from 2000ms
 
 type ProxyHost = InferModel<typeof proxyHosts>;
 
-// Helper function to base64 encode strings
+/**
+ * Encodes a string to base64 format.
+ * Used for encoding credentials in basic authentication.
+ * 
+ * @param {string} str - The string to encode
+ * @returns {string} Base64 encoded string
+ */
 function base64Encode(str: string): string {
   return Buffer.from(str).toString('base64');
 }
 
-// Helper function to bcrypt hash a password
+/**
+ * Formats a password string into Caddy's expected bcrypt hash format.
+ * 
+ * @param {string} password - The password to hash
+ * @returns {string} Formatted bcrypt hash string
+ */
 function bcryptHash(password: string): string {
   // This is the format Caddy expects for bcrypt hashes
   // The format should be $2a$14$ followed by 22 characters of salt and 31 characters of hash
@@ -43,10 +92,13 @@ function bcryptHash(password: string): string {
 }
 
 /**
- * Represents a Caddy route configuration.
- * Routes define how Caddy handles incoming requests based on matching criteria.
+ * Represents a Caddy route matching configuration.
+ * Defines criteria for matching incoming HTTP requests.
  * 
- * @see https://caddyserver.com/docs/json/apps/http/servers/routes/
+ * @interface CaddyMatch
+ * @property {string[]} host - List of hostnames to match
+ * @property {string} [protocol] - Protocol to match (e.g., "http", "https")
+ * @property {string[]} [path] - List of URL paths to match
  */
 interface CaddyMatch {
   host: string[];
@@ -54,6 +106,18 @@ interface CaddyMatch {
   path?: string[];
 }
 
+/**
+ * Represents a Caddy request handler configuration.
+ * Defines how Caddy should process matched requests.
+ * 
+ * @interface CaddyHandler
+ * @property {string} handler - Type of handler to use
+ * @property {Object[]} [upstreams] - Upstream servers for reverse proxy
+ * @property {Object} [transport] - Transport configuration
+ * @property {Object} [load_balancing] - Load balancing settings
+ * @property {Object} [health_checks] - Health check configuration
+ * @property {Object} [providers] - Authentication providers
+ */
 interface CaddyHandler {
   handler: "reverse_proxy" | "authentication" | "static_response" | "file_server" | "php_fastcgi" | "rewrite" | "uri" | "handle" | "handle_path" | "handle_errors" | "headers" | "encode" | "templates" | "respond";
   
@@ -170,6 +234,15 @@ interface CaddyHandler {
   terminal?: boolean;
 }
 
+/**
+ * Represents a complete Caddy route configuration.
+ * Combines matching criteria with handling instructions.
+ * 
+ * @interface CaddyRoute
+ * @property {CaddyMatch[]} match - List of matching conditions
+ * @property {CaddyHandler[]} handle - List of handlers to process the request
+ * @property {boolean} [terminal] - Whether to stop processing after this route
+ */
 interface CaddyRoute {
   match: CaddyMatch[];
   handle: CaddyHandler[];
@@ -252,7 +325,10 @@ interface CertificateInfo {
 
 /**
  * Custom error class for Caddy-related errors.
- * Provides additional context about what went wrong during Caddy operations.
+ * Provides detailed error information with error codes.
+ * 
+ * @class CaddyError
+ * @extends Error
  */
 class CaddyError extends Error {
   constructor(
@@ -396,18 +472,18 @@ function parseAdvancedConfig(config: string): CaddyRoute[] {
 }
 
 /**
- * Generates a complete Caddy server configuration from a list of enabled proxy hosts.
+ * Generates a complete Caddy server configuration from proxy host definitions.
  * 
- * This function:
- * - Creates routes for each enabled host
- * - Configures SSL/TLS settings per host
- * - Sets up basic authentication if enabled
- * - Applies advanced configurations
- * - Handles HTTP/2 support
+ * @async
+ * @param {ProxyHost[]} hosts - List of proxy host configurations
+ * @returns {Promise<CaddyConfig>} Complete Caddy server configuration
+ * @throws {CaddyError} When configuration generation fails
  * 
- * @param hosts - List of enabled proxy host configurations
- * @returns Complete Caddy configuration object
- * @throws Error if configuration generation fails
+ * @example
+ * ```typescript
+ * const hosts = await db.select().from(proxyHosts);
+ * const config = await generateCaddyConfig(hosts);
+ * ```
  */
 export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
   const routes: any[] = [];
@@ -532,9 +608,22 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<any> {
 }
 
 /**
- * Applies a configuration to the running Caddy server
- * @param config - The configuration to apply
- * @throws {CaddyError} If configuration application fails
+ * Applies a configuration to the running Caddy server.
+ * Uses exponential backoff for retries on failure.
+ * 
+ * @async
+ * @param {CaddyConfig} config - Configuration to apply
+ * @throws {CaddyError} When configuration application fails
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   await applyCaddyConfig(config);
+ *   caddyLogger.info('Configuration applied successfully');
+ * } catch (error) {
+ *   caddyLogger.error('Failed to apply configuration');
+ * }
+ * ```
  */
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
@@ -600,6 +689,50 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
       'CONFIG_APPLY_ERROR',
       error
     );
+  }
+}
+
+/**
+ * Retrieves the SSL/TLS certificate status for a domain.
+ * 
+ * @async
+ * @param {string} domain - Domain to check certificate for
+ * @returns {Promise<CertificateInfo | null>} Certificate information if found
+ * @throws {CaddyError} When certificate status check fails
+ * 
+ * @example
+ * ```typescript
+ * const certInfo = await getCertificateStatus('example.com');
+ * if (certInfo?.error) {
+ *   caddyLogger.warn({ domain, error: certInfo.error }, 'Certificate error');
+ * }
+ * ```
+ */
+export async function getCertificateStatus(domain: string): Promise<CertificateInfo | null> {
+  try {
+    const response = await fetch(`${CADDY_API_URL}/certificates/${domain}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to get certificate info: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      managed: data.managed ?? false,
+      issuer: data.issuer ?? 'Unknown',
+      notBefore: data.not_before ?? '',
+      notAfter: data.not_after ?? '',
+      error: data.error
+    };
+  } catch (error) {
+    caddyLogger.warn('Failed to get certificate status', { domain, error });
+    return null;
   }
 }
 
@@ -673,38 +806,5 @@ export async function getCaddyStatus(): Promise<{ running: boolean; version: str
     // Any error reaching the Caddy API means Caddy is not running
     caddyLogger.error('Failed to connect to Caddy admin API', { error });
     return { running: false, version: 'unknown' };
-  }
-}
-
-/**
- * Retrieves certificate information for a domain
- * @param domain - The domain to check
- * @returns Certificate information or null if not found
- */
-export async function getCertificateStatus(domain: string): Promise<CertificateInfo | null> {
-  try {
-    const response = await fetch(`${CADDY_API_URL}/certificates/${domain}`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error(`Failed to get certificate info: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return {
-      managed: data.managed ?? false,
-      issuer: data.issuer ?? 'Unknown',
-      notBefore: data.not_before ?? '',
-      notAfter: data.not_after ?? '',
-      error: data.error
-    };
-  } catch (error) {
-    caddyLogger.warn('Failed to get certificate status', { domain, error });
-    return null;
   }
 } 

@@ -1,9 +1,17 @@
 /**
  * Password Management Module
  * 
- * Provides secure password hashing and verification using SHA-256.
- * Note: SHA-256 is used for basic authentication compatibility with Caddy.
- * For user authentication, a more secure algorithm like bcrypt should be used.
+ * Provides secure password hashing and verification functionality.
+ * Implements multiple hashing strategies for different use cases:
+ * - SHA-256 for basic authentication compatibility with Caddy
+ * - Caddy's native password hashing in production
+ * - Fallback bcrypt hashing for development
+ * 
+ * Security Notes:
+ * 1. SHA-256 is used specifically for Caddy basic auth compatibility
+ * 2. For user authentication, Caddy's native password hashing is preferred
+ * 3. All operations are logged for security auditing
+ * 4. Errors are properly handled and logged
  * 
  * @module auth/password
  */
@@ -12,11 +20,21 @@ import { authLogger } from '../logger';
 import { execSync } from 'child_process';
 
 /**
- * Hashes a password using SHA-256.
+ * Hashes a password using SHA-256 for Caddy basic auth compatibility.
  * 
- * @param password - The plain text password to hash
- * @returns Promise resolving to the hashed password as a hex string
- * @throws Error if hashing fails
+ * @param {string} password - The plain text password to hash
+ * @returns {Promise<string>} The hashed password as a hex string
+ * @throws {Error} If the hashing operation fails
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const hashedPassword = await hashPassword('mySecurePassword');
+ *   console.log(hashedPassword); // e.g., "8d969eef6ecad3c29a3a629280e686cf..."
+ * } catch (error) {
+ *   console.error('Failed to hash password:', error);
+ * }
+ * ```
  */
 export async function hashPassword(password: string): Promise<string> {
   try {
@@ -35,12 +53,26 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 /**
- * Verifies a password against a stored hash.
+ * Verifies a password against a stored hash using SHA-256.
  * 
- * @param password - The plain text password to verify
- * @param hash - The stored hash to verify against
- * @returns Promise resolving to true if the password matches, false otherwise
- * @throws Error if verification fails
+ * @param {string} password - The plain text password to verify
+ * @param {string} hash - The stored hash to verify against
+ * @returns {Promise<boolean>} True if the password matches, false otherwise
+ * @throws {Error} If the verification operation fails
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const isValid = await verifyPassword('myPassword', storedHash);
+ *   if (isValid) {
+ *     console.log('Password is correct');
+ *   } else {
+ *     console.log('Password is incorrect');
+ *   }
+ * } catch (error) {
+ *   console.error('Failed to verify password:', error);
+ * }
+ * ```
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   try {
@@ -54,6 +86,25 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 }
 
+/**
+ * Generates a password hash using Caddy's native password hashing functionality.
+ * In production, uses the Caddy container to generate the hash.
+ * In development, attempts to use local Caddy installation or falls back to bcrypt.
+ * 
+ * @param {string} password - The plain text password to hash
+ * @returns {Promise<string>} The Caddy-compatible password hash
+ * @throws {Error} If hash generation fails
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const caddyHash = await generateCaddyHash('myPassword');
+ *   console.log(caddyHash); // e.g., "$2a$14$..."
+ * } catch (error) {
+ *   console.error('Failed to generate Caddy hash:', error);
+ * }
+ * ```
+ */
 export async function generateCaddyHash(password: string): Promise<string> {
   try {
     const isDev = process.env.NODE_ENV !== 'production';

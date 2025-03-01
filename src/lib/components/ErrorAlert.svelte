@@ -1,21 +1,44 @@
 <!--
   @component
-  A reusable error alert component.
+  A reusable error alert component for displaying error messages.
+  Provides a visually distinct and accessible way to show error states and messages.
   
   Features:
-  - Error icon
-  - Primary error message
-  - Optional detailed error message
-  - Accessible (proper ARIA attributes)
-  - Dismissible
+  - Consistent error styling with red color scheme
+  - Error icon for immediate visual recognition
+  - Primary error message with optional details
+  - Semantic HTML structure
+  - Accessible ARIA attributes
+  - Responsive design
+  - Clear visual hierarchy
+  - Support for multiline messages
   
-  Usage:
+  @prop {string} error - The primary error message to display
+  @prop {string} [details] - Optional detailed error message or additional information
+  
+  @example Basic Usage
   ```svelte
   <ErrorAlert
     error="Failed to save changes"
-    details="Connection timeout after 5 seconds"
-    onDismiss={() => showError = false}
   />
+  ```
+  
+  @example With Details
+  ```svelte
+  <ErrorAlert
+    error="Failed to connect to server"
+    details="The server is not responding. Please try again later or contact support if the problem persists."
+  />
+  ```
+  
+  @example Form Validation
+  ```svelte
+  {#if formErrors}
+    <ErrorAlert
+      error="Please fix the following errors:"
+      details={Object.values(formErrors).join('\n')}
+    />
+  {/if}
   ```
 -->
 <script lang="ts">

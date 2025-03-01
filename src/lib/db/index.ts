@@ -1,3 +1,11 @@
+/**
+ * Database initialization and connection management module.
+ * Provides centralized database connection handling using better-sqlite3 and drizzle-orm.
+ * Handles database initialization, migrations, and graceful shutdown.
+ * 
+ * @module database
+ */
+
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
@@ -6,14 +14,27 @@ import { dbLogger } from '../logger';
 import * as schema from './schema';
 import { existsSync } from 'fs';
 
+/** Path to the project root directory, configurable via DATABASE_PATH environment variable */
 const projectRoot = process.env.DATABASE_PATH || '.';
+
+/** Path to database migrations directory, configurable via MIGRATIONS_PATH environment variable */
 const migrationsPath = process.env.MIGRATIONS_PATH || path.join(projectRoot, 'src/lib/db/migrations');
+
+/** Path to the SQLite database file */
 const dbPath = path.join(projectRoot, 'clearproxy.db');
 
 /**
  * Initializes the database connection and runs migrations.
  * This function is called on application startup to ensure the database
  * is properly set up and all migrations are applied.
+ * 
+ * @async
+ * @returns {Promise<{
+ *   db: import('drizzle-orm/better-sqlite3').BetterSQLite3Database<typeof schema>,
+ *   sqlite: Database.Database,
+ *   migrationError: Error | null
+ * }>} Database connection objects and any migration errors
+ * @throws {Error} If database initialization fails
  */
 async function initializeDatabase() {
   dbLogger.info('Initializing database connection');
@@ -49,7 +70,7 @@ async function initializeDatabase() {
 // Initialize database and export connection
 const { db, sqlite, migrationError } = await initializeDatabase();
 
-// Handle cleanup
+// Register cleanup handlers for graceful shutdown
 process.on('exit', () => {
   dbLogger.info('Closing database connection on process exit');
   sqlite.close();
@@ -61,4 +82,11 @@ process.on('SIGINT', () => {
   process.exit();
 });
 
-export { db, sqlite, migrationError }; 
+/** The initialized Drizzle ORM database instance */
+export { db };
+
+/** The underlying better-sqlite3 database instance */
+export { sqlite };
+
+/** Any error that occurred during migration, null if successful */
+export { migrationError }; 

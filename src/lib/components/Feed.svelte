@@ -1,7 +1,52 @@
 <!--
   @component
   A reusable feed component that displays a timeline of activities or events.
-  Supports different types of feed items including system events and user actions.
+  Provides a visually appealing and accessible way to display system activities and user actions.
+  
+  Features:
+  - Timeline visualization with connected events
+  - User avatars with fallback initials
+  - Color-coded action icons with visual effects
+  - Detailed event information display
+  - Support for deleted item details
+  - Responsive design
+  - Accessible markup with ARIA attributes
+  
+  @typedef {Object} User
+  @property {string} name - The user's display name
+  @property {string} email - The user's email address
+  @property {string} [avatar] - Optional URL to the user's avatar image
+  
+  @typedef {Object} BaseFeedItem
+  @property {string} id - Unique identifier for the feed item
+  @property {string} timestamp - Timestamp of when the action occurred
+  @property {'create' | 'update' | 'delete'} type - Type of action performed
+  @property {User} user - User who performed the action
+  @property {string} entityType - Type of entity that was modified
+  @property {string} [details] - Optional additional details about the action
+  @property {Record<string, any>} [deletedItem] - Optional details of deleted item
+  
+  @prop {BaseFeedItem[]} items - Array of feed items to display
+  
+  @example
+  ```svelte
+  <Feed
+    items={[
+      {
+        id: '1',
+        timestamp: '2024-03-01T12:00:00Z',
+        type: 'create',
+        user: {
+          name: 'John Doe',
+          email: 'john@example.com',
+          avatar: '/avatars/john.jpg'
+        },
+        entityType: 'ProxyHost',
+        details: 'Created new proxy host for example.com'
+      }
+    ]}
+  />
+  ```
 -->
 <script lang="ts" context="module">
   export type BaseFeedItem = {

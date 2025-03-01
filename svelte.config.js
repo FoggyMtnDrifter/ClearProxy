@@ -14,6 +14,11 @@ const config = {
 		adapter: adapter(),
 		alias: {
 			$lib: './src/lib'
+		},
+		csrf: {
+			// Since this is a self-hosted application not exposed to the internet,
+			// we can check the origin header
+			checkOrigin: false
 		}
 	}
 };

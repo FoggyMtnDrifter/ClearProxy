@@ -22,6 +22,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,6 +62,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -70,4 +74,7 @@ jobs:
           echo "Repository name: ${{ env.REPO_NAME }}"
           echo "Image reference: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}"
           echo "Available tags:"
-          echo "${{ steps.meta.outputs.tags }}" 
+          echo "${{ steps.meta.outputs.tags }}"
+          echo "Platforms:"
+          echo "- linux/amd64"
+          echo "- linux/arm64" 

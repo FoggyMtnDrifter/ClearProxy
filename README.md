@@ -28,22 +28,29 @@ mkdir clearproxy && cd clearproxy
 curl -L https://raw.githubusercontent.com/foggymtndrifter/clearproxy/main/docker-compose.yml -o docker-compose.yml
 ```
 
-3. Create the required directories and Caddy configuration:
+3. Create the required directories and configuration files:
 ```bash
 # Create directories
-mkdir -p data/caddy/data data/caddy/config data/certificates
+mkdir -p data/caddy/data data/caddy/config/caddy data/certificates
 
-# Create Caddyfile
-cat > data/caddy/config/Caddyfile << 'EOF'
+# Create Caddy configuration
+cat > data/caddy/config/caddy/caddy.json << 'EOF'
 {
-    admin localhost:2019
-    auto_https disable_redirects
-    debug
-}
-
-# Global options
-{
-    order reverse_proxy before file_server
+  "admin": {
+    "listen": "0.0.0.0:2019",
+    "enforce_origin": false,
+    "origins": ["*"]
+  },
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":80"],
+          "routes": []
+        }
+      }
+    }
+  }
 }
 EOF
 ```
@@ -57,12 +64,12 @@ The application will be available at `http://localhost:3000`.
 
 ### Important Notes for Docker Setup
 
-- The Caddyfile configuration is **required** for proper operation. Without it, the admin API won't be accessible, and proxy host creation will fail.
+- The Caddy JSON configuration is **required** for proper operation. Without it, the admin API won't be accessible, and proxy host creation will fail.
 - Make sure all the required directories exist before starting the containers:
   - `data/caddy/data`: For Caddy's internal data
-  - `data/caddy/config`: For Caddy configuration files
+  - `data/caddy/config/caddy`: For Caddy configuration files
   - `data/certificates`: For SSL certificates
-- The admin API is configured to listen on `localhost:2019` by default
+- The admin API is configured to listen on port 2019
 - Auto HTTPS redirects are disabled by default to prevent conflicts with proxy configurations
 
 ### Docker Architecture
@@ -135,7 +142,7 @@ docker rm clearproxy-app clearproxy-caddy
 
 If you encounter the error "Failed to create proxy host" or "Failed to apply Caddy configuration":
 
-1. Verify that the Caddyfile exists in the correct location with the proper configuration
+1. Verify that the Caddy JSON configuration exists in the correct location with the proper configuration
 2. Ensure all required directories are created with appropriate permissions
 3. Check that the Caddy admin API is accessible (port 2019)
 4. Review the logs for both containers:
@@ -462,22 +469,29 @@ mkdir clearproxy && cd clearproxy
 curl -L https://raw.githubusercontent.com/foggymtndrifter/clearproxy/main/docker-compose.yml -o docker-compose.yml
 ```
 
-3. Create the required directories and Caddy configuration:
+3. Create the required directories and configuration files:
 ```bash
 # Create directories
-mkdir -p data/caddy/data data/caddy/config data/certificates
+mkdir -p data/caddy/data data/caddy/config/caddy data/certificates
 
-# Create Caddyfile
-cat > data/caddy/config/Caddyfile << 'EOF'
+# Create Caddy configuration
+cat > data/caddy/config/caddy/caddy.json << 'EOF'
 {
-    admin localhost:2019
-    auto_https disable_redirects
-    debug
-}
-
-# Global options
-{
-    order reverse_proxy before file_server
+  "admin": {
+    "listen": "0.0.0.0:2019",
+    "enforce_origin": false,
+    "origins": ["*"]
+  },
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":80"],
+          "routes": []
+        }
+      }
+    }
+  }
 }
 EOF
 ```
@@ -491,19 +505,19 @@ The application will be available at `http://localhost:3000`.
 
 ### Important Notes for Docker Setup
 
-- The Caddyfile configuration is **required** for proper operation. Without it, the admin API won't be accessible, and proxy host creation will fail.
+- The Caddy JSON configuration is **required** for proper operation. Without it, the admin API won't be accessible, and proxy host creation will fail.
 - Make sure all the required directories exist before starting the containers:
   - `data/caddy/data`: For Caddy's internal data
-  - `data/caddy/config`: For Caddy configuration files
+  - `data/caddy/config/caddy`: For Caddy configuration files
   - `data/certificates`: For SSL certificates
-- The admin API is configured to listen on `localhost:2019` by default
+- The admin API is configured to listen on port 2019
 - Auto HTTPS redirects are disabled by default to prevent conflicts with proxy configurations
 
 ### Troubleshooting Docker Setup
 
 If you encounter the error "Failed to create proxy host" or "Failed to apply Caddy configuration":
 
-1. Verify that the Caddyfile exists in the correct location with the proper configuration
+1. Verify that the Caddy JSON configuration exists in the correct location with the proper configuration
 2. Ensure all required directories are created with appropriate permissions
 3. Check that the Caddy admin API is accessible (port 2019)
 4. Review the logs for both containers:

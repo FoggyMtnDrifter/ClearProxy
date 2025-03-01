@@ -10,9 +10,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application and initialization script
+# Build the application
 RUN npm run build
-RUN npx tsc src/initialize.ts --outDir build --esModuleInterop --module commonjs --target es2020
 
 # Production stage
 FROM node:20-alpine

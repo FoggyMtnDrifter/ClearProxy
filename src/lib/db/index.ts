@@ -12,7 +12,7 @@ const projectRoot = process.env.DATABASE_PATH || '.';
  * This function is called on application startup to ensure the database
  * is properly set up and all migrations are applied.
  */
-async function initializeDatabase() {
+export async function initializeDatabase() {
   dbLogger.info('Initializing database connection');
   
   try {

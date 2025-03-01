@@ -50,19 +50,25 @@ interface CaddyRoute {
         handler: 'authentication';
         providers: {
           http_basic: {
-            hash: {
+            hash?: {
               algorithm: string;
             };
             accounts: {
               username: string;
               password: string;
-              salt: string;
+              salt?: string;
             }[];
           };
         };
       }
   )[];
   terminal: boolean;
+  tls_connection_policies?: {
+    match: { sni: string[] };
+    protocol_min: string;
+    protocol_max: string;
+    alpn: string[];
+  }[];
 }
 
 /**
@@ -198,7 +204,8 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
                 
                 const route: any = {
                   match: [{ host: [host.domain] }],
-                  handle: []
+                  handle: [],
+                  terminal: true
                 };
 
                 // Add basic auth if enabled
@@ -218,19 +225,38 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
                 }
 
                 // Add reverse proxy configuration
-                route.handle.push({
+                const proxyHandler: {
+                  handler: 'reverse_proxy';
+                  upstreams: { dial: string }[];
+                  transport?: {
+                    protocol: string;
+                    tls?: Record<string, never>;
+                  };
+                } = {
                   handler: "reverse_proxy",
                   upstreams: [{ dial: `${host.targetHost}:${host.targetPort}` }]
-                });
+                };
 
-                // Add SSL configuration if enabled
+                // Add HTTP/2 support if enabled
+                if (host.http2Support && host.sslEnabled) {
+                  proxyHandler.transport = {
+                    protocol: "http",
+                    tls: {}
+                  };
+                }
+
+                route.handle.push(proxyHandler);
+
+                // Add TLS configuration at the route level
                 if (host.sslEnabled) {
                   caddyLogger.debug({ host: host.domain }, 'Configuring SSL');
-                  route.handle.push({
-                    handler: "tls",
-                    alpn: ["h2", "http/1.1"],
-                    ...(host.http2Support ? { protocols: ["h2", "http/1.1"] } : {})
-                  });
+                  route.terminal = true;
+                  route.tls_connection_policies = [{
+                    match: { sni: [host.domain] },
+                    protocol_min: "tls1.2",
+                    protocol_max: "tls1.3",
+                    alpn: host.http2Support ? ["h2", "http/1.1"] : ["http/1.1"]
+                  }];
                 }
 
                 // Add advanced configuration if provided
@@ -255,11 +281,20 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
       }
     };
 
+    // Add automatic HTTPS configuration
+    config.apps.http.servers.srv0.automatic_https = {
+      disable: false
+    };
+
     caddyLogger.info('Caddy configuration generated successfully');
     return config;
   } catch (error) {
     caddyLogger.error({ error }, 'Failed to generate Caddy configuration');
-    throw error;
+    throw new CaddyError(
+      'Failed to generate Caddy configuration',
+      'CONFIG_GENERATION_ERROR',
+      error
+    );
   }
 }
 

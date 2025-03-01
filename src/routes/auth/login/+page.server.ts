@@ -64,6 +64,6 @@ export const actions = {
     authLogger.info({ userId: user.id, email }, 'User logged in successfully');
     createSession({ cookies }, user.id);
 
-    throw redirect(303, '/dashboard');
+    return redirect(303, '/dashboard');
   }
 } satisfies Actions; 

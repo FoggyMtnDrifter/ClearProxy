@@ -74,16 +74,18 @@ export const actions = {
       authLogger.info({ userId: user.id, email, name }, 'User registered successfully');
       createSession({ cookies }, user.id);
 
-      throw redirect(303, '/dashboard');
+      return redirect(303, '/dashboard');
     } catch (error) {
-      authLogger.error({
-        error,
-        email,
-        name,
-        errorName: error instanceof Error ? error.name : 'unknown',
-        errorMessage: error instanceof Error ? error.message : 'unknown'
-      }, 'Failed to register user');
-      return fail(500, { error: 'Failed to create account' });
+      if (!(error instanceof Response)) {
+        authLogger.error({
+          error,
+          email,
+          name,
+          errorName: error instanceof Error ? error.name : 'unknown',
+          errorMessage: error instanceof Error ? error.message : 'unknown'
+        }, 'Failed to register user');
+      }
+      throw error;
     }
   }
 } satisfies Actions; 

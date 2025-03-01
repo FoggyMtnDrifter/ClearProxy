@@ -15,9 +15,7 @@ const config = {
 		alias: {
 			$lib: './src/lib'
 		},
-		csrf: {
-			checkOrigin: false  // Disable CSRF origin checks since we're handling it through ORIGIN env var
-		}
+		csrf: false  // Completely disable CSRF protection
 	}
 };
 

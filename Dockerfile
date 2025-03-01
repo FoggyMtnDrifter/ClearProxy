@@ -24,7 +24,7 @@ RUN npm ci --production
 
 # Copy the built application and migrations
 COPY --from=builder /app/build ./build
-COPY --from=builder /app/src/lib/db/migrations ./src/lib/db/migrations
+COPY --from=builder /app/src/lib/db/migrations ./migrations
 COPY --from=builder /app/package.json ./package.json
 
 # Create required directories and set permissions
@@ -33,9 +33,6 @@ RUN mkdir -p /data /app/build/server/logs && \
 
 # Create startup script
 RUN echo '#!/bin/sh\n\
-# Run migrations\n\
-npm run db:push\n\
-\n\
 # Start the application\n\
 exec node build' > /app/start.sh && \
     chmod +x /app/start.sh && \
@@ -49,6 +46,7 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV ORIGIN=http://localhost
 ENV DATABASE_PATH=/data
+ENV MIGRATIONS_PATH=/app/migrations
 
 # Switch to non-root user
 USER node

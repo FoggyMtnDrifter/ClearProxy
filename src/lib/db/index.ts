@@ -6,6 +6,7 @@ import { dbLogger } from '../logger';
 import * as schema from './schema';
 
 const projectRoot = process.env.DATABASE_PATH || '.';
+const migrationsPath = process.env.MIGRATIONS_PATH || path.join(projectRoot, 'src/lib/db/migrations');
 
 /**
  * Initializes the database connection and runs migrations.
@@ -24,7 +25,7 @@ async function initializeDatabase() {
     // Run migrations
     try {
       dbLogger.info('Running database migrations');
-      await migrate(db, { migrationsFolder: path.join(projectRoot, 'src/lib/db/migrations') });
+      await migrate(db, { migrationsFolder: migrationsPath });
       dbLogger.info('Database migrations completed successfully');
       return { db, sqlite, migrationError: null };
     } catch (migrationError) {

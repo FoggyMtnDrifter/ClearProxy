@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { invalidate } from '$app/navigation';
   import type { ProxyHostFormData } from './types';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Modal from '$lib/components/Modal.svelte';
@@ -51,6 +52,7 @@
       if (result.type === 'success') {
         showCreateModal = false;
         resetForm();
+        await invalidate('app:proxy-hosts');
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to create proxy host',
@@ -79,6 +81,7 @@
       if (result.type === 'success') {
         showEditModal = false;
         editingHost = null;
+        await invalidate('app:proxy-hosts');
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to update proxy host',
@@ -94,7 +97,9 @@
 
     return async ({ result }) => {
       isSubmitting = false;
-      if (result.type === 'failure') {
+      if (result.type === 'success') {
+        await invalidate('app:proxy-hosts');
+      } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to toggle proxy host status',
           details: result.data?.details
@@ -109,7 +114,9 @@
 
     return async ({ result }) => {
       isSubmitting = false;
-      if (result.type === 'failure') {
+      if (result.type === 'success') {
+        await invalidate('app:proxy-hosts');
+      } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to delete proxy host',
           details: result.data?.details

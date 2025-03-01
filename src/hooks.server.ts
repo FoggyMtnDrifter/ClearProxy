@@ -16,6 +16,15 @@ export const handle: Handle = async ({ event, resolve }) => {
     name: dbUser.name
   } : undefined;
 
+  // Add invalidateAll function to locals
+  event.locals.invalidateAll = () => {
+    return event.fetch(event.url, {
+      headers: {
+        'x-sveltekit-invalidate': '*'
+      }
+    });
+  };
+
   const path = event.url.pathname;
 
   // Handle root path redirection

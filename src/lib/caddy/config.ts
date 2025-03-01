@@ -83,6 +83,10 @@ interface CaddyServer {
   automatic_https?: {
     disable?: boolean;
   };
+  tls_connection_policies?: {
+    match: { sni: string[] };
+    alpn?: string[];
+  }[];
 }
 
 /**
@@ -247,43 +251,22 @@ export function generateCaddyConfig(enabledHosts: ProxyHost[]): CaddyConfig {
 
                 route.handle.push(proxyHandler);
 
-                // Add TLS configuration at the route level
-                if (host.sslEnabled) {
-                  caddyLogger.debug({ host: host.domain }, 'Configuring SSL');
-                  route.terminal = true;
-                  route.tls_connection_policies = [{
-                    match: { sni: [host.domain] },
-                    protocol_min: "tls1.2",
-                    protocol_max: "tls1.3",
-                    alpn: host.http2Support ? ["h2", "http/1.1"] : ["http/1.1"]
-                  }];
-                }
-
-                // Add advanced configuration if provided
-                if (host.advancedConfig) {
-                  caddyLogger.debug({ host: host.domain }, 'Adding advanced configuration');
-                  try {
-                    const advancedConfig = JSON.parse(host.advancedConfig);
-                    Object.assign(route, advancedConfig);
-                  } catch (error) {
-                    caddyLogger.error(
-                      { error, host: host.domain },
-                      'Failed to parse advanced configuration'
-                    );
-                  }
-                }
-
                 return route;
-              })
+              }),
+              // Server-wide TLS configuration
+              tls_connection_policies: enabledHosts
+                .filter(host => host.sslEnabled)
+                .map(host => ({
+                  match: { sni: [host.domain] },
+                  alpn: host.http2Support ? ["h2", "http/1.1"] : ["http/1.1"]
+                })),
+              automatic_https: {
+                disable: false
+              }
             }
           }
         }
       }
-    };
-
-    // Add automatic HTTPS configuration
-    config.apps.http.servers.srv0.automatic_https = {
-      disable: false
     };
 
     caddyLogger.info('Caddy configuration generated successfully');

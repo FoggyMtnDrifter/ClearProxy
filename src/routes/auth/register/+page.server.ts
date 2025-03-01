@@ -34,11 +34,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 
   // Check if any users exist
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(users).get();
-  const registrationAllowed = (userCount?.count ?? 0) === 0;
+  if ((userCount?.count ?? 0) > 0) {
+    throw redirect(303, '/auth/login');
+  }
 
-  return {
-    registrationAllowed
-  };
+  return {};
 };
 
 /**

@@ -15,12 +15,30 @@
 
 import { db } from '$lib/db';
 import { users } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { verifyPassword } from '$lib/auth/password';
 import { createSession } from '$lib/auth/session';
 import { fail, redirect } from '@sveltejs/kit';
 import { authLogger } from '$lib/logger';
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+
+/**
+ * Load function to check if registration is allowed
+ */
+export const load: PageServerLoad = async ({ locals }) => {
+  // If user is already logged in, redirect to dashboard
+  if (locals.user) {
+    throw redirect(303, '/dashboard');
+  }
+
+  // Check if any users exist
+  const userCount = await db.select({ count: sql<number>`count(*)` }).from(users).get();
+  const registrationAllowed = (userCount?.count ?? 0) === 0;
+
+  return {
+    registrationAllowed
+  };
+};
 
 /**
  * Form actions for the login page.

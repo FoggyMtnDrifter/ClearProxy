@@ -1,6 +1,10 @@
 # Contributing to ClearProxy
 
-Thank you for your interest in contributing to ClearProxy! This document provides guidelines and instructions for setting up your development environment and working with the project.
+Thank you for your interest in contributing to ClearProxy! This document provides guidelines and instructions for contributing to the project.
+
+## Code of Conduct
+
+By participating in this project, you agree to abide by our Code of Conduct (to be implemented). We are committed to providing a welcoming and inclusive environment for all contributors.
 
 ## Getting Started
 
@@ -11,120 +15,138 @@ git clone https://github.com/yourusername/clearproxy.git
 cd clearproxy
 ```
 
-## Development Setup
-
-1. Install dependencies:
+3. Set up your development environment:
 ```bash
+# Install dependencies
 npm install
-```
 
-2. Start the development server:
-```bash
+# Start the development server
 npm run dev
 ```
 
-## Database Management
+## Development Guidelines
 
-The project uses Drizzle ORM with SQLite for database management. Here's how to work with the database:
+### Code Style
 
-### Development Workflow
+We follow these coding standards:
+- Use TypeScript for all new code
+- Follow the existing code style in the project
+- Use 2 spaces for indentation
+- Use meaningful variable and function names
+- Add JSDoc comments for public functions and complex logic
+- Keep functions small and focused
+- Use async/await for asynchronous operations
+- Handle errors appropriately with try/catch blocks
+- Use strong typing - avoid `any` types unless absolutely necessary
 
-During development, use the following commands:
+### Git Workflow
+
+1. Create a feature branch from `main`:
+```bash
+git checkout -b feature/your-feature-name
+```
+
+2. Make your changes in small, logical commits:
+```bash
+git commit -m "feat: add new feature"
+```
+
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+- `feat:` for new features
+- `fix:` for bug fixes
+- `docs:` for documentation changes
+- `style:` for formatting changes
+- `refactor:` for code refactoring
+- `test:` for adding tests
+- `chore:` for maintenance tasks
+
+### Testing
+
+Before submitting a pull request:
+
+1. Run the test suite:
+```bash
+npm run test
+```
+
+2. Run the linter:
+```bash
+npm run lint
+```
+
+3. Ensure your changes have appropriate test coverage:
+- Unit tests for utility functions
+- Integration tests for API endpoints
+- End-to-end tests for critical user flows
+
+### Database Management
+
+#### Development Workflow
 
 ```bash
-# Push schema changes directly to the database (development only)
+# Push schema changes (development only)
 npm run db:push
 
-# Generate migration files for production deployment
+# Generate migration files
 npm run db:generate
 
-# View and manage database content through the Drizzle Studio
+# View database content
 npm run db:studio
 ```
 
-### Database Structure
+#### Making Database Changes
 
-- Database files:
-  - `src/lib/db/schema.ts` - Contains table definitions
-  - `src/lib/db/index.ts` - Database connection and migration setup
-  - `src/lib/db/migrations/` - Generated migration files
-
-### Making Database Changes
-
-1. Modify the schema in `src/lib/db/schema.ts`
+1. Update schema in `src/lib/db/schema.ts`
 2. During development:
-   - Use `npm run db:push` to quickly apply changes
-   - Test your changes thoroughly
+   - Use `db:push` for quick iterations
+   - Test changes thoroughly
 3. Before committing:
-   - Run `npm run db:generate` to create migration files
-   - Commit both schema changes and generated migration files
+   - Run `db:generate` to create migrations
+   - Commit both schema and migration files
+   - Test migrations in both directions
 
-### Migration Strategy
-
-This project uses an "on startup" migration strategy:
-
-1. **Why on startup?**
-   - The application is self-hosted, meaning each user has their own database
-   - Migrations need to run when users update their installation
-   - This ensures databases are always up-to-date with the application version
-
-2. **How it works:**
-   - When the application starts, it checks for and runs any pending migrations
-   - Migrations are stored in `src/lib/db/migrations/`
-   - The migration process is automatic and requires no user intervention
-   - If migrations fail, the application will log errors but continue running
-
-3. **Best practices for adding migrations:**
-   - Always test migrations on a development database first
-   - Keep migrations small and focused
-   - Include both "up" and "down" migrations when possible
-   - Document any breaking changes in the release notes
-
-### Production Deployment
-
-For production deployments:
-1. Never use `db:push` directly on production
-2. Always use migration files generated with `db:generate`
-3. Migrations run automatically on application startup
-4. Monitor logs for any migration errors
-
-## Project Structure
+### Project Structure
 
 ```
 clearproxy/
 ├── src/
-│   ├── lib/
-│   │   ├── db/              # Database management
-│   │   │   ├── migrations/  # Migration files
-│   │   │   ├── schema.ts    # Database schema
-│   │   │   └── index.ts     # DB connection
-│   │   ├── caddy/          # Caddy configuration
-│   │   └── ...
-│   ├── routes/             # SvelteKit routes
-│   └── ...
-├── drizzle.config.ts      # Drizzle ORM configuration
-└── ...
+│   ├── lib/           # Shared utilities and components
+│   │   ├── db/       # Database management
+│   │   ├── caddy/    # Caddy configuration
+│   │   ├── logger/   # Logging utilities
+│   │   └── utils/    # General utilities
+│   ├── routes/       # SvelteKit routes
+│   └── tests/        # Test files
+├── static/           # Static assets
+└── docs/            # Documentation
 ```
 
-## Code Style
+## Pull Request Process
 
-- Use TypeScript for type safety
-- Follow the existing code style
-- Use async/await for asynchronous operations
-- Add appropriate error handling
-- Include comments for complex logic
+1. Update documentation for any new features or changes
+2. Add or update tests as needed
+3. Ensure all tests pass and linting is clean
+4. Update the CHANGELOG.md file
+5. Submit a pull request with:
+   - Clear title and description
+   - Reference to any related issues
+   - Screenshots for UI changes
+   - List of testing steps if applicable
 
-## Testing
+## Documentation
 
-[TODO: Add testing instructions when implemented]
+- Update documentation alongside code changes
+- Use clear, concise language
+- Include code examples where appropriate
+- Update both inline documentation and markdown files
+- Keep the README.md up to date
 
-## Submitting Changes
+## Questions and Support
 
-1. Create a new branch for your changes
-2. Make your changes following the guidelines above
-3. Test your changes thoroughly
-4. Submit a pull request with a clear description of your changes
+- Open an issue for bugs or feature requests
+- Use discussions for general questions
+- Join our community chat (coming soon)
 
-## Questions or Problems?
+## License
 
-If you have questions or run into problems, please open an issue on the GitHub repository. 
+By contributing to ClearProxy, you agree that your contributions will be licensed under the same terms as the project (MIT License). 

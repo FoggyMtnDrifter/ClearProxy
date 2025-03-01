@@ -34,13 +34,6 @@ COPY --from=builder /data/clearproxy.db /data/clearproxy.db
 RUN mkdir -p /data /app/build/server/logs && \
     chown -R node:node /data /app/build/server/logs
 
-# Create startup script
-RUN echo '#!/bin/sh\n\
-# Start the application\n\
-exec node build/index.js' > /app/start.sh && \
-    chmod +x /app/start.sh && \
-    chown node:node /app/start.sh
-
 # Expose port
 EXPOSE 3000
 
@@ -54,5 +47,5 @@ ENV MIGRATIONS_PATH=/app/migrations
 # Switch to non-root user
 USER node
 
-# Start the application using the startup script
-CMD ["/app/start.sh"] 
+# Start the application
+CMD ["node", "build/index.js"] 

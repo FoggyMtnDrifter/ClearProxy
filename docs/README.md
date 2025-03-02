@@ -9,6 +9,8 @@ Welcome to the ClearProxy documentation. This directory contains detailed inform
 - [Database Management](database.md) - Database setup, migrations, and best practices
 - [Docker Configuration](docker.md) - Docker setup, configuration, and troubleshooting
 - [Logging System](logging.md) - Logging configuration, formats, and management
+- [Proxy Host Guide](proxy-host-guide.md) - How to set up and manage proxy hosts
+- [Advanced Configuration](advanced-configuration.md) - How to use advanced Caddy configuration for proxy hosts
 
 ### Additional Resources
 

@@ -68,15 +68,19 @@
     {
       srLabel: (host: typeof data.hosts[number]) => `Edit ${host.domain}`,
       onClick: (host: typeof data.hosts[number]) => startEdit(host),
-      component: Button,
+      component: Icon,
       props: {
-        variant: 'soft',
-        size: 'sm',
-        class_name: 'p-2 hover:bg-gray-50 rounded-full',
-        children: Icon,
-        childrenProps: {
-          type: 'edit',
-          className: 'size-4 text-gray-500 hover:text-gray-700'
+        type: 'edit',
+        className: 'size-5 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 cursor-pointer transition-colors duration-200',
+        tabindex: "0",
+        role: "button",
+        onkeydown: (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (e.currentTarget) {
+              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            }
+          }
         }
       }
     },
@@ -97,15 +101,19 @@
           }
         }
       },
-      component: Button,
+      component: Icon,
       props: {
-        variant: 'soft',
-        size: 'sm',
-        class_name: 'p-2 hover:bg-gray-50 rounded-full',
-        children: Icon,
-        childrenProps: {
-          type: 'delete',
-          className: 'size-4 text-red-500 hover:text-red-700'
+        type: 'delete',
+        className: 'size-5 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer ml-3 transition-colors duration-200',
+        tabindex: "0",
+        role: "button",
+        onkeydown: (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (e.currentTarget) {
+              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            }
+          }
         }
       }
     }
@@ -350,12 +358,12 @@
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
     <!-- Table -->
-    <div class="overflow-hidden bg-white shadow sm:rounded-lg">
+    <div class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg">
       <div class="px-4 py-5 sm:px-6">
         <div class="flex justify-between items-center">
           <div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Proxy Hosts</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">Configure and manage your proxy host settings.</p>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Proxy Hosts</h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Configure and manage your proxy host settings.</p>
           </div>
           <div class="flex gap-4">
             <div>
@@ -363,7 +371,7 @@
                 type="text"
                 bind:value={searchQuery}
                 placeholder="Search hosts..."
-                class="block rounded-md border-0 py-2 px-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                class="block rounded-md border-0 py-2 px-4 text-gray-900 dark:text-gray-100 dark:bg-gray-700 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:focus:ring-brand-500 sm:text-sm sm:leading-6"
               />
             </div>
             <Button
@@ -403,7 +411,7 @@
         >
           <!-- Basic Configuration -->
           <div class="space-y-4">
-            <h4 class="text-base font-medium text-gray-900">Basic Configuration</h4>
+            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">Basic Configuration</h4>
             <Input
               label="Domain Name"
               name="domain"
@@ -459,7 +467,7 @@
           {/if}
 
           <!-- SSL Configuration -->
-          <div class="border-t border-gray-200 pt-6">
+          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={sslEnabled}
               label="SSL Configuration"
@@ -491,7 +499,7 @@
           </div>
 
           <!-- Security -->
-          <div class="border-t border-gray-200 pt-6">
+          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={basicAuthEnabled}
               label="Security"
@@ -523,7 +531,7 @@
           </div>
 
           <!-- Advanced Configuration -->
-          <div class="border-t border-gray-200 pt-6">
+          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={showAdvanced}
               label="Advanced Configuration"
@@ -592,7 +600,7 @@
         >
           <!-- Basic Configuration -->
           <div class="space-y-4">
-            <h4 class="text-base font-medium text-gray-900">Basic Configuration</h4>
+            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">Basic Configuration</h4>
             <Input
               label="Domain Name"
               name="domain"
@@ -648,7 +656,7 @@
           {/if}
 
           <!-- SSL Configuration -->
-          <div class="border-t border-gray-200 pt-6">
+          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={sslEnabled}
               label="SSL Configuration"
@@ -680,7 +688,7 @@
           </div>
 
           <!-- Security -->
-          <div class="border-t border-gray-200 pt-6">
+          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={basicAuthEnabled}
               label="Security"
@@ -712,7 +720,7 @@
           </div>
 
           <!-- Advanced Configuration -->
-          <div class="border-t border-gray-200 pt-6">
+          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={showAdvanced}
               label="Advanced Configuration"

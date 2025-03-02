@@ -90,9 +90,9 @@
   };
 
   const variantClasses = {
-    primary: 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600',
-    secondary: 'bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50',
-    soft: 'bg-indigo-50 text-indigo-600 shadow-sm hover:bg-indigo-100'
+    primary: 'bg-brand-600 text-white shadow-sm hover:bg-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus-visible:outline-brand-500',
+    secondary: 'bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-700 dark:hover:bg-gray-700',
+    soft: 'bg-brand-50 text-brand-600 shadow-sm hover:bg-brand-100 dark:bg-brand-900 dark:text-brand-300 dark:hover:bg-brand-800'
   };
 
   $: classes = clsx(

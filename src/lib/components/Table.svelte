@@ -5,13 +5,14 @@
   
   Features:
   - Custom column definitions with optional rendering functions
-  - Row actions with icon buttons
+  - Row actions with icon buttons or direct components
   - Responsive design
   - Accessible table structure
   - Support for HTML content in cells
   - Custom styling per column
   - Right-aligned action buttons
   - Screen reader friendly labels
+  - Dark mode support
   
   @typedef {Object} Column
   @property {string} header - The column header text
@@ -22,9 +23,9 @@
   @typedef {Object} RowAction
   @property {(item: any) => string} srLabel - Function to generate screen reader label
   @property {(item: any) => void} onClick - Click handler for the action
-  @property {import('svelte').ComponentType} component - Svelte component to render the action button
+  @property {any} component - Svelte component to render the action button
   @property {Object} props - Props to pass to the action component
-  @property {import('svelte').ComponentType} [props.children] - Optional child component
+  @property {any} [props.children] - Optional child component for nested components
   @property {Object} [props.childrenProps] - Props for child component
   
   @prop {Column[]} columns - Array of column definitions
@@ -56,13 +57,24 @@
           children: Icon,
           childrenProps: { type: 'edit' }
         }
+      },
+      // Or use a direct component:
+      {
+        srLabel: (item) => `Delete ${item.name}`,
+        onClick: (item) => handleDelete(item),
+        component: Icon,
+        props: {
+          type: 'delete',
+          className: 'text-red-500 cursor-pointer'
+        }
       }
     ]}
   />
   ```
 -->
 <script lang="ts">
-  import type { ComponentType, SvelteComponent } from 'svelte';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Component = any;
 
   export let columns: {
     header: string;
@@ -75,21 +87,17 @@
   export let rowActions: {
     srLabel: (item: any) => string;
     onClick: (item: any) => void;
-    component: ComponentType<SvelteComponent>;
-    props: {
-      children?: any;
-      childrenProps?: Record<string, any>;
-      [key: string]: any;
-    };
+    component: Component;
+    props: Record<string, any>;
   }[] = [];
 </script>
 
 <div class="flow-root">
-  <table class="min-w-full divide-y divide-gray-300">
+  <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
     <thead>
       <tr>
         {#each columns as column}
-          <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">
+          <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0">
             {column.header}
           </th>
         {/each}
@@ -100,11 +108,11 @@
         {/if}
       </tr>
     </thead>
-    <tbody class="divide-y divide-gray-200">
+    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
       {#each data as item}
-        <tr>
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
           {#each columns as column}
-            <td class={`whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-0 ${column.class || ''}`}>
+            <td class={`whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 dark:text-gray-100 sm:pl-0 ${column.class || ''}`}>
               {#if column.render}
                 {@html column.render(item)}
               {:else}

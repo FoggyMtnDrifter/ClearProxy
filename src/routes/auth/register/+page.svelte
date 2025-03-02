@@ -3,13 +3,17 @@
   import type { ActionData } from './$types';
   import Input from '$lib/components/Input.svelte';
   import Button from '$lib/components/Button.svelte';
+  import Logo from '$lib/components/Logo.svelte';
 
   export let form: ActionData;
 </script>
 
-<div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+<div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8 dark:bg-gray-900">
   <div class="sm:mx-auto sm:w-full sm:max-w-sm">
-    <h2 class="mt-6 text-center text-2xl/9 font-bold tracking-tight text-gray-900">Create your account</h2>
+    <div class="flex justify-center">
+      <Logo variant="dark" className="h-12 w-auto mb-6" />
+    </div>
+    <h2 class="mt-6 text-center text-2xl/9 font-bold tracking-tight text-gray-900 dark:text-gray-100">Create your account</h2>
   </div>
 
   <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
@@ -56,9 +60,9 @@
       </div>
     </form>
 
-    <p class="mt-10 text-center text-sm/6 text-gray-500">
+    <p class="mt-10 text-center text-sm/6 text-gray-500 dark:text-gray-400">
       Already have an account?
-      <a href="/auth/login" class="font-semibold text-indigo-600 hover:text-indigo-500">Sign in here</a>
+      <a href="/auth/login" class="font-semibold text-brand-600 hover:text-brand-500">Sign in here</a>
     </p>
   </div>
 </div> 

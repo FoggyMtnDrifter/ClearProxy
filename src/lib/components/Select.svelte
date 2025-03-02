@@ -8,6 +8,7 @@
   - ARIA attributes for accessibility
   - Custom styling with Tailwind CSS
   - Support for disabled state
+  - Dark mode support
   - Hidden form input for form submission
   - Click outside to close
   - Smooth animations
@@ -92,7 +93,7 @@
 <div use:clickOutside on:click_outside={() => isOpen = false}>
   <label 
     for={id || name}
-    class="block text-sm/6 font-medium text-gray-900"
+    class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
   >
     {label}
   </label>
@@ -103,7 +104,14 @@
       {disabled}
       on:keydown={handleKeydown}
       on:click={() => !disabled && (isOpen = !isOpen)}
-      class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200 sm:text-sm/6"
+      class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 
+        outline outline-1 -outline-offset-1 outline-gray-300 
+        focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-brand-600 
+        disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200 
+        dark:bg-gray-800 dark:text-gray-100 dark:outline-gray-600 
+        dark:focus:outline-brand-500 
+        dark:disabled:bg-gray-900 dark:disabled:text-gray-600 dark:disabled:outline-gray-700
+        sm:text-sm/6"
       aria-haspopup="listbox"
       aria-expanded={isOpen}
       aria-labelledby={`${id || name}-label`}
@@ -112,7 +120,7 @@
         {selectedOption.label}
       </span>
       <svg 
-        class="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-500 sm:size-4" 
+        class="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-500 dark:text-gray-400 sm:size-4" 
         viewBox="0 0 16 16" 
         fill="currentColor" 
         aria-hidden="true"
@@ -128,7 +136,7 @@
     {#if isOpen}
       <ul
         transition:fade={{ duration: 100 }}
-        class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm"
+        class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800 dark:ring-white/5 sm:text-sm"
         tabindex="-1"
         role="listbox"
         aria-labelledby={`${id || name}-label`}
@@ -136,8 +144,9 @@
         {#each options as option}
           {@const isSelected = option.value === value}
           <li
-            class="relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white"
-            class:text-gray-900={!isSelected}
+            class="relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-brand-600 hover:text-white dark:hover:bg-brand-500"
+            class:text-gray-900={!isSelected && true}
+            class:dark:text-gray-100={!isSelected && true}
             role="option"
             aria-selected={isSelected}
             on:click={() => handleSelect(option)}
@@ -149,7 +158,7 @@
             </span>
 
             {#if isSelected}
-              <span class="absolute inset-y-0 right-0 flex items-center pr-4" class:text-indigo-600={true} class:text-white={false}>
+              <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-brand-600 dark:text-brand-500">
                 <svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path 
                     fill-rule="evenodd" 

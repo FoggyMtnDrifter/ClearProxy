@@ -86,10 +86,10 @@
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
     <!-- Activity Feed -->
-    <div class="overflow-hidden bg-white shadow sm:rounded-lg">
+    <div class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg">
       <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg font-medium leading-6 text-gray-900">Audit Logs</h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">Detailed history of system changes and configuration updates.</p>
+        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">Audit Logs</h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Detailed history of system changes and configuration updates.</p>
       </div>
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
         <Feed items={feedItems} />

@@ -11,6 +11,7 @@
   - Support for deleted item details
   - Responsive design
   - Accessible markup with ARIA attributes
+  - Dark mode support
   
   @typedef {Object} User
   @property {string} name - The user's display name
@@ -121,15 +122,15 @@
       <li>
         <div class="relative pb-8">
           {#if index !== items.length - 1}
-            <span class="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+            <span class="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
           {/if}
           <div class="relative flex items-start space-x-3">
             <!-- User avatar with action icon -->
             <div class="relative">
               {#if item.user.avatar}
-                <img class="flex size-10 items-center justify-center rounded-full bg-gray-400 ring-8 ring-white" src={item.user.avatar} alt={item.user.name}>
+                <img class="flex size-10 items-center justify-center rounded-full bg-gray-400 ring-8 ring-white dark:ring-gray-800" src={item.user.avatar} alt={item.user.name}>
               {:else}
-                <div class="flex size-10 items-center justify-center rounded-full bg-gray-400 ring-8 ring-white">
+                <div class="flex size-10 items-center justify-center rounded-full bg-gray-400 ring-8 ring-white dark:ring-gray-800">
                   <span class="text-sm font-medium text-white">{item.user.name.charAt(0)}</span>
                 </div>
               {/if}
@@ -141,21 +142,21 @@
             </div>
             <div class="min-w-0 flex-1">
               <div>
-                <div class="text-sm text-gray-500">
-                  <span class="font-medium text-gray-900">{item.user.name}</span>
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                  <span class="font-medium text-gray-900 dark:text-gray-100">{item.user.name}</span>
                   {getActionText(item.type, item.entityType)}
                 </div>
-                <p class="mt-0.5 text-sm text-gray-500">{item.timestamp}</p>
+                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{item.timestamp}</p>
               </div>
               {#if item.details || item.deletedItem}
                 <div class="mt-2 space-y-2 text-sm">
                   {#if item.details}
-                    <pre class="whitespace-pre-wrap rounded bg-gray-50 p-3 font-mono text-xs text-gray-900">{item.details}</pre>
+                    <pre class="whitespace-pre-wrap rounded bg-gray-50 dark:bg-gray-900 p-3 font-mono text-xs text-gray-900 dark:text-gray-200">{item.details}</pre>
                   {/if}
                   {#if item.type === 'delete' && item.deletedItem}
-                    <div class="rounded border border-red-100 bg-red-50 p-3">
-                      <h4 class="mb-2 font-medium text-red-900">Deleted Item Details:</h4>
-                      <pre class="whitespace-pre-wrap font-mono text-xs text-red-800">{formatValue(item.deletedItem)}</pre>
+                    <div class="rounded border border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-950 p-3">
+                      <h4 class="mb-2 font-medium text-red-900 dark:text-red-300">Deleted Item Details:</h4>
+                      <pre class="whitespace-pre-wrap font-mono text-xs text-red-800 dark:text-red-300">{formatValue(item.deletedItem)}</pre>
                     </div>
                   {/if}
                 </div>

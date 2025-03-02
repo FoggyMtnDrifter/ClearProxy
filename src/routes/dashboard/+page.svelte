@@ -57,10 +57,10 @@
     </div>
 
     <!-- Activity Feed -->
-    <div class="overflow-hidden bg-white shadow sm:rounded-lg">
+    <div class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg">
       <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg font-medium leading-6 text-gray-900">Recent Activity</h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">Latest system events and configuration changes.</p>
+        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">Recent Activity</h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Latest system events and configuration changes.</p>
       </div>
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
         <Feed items={feedItems} />

@@ -10,6 +10,7 @@
   - Comprehensive autocomplete options
   - Visual feedback for different states (error, disabled)
   - Responsive design with Tailwind CSS
+  - Dark mode support
   - Consistent styling across the application
   - Two-way binding support with bind:value
   
@@ -111,9 +112,9 @@
 <div>
   {#if label}
     <div class="flex justify-between">
-      <label for={id} class="block text-sm/6 font-medium text-gray-900">{label}</label>
+      <label for={id} class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100">{label}</label>
       {#if cornerHint}
-        <span class="text-sm/6 text-gray-500" id={`${id}-corner-hint`}>{cornerHint}</span>
+        <span class="text-sm/6 text-gray-500 dark:text-gray-400" id={`${id}-corner-hint`}>{cornerHint}</span>
       {/if}
     </div>
   {/if}
@@ -131,25 +132,28 @@
       {required}
       {autocomplete}
       class="block w-full rounded-md bg-white px-3 py-1.5 text-base
-        {hasError ? 'col-start-1 row-start-1 pr-10 text-red-900 outline-red-300 placeholder:text-red-300 focus:outline-red-600' : 'text-gray-900 outline-gray-300 placeholder:text-gray-400 focus:outline-indigo-600'}
+        {hasError ? 
+          'col-start-1 row-start-1 pr-10 text-red-900 outline-red-300 placeholder:text-red-300 focus:outline-red-600 dark:text-red-300 dark:outline-red-700 dark:placeholder:text-red-700 dark:focus:outline-red-500' : 
+          'text-gray-900 outline-gray-300 placeholder:text-gray-400 focus:outline-brand-600 dark:bg-gray-800 dark:text-gray-100 dark:outline-gray-600 dark:placeholder:text-gray-500 dark:focus:outline-brand-500'}
         outline outline-1 -outline-offset-1
         focus:outline focus:outline-2 focus:-outline-offset-2
         disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200
+        dark:disabled:bg-gray-900 dark:disabled:text-gray-600 dark:disabled:outline-gray-700
         sm:text-sm/6"
       aria-invalid={hasError}
       aria-describedby={describedBy || undefined}
     />
     
     {#if hasError}
-      <Icon type="error" className="pointer-events-none col-start-1 row-start-1 mr-3 size-5 self-center justify-self-end text-red-500 sm:size-4" />
+      <Icon type="error" className="pointer-events-none col-start-1 row-start-1 mr-3 size-5 self-center justify-self-end text-red-500 dark:text-red-400 sm:size-4" />
     {/if}
   </div>
 
   {#if helpText && !error}
-    <p class="mt-2 text-sm text-gray-500" id={`${id}-description`}>{helpText}</p>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400" id={`${id}-description`}>{helpText}</p>
   {/if}
 
   {#if error}
-    <p class="mt-2 text-sm text-red-600" id={`${id}-error`}>{error}</p>
+    <p class="mt-2 text-sm text-red-600 dark:text-red-400" id={`${id}-error`}>{error}</p>
   {/if}
 </div> 

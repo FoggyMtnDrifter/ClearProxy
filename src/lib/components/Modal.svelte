@@ -8,6 +8,7 @@
   - Body scroll locking when open
   - Accessible (proper ARIA attributes and keyboard handling)
   - Responsive design
+  - Dark mode support
   - Smooth transitions and animations
   
   Usage:
@@ -67,7 +68,7 @@
   >
     <!-- Background backdrop -->
     <div 
-      class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity dark:bg-black/50"
       transition:fade={{ duration: 200 }}
     ></div>
 
@@ -77,13 +78,13 @@
         <div
           use:clickOutside
           on:click_outside={handleClickOutside}
-          class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"
+          class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all dark:bg-gray-800 dark:text-gray-100 sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"
           transition:fade={{ duration: 200 }}
         >
           <div class="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
             <button
               type="button"
-              class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-500 dark:hover:text-gray-400 dark:focus:ring-brand-500 dark:focus:ring-offset-gray-800"
               on:click={onClose}
             >
               <span class="sr-only">Close</span>
@@ -93,7 +94,7 @@
 
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-              <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">
+              <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100" id="modal-title">
                 {title}
               </h3>
               <div class="mt-4">

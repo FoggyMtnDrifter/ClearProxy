@@ -8,7 +8,7 @@
 
 # ClearProxy
 
-> ⚠️ **Development Status**: ClearProxy is currently in alpha stage and under active development. While you're welcome to try it out and provide feedback, we don't recommend using it in production environments yet. Features may change, and there might be breaking changes between versions.
+> ⚠️ **Development Status**: ClearProxy is currently in beta stage and under active development. While it's not yet recommended for production environments, we strongly encourage you to test it and report any bugs or issues you encounter. Your feedback is invaluable as we improve stability and prepare for a production-ready release.
 
 A modern, web-based management interface for [Caddy](https://caddyserver.com/), focusing on reverse proxy configuration with automatic HTTPS.
 

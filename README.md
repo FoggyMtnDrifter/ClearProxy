@@ -1,3 +1,11 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="screenshots/assets/logo-light.svg" width="400">
+    <source media="(prefers-color-scheme: light)" srcset="screenshots/assets/logo-dark.svg" width="400">
+    <img alt="ClearProxy" src="screenshots/assets/logo-dark.svg" width="400">
+  </picture>
+</p>
+
 # ClearProxy
 
 > ⚠️ **Development Status**: ClearProxy is currently in alpha stage and under active development. While you're welcome to try it out and provide feedback, we don't recommend using it in production environments yet. Features may change, and there might be breaking changes between versions.

@@ -14,6 +14,9 @@ A modern, web-based management interface for [Caddy](https://caddyserver.com/), 
 - 📊 Access logging and monitoring
 - 🔄 Automatic database migrations
 
+![ClearProxy Dashboard](screenshots/dashboard-dark.png)
+*ClearProxy Dashboard - Dark Mode*
+
 ## Quick Start
 
 ### Using Docker (Recommended)

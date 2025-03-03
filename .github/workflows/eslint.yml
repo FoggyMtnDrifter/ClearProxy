@@ -27,20 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint
-        id: eslint
-        continue-on-error: true
-        # Increase Node.js memory limit to prevent out of memory errors
-        run: NODE_OPTIONS="--max-old-space-size=8192" npm run lint -- --format json > eslint-report.json
-
-      - name: Annotate Code Linting Results
-        if: always() && steps.eslint.outcome != 'success'
-        uses: reviewdog/action-eslint@v1
+      - name: Run ESLint on changed files
+        uses: tj-actions/eslint-changed-files@v25
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          eslint_flags: '. --ext .js,.ts,.svelte'
-
-      - name: Check ESLint status
-        if: steps.eslint.outcome != 'success'
-        run: exit 1
+          config_path: './eslint.config.mjs'
+          extra_args: '--max-warnings=0'

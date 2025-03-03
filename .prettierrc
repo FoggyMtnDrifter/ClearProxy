@@ -1,0 +1,20 @@
+{
+  "printWidth": 100,
+  "tabWidth": 2,
+  "singleQuote": true,
+  "semi": false,
+  "trailingComma": "none",
+  "bracketSpacing": true,
+  "plugins": ["prettier-plugin-svelte"],
+  "svelteSortOrder": "scripts-markup-styles-options",
+  "svelteStrictMode": false,
+  "svelteBracketNewLine": true,
+  "overrides": [
+    {
+      "files": "*.svelte",
+      "options": {
+        "parser": "svelte"
+      }
+    }
+  ]
+}

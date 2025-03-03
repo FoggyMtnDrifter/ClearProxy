@@ -20,7 +20,8 @@ WORKDIR /app
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --production
+# Skip husky installation in production
+RUN npm pkg delete scripts.prepare && npm ci --production
 
 # Copy the built application and migrations
 COPY --from=builder /app/build ./build

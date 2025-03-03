@@ -1,19 +1,3 @@
-<!--
-  @component
-  A theme toggle component that allows users to switch between light, dark, and system theme.
-  
-  Features:
-  - Toggle between light, dark, and system theme
-  - Persists theme preference in localStorage
-  - Respects system preference when set to 'system'
-  - Smooth transition between themes
-  - Accessible controls with keyboard support
-  
-  @example
-  ```svelte
-  <ThemeToggle />
-  ```
--->
 <script lang="ts">
   import { onMount } from 'svelte'
   import Icon from './Icons.svelte'
@@ -22,13 +6,11 @@
   let mounted = false
 
   onMount(() => {
-    // Get saved theme from localStorage or default to system
     const savedTheme = localStorage.getItem('theme') as typeof theme | null
     if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
       theme = savedTheme
     }
 
-    // Apply appropriate theme
     updateTheme()
     mounted = true
   })
@@ -52,7 +34,6 @@
     updateTheme()
   }
 
-  // Listen for system preference changes when in system mode
   onMount(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => {

@@ -19,7 +19,7 @@ export const load = (async () => {
     .from(auditLogs)
     .leftJoin(users, eq(users.id, auditLogs.userId))
     .orderBy(desc(auditLogs.createdAt))
-    .limit(100) // Limit to last 100 logs for performance
+    .limit(100)
 
   return {
     logs: logs.map((log) => ({

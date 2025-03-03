@@ -59,7 +59,6 @@ export default [
   },
   js.configs.recommended,
   {
-    // Global environment settings for all files
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',

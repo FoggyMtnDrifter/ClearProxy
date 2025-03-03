@@ -1,7 +1,3 @@
-<!--
-  @component
-  Dashboard page displaying system status and recent activity.
--->
 <script lang="ts">
   import Stats from '$lib/components/Stats.svelte'
   import Feed from '$lib/components/Feed.svelte'
@@ -20,7 +16,6 @@
     return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`
   }
 
-  // Transform activity logs into feed items
   $: feedItems = data.recentLogs.map(
     (log): FeedItem => ({
       id: log.id.toString(),
@@ -53,12 +48,10 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    <!-- Stats -->
     <div class="mb-8">
       <Stats {stats} columns={2} />
     </div>
 
-    <!-- Activity Feed -->
     <div
       class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
     >

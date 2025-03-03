@@ -1,27 +1,3 @@
-<!--
-  @component
-  A reusable modal dialog component that can be used throughout the application.
-  
-  Features:
-  - Centered positioning with backdrop overlay
-  - Keyboard support (Escape to close)
-  - Body scroll locking when open
-  - Accessible (proper ARIA attributes and keyboard handling)
-  - Responsive design
-  - Dark mode support
-  - Smooth transitions and animations
-  
-  Usage:
-  ```svelte
-  <Modal
-    title="Your Title"
-    isOpen={showModal}
-    onClose={() => showModal = false}
-  >
-    <div>Your modal content here</div>
-  </Modal>
-  ```
--->
 <script lang="ts">
   import { onMount } from 'svelte'
   import { fade } from 'svelte/transition'
@@ -32,7 +8,6 @@
   export let isOpen: boolean
   export let onClose: () => void
 
-  // Handle escape key to close modal
   onMount(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
@@ -44,7 +19,6 @@
     return () => window.removeEventListener('keydown', handleKeydown)
   })
 
-  // Prevent scrolling when modal is open
   onMount(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -61,7 +35,6 @@
 
 {#if isOpen}
   <div class="relative z-50" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-    <!-- Background backdrop -->
     <div
       class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity dark:bg-black/50"
       transition:fade={{ duration: 200 }}
@@ -69,7 +42,6 @@
 
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <!-- Modal panel -->
         <div
           use:clickOutside
           on:click_outside={handleClickOutside}

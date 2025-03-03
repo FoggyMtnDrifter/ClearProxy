@@ -38,11 +38,6 @@
           <label for="password" class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
             >Password</label
           >
-          <!-- Uncomment when implementing password reset
-          <div class="text-sm">
-            <a href="/auth/reset-password" class="font-semibold text-brand-600 hover:text-brand-500">Forgot password?</a>
-          </div>
-          -->
         </div>
         <div class="mt-2">
           <Input

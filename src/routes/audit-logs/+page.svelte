@@ -1,8 +1,3 @@
-<!--
-  @component
-  Audit Logs page component.
-  Displays a list of system activity logs with filtering and sorting options.
--->
 <script lang="ts">
   import type { PageData } from './$types'
   import Feed from '$lib/components/Feed.svelte'
@@ -48,11 +43,9 @@
   function extractDeletedItem(changesJson: string): Record<string, any> | undefined {
     try {
       const changes = JSON.parse(changesJson)
-      // If the changes object has a 'deleted' property, use that
       if (changes.deleted && typeof changes.deleted === 'object') {
         return changes.deleted
       }
-      // Otherwise, look for properties with 'from' values in a delete action
       const deletedValues: Record<string, any> = {}
       for (const [key, value] of Object.entries(changes)) {
         if (value && typeof value === 'object' && 'from' in value) {
@@ -67,7 +60,6 @@
     }
   }
 
-  // Transform audit logs into feed items
   $: feedItems = data.logs.map(
     (log): FeedItem => ({
       id: log.id.toString(),
@@ -87,7 +79,6 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    <!-- Activity Feed -->
     <div
       class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
     >

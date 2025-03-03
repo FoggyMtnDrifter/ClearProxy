@@ -1,18 +1,3 @@
-/**
- * Login Page Server Actions
- *
- * Handles user authentication through form submission.
- * Implements secure password verification and session management.
- *
- * Security measures:
- * - Password verification using secure hashing
- * - Generic error messages to prevent user enumeration
- * - Session-based authentication
- * - Structured logging with sensitive data redaction
- *
- * @module auth/login
- */
-
 import { db } from '$lib/db'
 import { users } from '$lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
@@ -22,16 +7,11 @@ import { fail, redirect } from '@sveltejs/kit'
 import { authLogger } from '$lib/logger'
 import type { Actions, PageServerLoad } from './$types'
 
-/**
- * Load function to check if registration is allowed
- */
 export const load: PageServerLoad = async ({ locals }) => {
-  // If user is already logged in, redirect to dashboard
   if (locals.user) {
     throw redirect(303, '/dashboard')
   }
 
-  // Check if any users exist
   const userCount = await db
     .select({ count: sql<number>`count(*)` })
     .from(users)
@@ -43,19 +23,6 @@ export const load: PageServerLoad = async ({ locals }) => {
   }
 }
 
-/**
- * Form actions for the login page.
- * Handles POST requests for user authentication.
- *
- * Flow:
- * 1. Validates required fields (email, password)
- * 2. Checks user existence
- * 3. Verifies password
- * 4. Creates session on success
- * 5. Redirects to dashboard
- *
- * @returns Failure with error message or redirects to dashboard
- */
 export const actions = {
   default: async ({ request, cookies }) => {
     const data = await request.formData()

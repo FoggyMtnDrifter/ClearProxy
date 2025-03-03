@@ -1,8 +1,3 @@
-<!--
-  @component
-  Proxy Hosts management page.
-  Displays a list of configured proxy hosts and allows adding, editing, and deleting them.
--->
 <script lang="ts">
   import { enhance } from '$app/forms'
   import { invalidate } from '$app/navigation'
@@ -28,7 +23,6 @@
   let searchTimeout: ReturnType<typeof setTimeout>
   let filteredHosts = data.hosts
 
-  // Filter hosts when search query changes
   $: {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
@@ -44,10 +38,9 @@
             host.targetProtocol.toLowerCase().includes(query)
         )
       }
-    }, 300) // 300ms debounce delay
+    }, 300)
   }
 
-  // Table configuration
   const columns = [
     { header: 'Domain Name', key: 'domain', class: 'font-medium text-gray-900' },
     { header: 'Target Host', key: 'targetHost' },
@@ -122,18 +115,14 @@
     }
   ]
 
-  // Add function to handle target host input changes
   function handleTargetHostInput(event: Event, targetPortId: string) {
     const input = event.target as HTMLInputElement
     const value = input.value
 
-    // Check for port in the host (e.g., localhost:3000)
     const match = value.match(/:(\d+)$/)
     if (match) {
-      // Remove the port from the host
       input.value = value.replace(/:(\d+)$/, '')
 
-      // Set the port value
       const portInput = document.getElementById(targetPortId) as HTMLInputElement
       if (portInput && !portInput.value) {
         portInput.value = match[1]
@@ -141,18 +130,14 @@
     }
   }
 
-  // Set up periodic status check
   onMount(() => {
-    // Initial check
     invalidate('app:caddy-status')
 
-    // Set up interval for subsequent checks
     statusCheckInterval = setInterval(() => {
       invalidate('app:caddy-status')
     }, 5000)
   })
 
-  // Clean up interval when component is destroyed
   onDestroy(() => {
     if (statusCheckInterval) {
       clearInterval(statusCheckInterval)
@@ -182,7 +167,6 @@
   let editTargetHost = ''
   let editTargetPort = ''
 
-  // Watch sslEnabled and update dependent settings
   $: if (!sslEnabled) {
     forceSSL = false
     http2Support = false
@@ -193,14 +177,12 @@
     basicAuthEnabled = event.detail
 
     if (!basicAuthEnabled) {
-      // When disabling, clear the username and password
       basicAuthUsername = ''
       basicAuthPassword = ''
     }
   }
 
   const handleSubmit: SubmitFunction = ({ formData }) => {
-    // Set the form values
     formData.set('sslEnabled', sslEnabled.toString())
     formData.set('forceSSL', forceSSL.toString())
     formData.set('http2Support', http2Support.toString())
@@ -208,10 +190,8 @@
     formData.set('advancedConfig', showAdvanced ? advancedConfig : '')
     formData.set('basicAuthEnabled', basicAuthEnabled.toString())
 
-    // Set username and password values from binding
     formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '')
 
-    // Only set the password if it's not empty
     if (basicAuthPassword && basicAuthPassword.trim() !== '') {
       formData.set('basicAuthPassword', basicAuthPassword)
     }
@@ -240,7 +220,6 @@
   const handleEditSubmit: SubmitFunction = ({ formData }) => {
     if (!editingHost) return
 
-    // Set the form values
     formData.set('id', editingHost.id.toString())
     formData.set('domain', editDomain)
     formData.set('targetHost', editTargetHost)
@@ -253,8 +232,6 @@
     formData.set('basicAuthEnabled', basicAuthEnabled.toString())
     formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '')
 
-    // Only set the password if it's not empty
-    // Otherwise, delete the field to indicate keeping the existing password
     if (basicAuthPassword && basicAuthPassword.trim() !== '') {
       formData.set('basicAuthPassword', basicAuthPassword)
     } else {
@@ -317,13 +294,11 @@
   }
 
   function startEdit(host: (typeof data.hosts)[number]) {
-    // Store the host reference
     editingHost = host
 
-    // Set all fields directly
     basicAuthEnabled = Boolean(host.basicAuthEnabled)
     basicAuthUsername = host.basicAuthUsername || ''
-    basicAuthPassword = '' // Leave password empty as it's already hashed
+    basicAuthPassword = ''
     sslEnabled = host.sslEnabled
     forceSSL = host.forceSSL
     http2Support = host.http2Support
@@ -333,7 +308,6 @@
     targetProtocol = host.targetProtocol
     ignoreInvalidCert = host.ignoreInvalidCert
 
-    // Set local variables for form fields
     editDomain = host.domain
     editTargetHost = host.targetHost
     editTargetPort = host.targetPort.toString()
@@ -360,7 +334,6 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    <!-- Table -->
     <div
       class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
     >
@@ -402,7 +375,6 @@
       </div>
     </div>
 
-    <!-- Create Modal -->
     {#if showCreateModal}
       <Modal
         title="Add Proxy Host"
@@ -413,7 +385,6 @@
         }}
       >
         <form method="POST" action="?/create" use:enhance={handleSubmit} class="space-y-6">
-          <!-- Basic Configuration -->
           <div class="space-y-4">
             <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
               Basic Configuration
@@ -472,7 +443,6 @@
             </div>
           {/if}
 
-          <!-- SSL Configuration -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle bind:checked={sslEnabled} label="SSL Configuration" name="sslEnabled" />
 
@@ -500,7 +470,6 @@
             {/if}
           </div>
 
-          <!-- Security -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={basicAuthEnabled}
@@ -532,7 +501,6 @@
             {/if}
           </div>
 
-          <!-- Advanced Configuration -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={showAdvanced}
@@ -584,7 +552,6 @@
       </Modal>
     {/if}
 
-    <!-- Edit Modal -->
     {#if showEditModal && editingHost}
       <Modal
         title="Edit Proxy Host"
@@ -595,7 +562,6 @@
         }}
       >
         <form method="POST" action="?/edit" use:enhance={handleEditSubmit} class="space-y-6">
-          <!-- Basic Configuration -->
           <div class="space-y-4">
             <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
               Basic Configuration
@@ -648,7 +614,6 @@
             </div>
           {/if}
 
-          <!-- SSL Configuration -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle bind:checked={sslEnabled} label="SSL Configuration" name="sslEnabled" />
 
@@ -676,7 +641,6 @@
             {/if}
           </div>
 
-          <!-- Security -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={basicAuthEnabled}
@@ -708,7 +672,6 @@
             {/if}
           </div>
 
-          <!-- Advanced Configuration -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
             <Toggle
               bind:checked={showAdvanced}

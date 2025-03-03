@@ -1,9 +1,3 @@
-/**
- * Server-side handling for proxy host management, including creation, editing, and status monitoring.
- * This module provides functionality for managing reverse proxy configurations through Caddy,
- * with support for SSL/TLS, HTTP/2, and basic authentication.
- */
-
 import { db } from '$lib/db'
 import { proxyHosts } from '$lib/db/schema'
 import { fail } from '@sveltejs/kit'
@@ -15,19 +9,7 @@ import { createAuditLog } from '$lib/db/audit'
 import { generateCaddyHash } from '$lib/auth/password'
 import { fixNullObjectPasswords } from '$lib/db'
 
-/**
- * Loads proxy host data and Caddy server status for the page.
- * Retrieves all configured proxy hosts from the database, ordered by creation date.
- * For SSL-enabled hosts, fetches their certificate status.
- * Also retrieves the current Caddy server status.
- *
- * @returns {Promise<{
- *   hosts: Array<ProxyHost & { certInfo: any }>,
- *   caddyStatus: { running: boolean, version: string }
- * }>} Object containing proxy hosts with certificate info and Caddy status
- */
 export const load = (async ({ depends }) => {
-  // Tell SvelteKit this load function depends on these custom invalidation keys
   depends('app:proxy-hosts')
   depends('app:caddy-status')
 
@@ -36,7 +18,6 @@ export const load = (async ({ depends }) => {
     getCaddyStatus()
   ])
 
-  // Fix any null object passwords
   const fixedHosts = fixNullObjectPasswords(hosts)
 
   apiLogger.debug(
@@ -50,7 +31,6 @@ export const load = (async ({ depends }) => {
     'Retrieved hosts from database'
   )
 
-  // Get certificate status for each SSL-enabled host
   const hostsWithCerts = await Promise.all(
     fixedHosts.map(async (host) => {
       if (!host.sslEnabled) {
@@ -66,7 +46,7 @@ export const load = (async ({ depends }) => {
     })
   )
 
-  apiLogger.info(
+  apiLogger.debug(
     {
       running: caddyStatus.running,
       version: caddyStatus.version
@@ -80,22 +60,7 @@ export const load = (async ({ depends }) => {
   }
 }) satisfies PageServerLoad
 
-/**
- * Form actions for managing proxy hosts.
- */
 export const actions = {
-  /**
-   * Creates a new proxy host configuration.
-   * Validates required fields, checks Caddy server status, and updates the configuration.
-   * Supports SSL/TLS, HTTP/2, and basic authentication options.
-   *
-   * @param {Object} params - The action parameters
-   * @param {Request} params.request - The form request containing proxy host configuration
-   * @returns {Promise<{ success: true } | { error: string, details?: string }>} Success or error response
-   * @throws Will return a 400 status if required fields are missing
-   * @throws Will return a 503 status if Caddy server is not running
-   * @throws Will return a 500 status for other errors
-   */
   create: async ({ request, locals }) => {
     const data = await request.formData()
     const domain = data.get('domain')?.toString()
@@ -109,7 +74,7 @@ export const actions = {
     const advancedConfig = data.get('advancedConfig')?.toString() || ''
     const basicAuthEnabled = data.get('basicAuthEnabled') === 'true'
     const basicAuthUsername = data.get('basicAuthUsername')?.toString() || ''
-    const basicAuthPassword = data.get('basicAuthPassword')?.toString() // Don't default to empty string
+    const basicAuthPassword = data.get('basicAuthPassword')?.toString()
     const ignoreInvalidCert = data.get('ignoreInvalidCert') === 'true'
 
     apiLogger.debug(
@@ -140,7 +105,6 @@ export const actions = {
       return fail(400, { error: 'Username is required when basic authentication is enabled' })
     }
 
-    // Require a password when basic auth is enabled
     if (basicAuthEnabled && (!basicAuthPassword || basicAuthPassword.trim() === '')) {
       apiLogger.warn(
         {
@@ -155,12 +119,11 @@ export const actions = {
       return fail(400, { error: 'Password is required when basic authentication is enabled' })
     }
 
-    // Clean the target host by removing any protocol prefixes and slashes
     if (targetHost) {
       targetHost = targetHost
-        .replace(/^https?:\/\//, '') // Remove any protocol prefix
-        .replace(/^\/+|\/+$/g, '') // Remove leading and trailing slashes
-        .trim() // Remove any whitespace
+        .replace(/^https?:\/\//, '')
+        .replace(/^\/+|\/+$/g, '')
+        .trim()
     }
 
     apiLogger.info(
@@ -195,18 +158,15 @@ export const actions = {
     }
 
     try {
-      // First check if Caddy is running
       const caddyStatus = await getCaddyStatus()
       if (!caddyStatus.running) {
         apiLogger.error('Cannot create proxy host - Caddy server is not running')
         return fail(503, { error: 'Caddy server is not running' })
       }
 
-      // Start a transaction
       return await db.transaction(async (tx) => {
         apiLogger.debug('Starting transaction for proxy host creation')
 
-        // Hash the password if basic auth is enabled
         let hashedPassword = null
         if (basicAuthEnabled && basicAuthPassword && basicAuthPassword !== '') {
           try {
@@ -232,7 +192,6 @@ export const actions = {
               'Generated password hash for new host basic auth'
             )
 
-            // Validate the generated hash to ensure it's in the correct format
             if (typeof hashedPassword !== 'string' || !hashedPassword.startsWith('$2')) {
               apiLogger.error(
                 {
@@ -277,7 +236,6 @@ export const actions = {
           return fail(400, { error: 'Password is required when basic authentication is enabled' })
         }
 
-        // Create the proxy host within the transaction
         const [newHost] = await tx
           .insert(proxyHosts)
           .values({
@@ -292,7 +250,6 @@ export const actions = {
             advancedConfig,
             basicAuthEnabled,
             basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
-            // Ensure we're using a proper string for the password hash
             basicAuthPassword: hashedPassword === null ? null : String(hashedPassword),
             ignoreInvalidCert,
             createdAt: new Date(),
@@ -325,13 +282,10 @@ export const actions = {
           'Created new proxy host in database'
         )
 
-        // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts)
 
-        // Fix any null object passwords in the hosts array
         const fixedHosts = fixNullObjectPasswords(hosts)
 
-        // Create audit log
         await createAuditLog({
           actionType: 'create',
           entityType: 'proxy_host',
@@ -350,7 +304,6 @@ export const actions = {
           }
         })
 
-        // Update Caddy configuration
         await reloadCaddyConfig(fixedHosts)
 
         return { success: true }
@@ -380,18 +333,6 @@ export const actions = {
     }
   },
 
-  /**
-   * Updates an existing proxy host configuration.
-   * Validates required fields, checks Caddy server status, and updates the configuration.
-   * Supports modifying SSL/TLS, HTTP/2, and basic authentication options.
-   *
-   * @param {Object} params - The action parameters
-   * @param {Request} params.request - The form request containing updated proxy host configuration
-   * @returns {Promise<{ success: true } | { error: string, details?: string }>} Success or error response
-   * @throws Will return a 400 status if required fields are missing
-   * @throws Will return a 503 status if Caddy server is not running
-   * @throws Will return a 500 status for other errors
-   */
   edit: async ({ request, locals }) => {
     const data = await request.formData()
     const id = parseInt(data.get('id')?.toString() || '')
@@ -407,8 +348,6 @@ export const actions = {
     const basicAuthEnabled = data.get('basicAuthEnabled') === 'true'
     const basicAuthUsername = data.get('basicAuthUsername')?.toString() || ''
 
-    // Check if the password field exists in the form data
-    // If it doesn't exist, it means we should keep the existing password
     const passwordFieldExists = data.has('basicAuthPassword')
     const basicAuthPassword = passwordFieldExists
       ? data.get('basicAuthPassword')?.toString()
@@ -416,7 +355,6 @@ export const actions = {
 
     const ignoreInvalidCert = data.get('ignoreInvalidCert') === 'true'
 
-    // Log concise form data
     apiLogger.info(
       {
         id,
@@ -441,12 +379,11 @@ export const actions = {
       return fail(400, { error: 'Username is required when basic authentication is enabled' })
     }
 
-    // Clean the target host by removing any protocol prefixes and slashes
     if (targetHost) {
       targetHost = targetHost
-        .replace(/^https?:\/\//, '') // Remove any protocol prefix
-        .replace(/^\/+|\/+$/g, '') // Remove leading and trailing slashes
-        .trim() // Remove any whitespace
+        .replace(/^https?:\/\//, '')
+        .replace(/^\/+|\/+$/g, '')
+        .trim()
     }
 
     if (!id || !domain || !targetHost || !targetPort) {
@@ -455,25 +392,20 @@ export const actions = {
     }
 
     try {
-      // Start a transaction
       return await db.transaction(async (tx) => {
-        // Get the existing host
         const [existingHost] = await tx.select().from(proxyHosts).where(eq(proxyHosts.id, id))
 
         if (!existingHost) {
           throw new Error('Proxy host not found')
         }
 
-        // Fix any null object password in the existing host
         const fixedExistingHost = fixNullObjectPasswords([existingHost])[0]
 
-        // If basic auth is enabled, we need to check if we have a password (new or existing)
         if (basicAuthEnabled) {
           const _isNewHost = !fixedExistingHost.basicAuthPassword
           const isPasswordProvided = basicAuthPassword !== undefined && basicAuthPassword !== ''
           const isEnablingBasicAuth = basicAuthEnabled && !fixedExistingHost.basicAuthEnabled
 
-          // Only require a password when basic auth is being newly enabled and no password is provided
           if (isEnablingBasicAuth && !isPasswordProvided) {
             apiLogger.warn('Password required when enabling basic auth for the first time')
             return fail(400, {
@@ -482,7 +414,6 @@ export const actions = {
           }
         }
 
-        // Hash the new password if provided
         let hashedPassword = undefined
         if (basicAuthEnabled && basicAuthPassword !== undefined && basicAuthPassword !== '') {
           try {
@@ -490,7 +421,7 @@ export const actions = {
           } catch (error) {
             apiLogger.error(
               {
-                error,
+                isNewHost: !fixedExistingHost.basicAuthPassword,
                 passwordType: typeof basicAuthPassword
               },
               'Failed to hash password'
@@ -499,16 +430,11 @@ export const actions = {
           }
         }
 
-        // Determine the password to use
-        let passwordToUse = null // Initialize to null explicitly
+        let passwordToUse = null
         if (basicAuthEnabled) {
-          // If a new password was provided, use it
           if (hashedPassword !== undefined) {
             passwordToUse = hashedPassword
-          }
-          // If no new password was provided and we're not supposed to change it, keep existing
-          else if (!passwordFieldExists && fixedExistingHost.basicAuthPassword) {
-            // Make sure the existing password is valid
+          } else if (!passwordFieldExists && fixedExistingHost.basicAuthPassword) {
             if (
               typeof fixedExistingHost.basicAuthPassword === 'string' &&
               fixedExistingHost.basicAuthPassword.length > 0
@@ -519,27 +445,19 @@ export const actions = {
                 error: 'Password format is invalid. Please provide a new password.'
               })
             }
-          }
-          // If the password field was explicitly cleared
-          else if (passwordFieldExists && basicAuthPassword === '') {
-            // Check if we should prevent clearing
+          } else if (passwordFieldExists && basicAuthPassword === '') {
             if (fixedExistingHost.basicAuthEnabled && fixedExistingHost.basicAuthPassword) {
               return fail(400, {
                 error: 'Password cannot be cleared. To change the password, provide a new one.'
               })
             }
-          }
-          // No existing password and no new password
-          else if (!fixedExistingHost.basicAuthPassword) {
+          } else if (!fixedExistingHost.basicAuthPassword) {
             return fail(400, { error: 'A password must be set for basic authentication' })
-          }
-          // Default: keep existing if available
-          else {
+          } else {
             passwordToUse = fixedExistingHost.basicAuthPassword
           }
         }
 
-        // Update the proxy host within the transaction
         const updateObject = {
           domain,
           targetHost,
@@ -552,7 +470,6 @@ export const actions = {
           advancedConfig,
           basicAuthEnabled,
           basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
-          // Ensure the password is explicitly a string or null (not undefined or object)
           basicAuthPassword:
             passwordToUse === null || (typeof passwordToUse === 'object' && passwordToUse === null)
               ? null
@@ -563,13 +480,10 @@ export const actions = {
 
         await tx.update(proxyHosts).set(updateObject).where(eq(proxyHosts.id, id))
 
-        // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts)
 
-        // Fix any null object passwords in the hosts array
         const fixedHosts = fixNullObjectPasswords(hosts)
 
-        // Create audit log with changes
         await createAuditLog({
           actionType: 'update',
           entityType: 'proxy_host',
@@ -615,7 +529,6 @@ export const actions = {
           }
         })
 
-        // Update Caddy configuration
         await reloadCaddyConfig(fixedHosts)
 
         return { success: true }
@@ -653,28 +566,21 @@ export const actions = {
     }
 
     try {
-      // Start a transaction
       return await db.transaction(async (tx) => {
-        // Get the existing host
         const [existingHost] = await tx.select().from(proxyHosts).where(eq(proxyHosts.id, id))
 
         if (!existingHost) {
           throw new Error('Proxy host not found')
         }
 
-        // Fix any null object password
         const fixedExistingHost = fixNullObjectPasswords([existingHost])[0]
 
-        // Delete the proxy host within the transaction
         await tx.delete(proxyHosts).where(eq(proxyHosts.id, id))
 
-        // Get all remaining hosts within the transaction
         const hosts = await tx.select().from(proxyHosts)
 
-        // Fix any null object passwords in the hosts array
         const fixedHosts = fixNullObjectPasswords(hosts)
 
-        // Create audit log
         await createAuditLog({
           actionType: 'delete',
           entityType: 'proxy_host',
@@ -687,7 +593,6 @@ export const actions = {
           }
         })
 
-        // Update Caddy configuration
         await reloadCaddyConfig(fixedHosts)
 
         return { success: true }
@@ -727,31 +632,24 @@ export const actions = {
     }
 
     try {
-      // Start a transaction
       return await db.transaction(async (tx) => {
-        // Get the existing host
         const [existingHost] = await tx.select().from(proxyHosts).where(eq(proxyHosts.id, id))
 
         if (!existingHost) {
           throw new Error('Proxy host not found')
         }
 
-        // Fix any null object password
         const fixedExistingHost = fixNullObjectPasswords([existingHost])[0]
 
-        // Update the enabled status within the transaction
         await tx
           .update(proxyHosts)
           .set({ enabled, updatedAt: new Date() })
           .where(eq(proxyHosts.id, id))
 
-        // Get all hosts within the transaction
         const hosts = await tx.select().from(proxyHosts)
 
-        // Fix any null object passwords in the hosts array
         const fixedHosts = fixNullObjectPasswords(hosts)
 
-        // Create audit log
         await createAuditLog({
           actionType: 'toggle',
           entityType: 'proxy_host',
@@ -762,7 +660,6 @@ export const actions = {
           }
         })
 
-        // Update Caddy configuration
         await reloadCaddyConfig(fixedHosts)
 
         return { success: true }

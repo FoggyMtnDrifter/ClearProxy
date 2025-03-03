@@ -1,51 +1,3 @@
-<!--
-  @component
-  A comprehensive icon system component that provides a collection of commonly used SVG icons throughout the application.
-  
-  @features
-  - Pre-defined set of commonly used icons (create, update, delete, error, close, menu, edit)
-  - Consistent styling and sizing across the application
-  - Customizable size through className prop
-  - Support for both filled and stroke variants
-  - Accessible SVG implementation with aria-hidden
-  - Optimized SVG paths for performance
-  - TypeScript support with type safety for icon names
-  - Event forwarding for click and other events
-  
-  @typedef {Object} IconType
-  @property {string} create - Plus icon for creation actions
-  @property {string} update - Pencil icon for update actions
-  @property {string} delete - Trash bin icon for deletion actions
-  @property {string} error - Circle with X for error states
-  @property {string} close - X icon for closing/dismissing
-  @property {string} menu - Hamburger menu icon
-  @property {string} edit - Pencil icon for editing
-  @property {string} sun - Sun icon for light theme
-  @property {string} moon - Moon icon for dark theme
-  @property {string} system - Computer icon for system theme
-  
-  @prop {keyof IconType} type - The type of icon to display
-  @prop {string} [className='size-5'] - CSS classes for styling the icon (primarily size)
-  @prop {boolean} [stroke=false] - Whether to render the icon with stroke style instead of fill
-  
-  @example
-  ```typescript
-  // Basic usage
-  type="create"
-  
-  // Custom size
-  type="delete" className="size-6"
-  
-  // Stroke variant
-  type="menu" stroke={true}
-  
-  // With custom color
-  type="error" className="size-5 text-red-500"
-  
-  // With click handler
-  type="edit" on:click={handleEdit}
-  ```
--->
 <script lang="ts" context="module">
   export const Icons = {
     create: `<path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />`,
@@ -68,7 +20,6 @@
   export let className = 'size-5'
   export let stroke = false
 
-  // Set up event forwarding
   const dispatch = createEventDispatcher()
 
   function forwardEvent(e: Event) {

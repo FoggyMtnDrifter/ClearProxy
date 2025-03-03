@@ -1,19 +1,3 @@
-<!--
-  @component
-  Root layout component that provides the application shell.
-  
-  Features:
-  - Responsive navigation bar
-  - Authentication-aware menu items
-  - User session management
-  - Mobile-friendly design
-  - Dark mode support
-  
-  Layout structure:
-  - Navigation bar with logo and menu
-  - Conditional rendering based on auth state
-  - Main content area with slot
--->
 <script lang="ts">
   import '../app.css'
   import { page } from '$app/stores'
@@ -32,7 +16,6 @@
     { name: 'Audit Logs', href: '/audit-logs' }
   ]
 
-  // Get the current page title based on the path
   $: currentPageTitle = navigation.find((item) => item.href === currentPath)?.name ?? 'Dashboard'
 
   function toggleMobileMenu() {
@@ -83,7 +66,6 @@
             </div>
           </div>
           <div class="-mr-2 flex md:hidden">
-            <!-- Mobile menu button -->
             <button
               type="button"
               class="relative inline-flex items-center justify-center rounded-md bg-gray-800 p-2 text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
@@ -93,13 +75,11 @@
             >
               <span class="absolute -inset-0.5"></span>
               <span class="sr-only">Open main menu</span>
-              <!-- Menu open: "hidden", Menu closed: "block" -->
               <Icon
                 type="menu"
                 className="block size-6 {$isMobileMenuOpen ? 'hidden' : ''}"
                 stroke={true}
               />
-              <!-- Menu open: "block", Menu closed: "hidden" -->
               <Icon
                 type="close"
                 className="size-6 {$isMobileMenuOpen ? '' : 'hidden'}"
@@ -110,7 +90,6 @@
         </div>
       </div>
 
-      <!-- Mobile menu -->
       <div class="md:hidden {$isMobileMenuOpen ? '' : 'hidden'}" id="mobile-menu">
         <div class="space-y-1 px-2 pb-3 pt-2 sm:px-3">
           {#each navigation as item}

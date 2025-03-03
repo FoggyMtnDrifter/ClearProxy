@@ -1,43 +1,3 @@
-<!--
-  @component
-  A custom select component with a dropdown menu.
-  Provides an accessible, keyboard-navigable select input with custom styling.
-  
-  Features:
-  - Keyboard navigation (Arrow keys, Enter, Space, Escape)
-  - ARIA attributes for accessibility
-  - Custom styling with Tailwind CSS
-  - Support for disabled state
-  - Dark mode support
-  - Hidden form input for form submission
-  - Click outside to close
-  - Smooth animations
-  
-  @prop {string} label - The label text for the select input
-  @prop {string} value - The current selected value
-  @prop {Array<{value: string, label: string}>} options - Array of options to display
-  @prop {string} [name=''] - Name attribute for the hidden form input
-  @prop {string} [id=''] - ID attribute for the select button
-  @prop {boolean} [required=false] - Whether the select is required in a form
-  @prop {boolean} [disabled=false] - Whether the select is disabled
-  
-  @event {string} change - Fired when a new option is selected, detail contains the new value
-  
-  @example
-  ```svelte
-  <Select
-    label="Target Protocol"
-    value={selectedValue}
-    options={[
-      { value: 'http', label: 'HTTP' },
-      { value: 'https', label: 'HTTPS' }
-    ]}
-    name="protocol"
-    required={true}
-    on:change={(e) => selectedValue = e.detail}
-  />
-  ```
--->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte'
   import { fade } from 'svelte/transition'
@@ -178,10 +138,5 @@
     {/if}
   </div>
 
-  <!-- Hidden input for form submission -->
   <input type="hidden" {name} {value} {required} />
 </div>
-
-<style>
-  /* Add any custom styles here */
-</style>

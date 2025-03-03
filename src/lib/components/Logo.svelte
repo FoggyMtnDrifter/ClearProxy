@@ -1,19 +1,5 @@
-<!--
-  @component
-  Logo component that renders the ClearProxy logo, adapting to both light and dark modes.
-  
-  Features:
-  - Responsive SVG that scales appropriately
-  - Supports both light and dark variants
-  - Maintains aspect ratio and visual quality at any size
--->
 <script lang="ts">
   export let className = ''
-  /**
-   * Controls the logo color variant
-   * - "light": White logo for dark backgrounds (default)
-   * - "dark": Dark logo for light backgrounds
-   */
   export let variant: 'light' | 'dark' = 'light'
 </script>
 

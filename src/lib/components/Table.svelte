@@ -1,6 +1,20 @@
 <script lang="ts">
+  /**
+   * Table component for displaying tabular data with optional row actions.
+   * Supports custom column rendering and row-level actions.
+   */
+
+  /** Generic component type for action buttons */
   type Component = any
 
+  /**
+   * Column configuration for the table
+   * @type {Array<Object>}
+   * @property {string} header - The column header text
+   * @property {string} key - The data key to display in this column
+   * @property {string} [class] - Optional CSS classes to apply to the column
+   * @property {Function} [render] - Optional custom render function for cell content
+   */
   export let columns: {
     header: string
     key: string
@@ -8,7 +22,23 @@
     render?: (item: any) => string
   }[]
 
+  /**
+   * Data array to display in the table
+   * Each item represents a row in the table
+   * @type {Array<any>}
+   */
   export let data: any[]
+
+  /**
+   * Row-level actions configuration
+   * Each action will be rendered as a button in the last column
+   * @type {Array<Object>}
+   * @property {Function} srLabel - Function that returns screen reader text for the action
+   * @property {Function} onClick - Click handler for the action
+   * @property {Component} component - Component to render for the action button
+   * @property {Object} props - Props to pass to the action component
+   * @default []
+   */
   export let rowActions: {
     srLabel: (item: any) => string
     onClick: (item: any) => void

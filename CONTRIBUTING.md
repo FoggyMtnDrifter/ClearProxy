@@ -10,12 +10,14 @@ By participating in this project, you agree to abide by our Code of Conduct (to 
 
 1. Fork the repository
 2. Clone your fork:
+
 ```bash
 git clone https://github.com/yourusername/clearproxy.git
 cd clearproxy
 ```
 
 3. Set up your development environment:
+
 ```bash
 # Install dependencies
 npm install
@@ -29,6 +31,7 @@ npm run dev
 ### Code Style
 
 We follow these coding standards:
+
 - Use TypeScript for all new code
 - Follow the existing code style in the project
 - Use 2 spaces for indentation
@@ -42,16 +45,19 @@ We follow these coding standards:
 ### Git Workflow
 
 1. Create a feature branch from `main`:
+
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
 2. Make your changes in small, logical commits:
+
 ```bash
 git commit -m "feat: add new feature"
 ```
 
 We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
 - `feat:` for new features
 - `fix:` for bug fixes
 - `docs:` for documentation changes
@@ -65,16 +71,19 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 Before submitting a pull request:
 
 1. Run the test suite:
+
 ```bash
 npm run test
 ```
 
 2. Run the linter:
+
 ```bash
 npm run lint
 ```
 
 3. Ensure your changes have appropriate test coverage:
+
 - Unit tests for utility functions
 - Integration tests for API endpoints
 - End-to-end tests for critical user flows
@@ -118,28 +127,18 @@ clearproxy/
 │   ├── routes/       # SvelteKit routes
 │   └── tests/        # Test files
 ├── static/           # Static assets
-└── docs/            # Documentation
 ```
 
 ## Pull Request Process
 
-1. Update documentation for any new features or changes
-2. Add or update tests as needed
-3. Ensure all tests pass and linting is clean
-4. Update the CHANGELOG.md file
-5. Submit a pull request with:
+1. Add or update tests as needed
+2. Ensure all tests pass and linting is clean
+3. Update the CHANGELOG.md file
+4. Submit a pull request with:
    - Clear title and description
    - Reference to any related issues
    - Screenshots for UI changes
    - List of testing steps if applicable
-
-## Documentation
-
-- Update documentation alongside code changes
-- Use clear, concise language
-- Include code examples where appropriate
-- Update both inline documentation and markdown files
-- Keep the README.md up to date
 
 ## Questions and Support
 
@@ -149,4 +148,4 @@ clearproxy/
 
 ## License
 
-By contributing to ClearProxy, you agree that your contributions will be licensed under the same terms as the project (MIT License). 
+By contributing to ClearProxy, you agree that your contributions will be licensed under the same terms as the project (MIT License).

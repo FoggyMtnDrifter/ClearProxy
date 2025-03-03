@@ -1,3 +1,8 @@
+/**
+ * Server-side functionality for the proxy hosts page.
+ * Handles loading proxy host data, managing hosts, and interacting with Caddy server.
+ * @module routes/proxy-hosts/+page.server
+ */
 import { db } from '$lib/db'
 import { proxyHosts } from '$lib/db/schema'
 import { fail } from '@sveltejs/kit'
@@ -9,6 +14,13 @@ import { createAuditLog } from '$lib/db/audit'
 import { generateCaddyHash } from '$lib/auth/password'
 import { fixNullObjectPasswords } from '$lib/db'
 
+/**
+ * Loads proxy host data and Caddy server status for the proxy hosts page.
+ * Fetches all proxy hosts from the database and enhances them with certificate information.
+ *
+ * @type {PageServerLoad}
+ * @returns {Promise<{hosts: Array<Object>, caddyRunning: boolean}>} Proxy hosts with certificate info and Caddy status
+ */
 export const load = (async ({ depends }) => {
   depends('app:proxy-hosts')
   depends('app:caddy-status')
@@ -31,6 +43,9 @@ export const load = (async ({ depends }) => {
     'Retrieved hosts from database'
   )
 
+  /**
+   * Enhance each host with certificate information if SSL is enabled
+   */
   const hostsWithCerts = await Promise.all(
     fixedHosts.map(async (host) => {
       if (!host.sslEnabled) {
@@ -60,7 +75,20 @@ export const load = (async ({ depends }) => {
   }
 }) satisfies PageServerLoad
 
+/**
+ * Form actions for the proxy hosts page.
+ * Handles creating, updating, and deleting proxy hosts.
+ * @type {Actions}
+ */
 export const actions = {
+  /**
+   * Creates a new proxy host configuration.
+   * Validates input data, creates a database record, and updates the Caddy configuration.
+   *
+   * @param {Object} request - The request object containing form data
+   * @param {Object} locals - The locals object containing user information
+   * @returns {Promise<{success: boolean}|{errors: Object}>} Success or validation errors
+   */
   create: async ({ request, locals }) => {
     const data = await request.formData()
     const domain = data.get('domain')?.toString()
@@ -333,6 +361,14 @@ export const actions = {
     }
   },
 
+  /**
+   * Updates an existing proxy host configuration.
+   * Validates input data, updates the database record, and refreshes the Caddy configuration.
+   *
+   * @param {Object} request - The request object containing form data with host details
+   * @param {Object} locals - The locals object containing user information
+   * @returns {Promise<{success: boolean}|{errors: Object}>} Success or validation errors
+   */
   edit: async ({ request, locals }) => {
     const data = await request.formData()
     const id = parseInt(data.get('id')?.toString() || '')
@@ -554,6 +590,14 @@ export const actions = {
     }
   },
 
+  /**
+   * Deletes an existing proxy host configuration.
+   * Removes the host from the database and updates the Caddy configuration.
+   *
+   * @param {Object} request - The request object containing form data with host ID
+   * @param {Object} locals - The locals object containing user information
+   * @returns {Promise<{success: boolean}|{error: string}>} Success or error message
+   */
   delete: async ({ request, locals }) => {
     const data = await request.formData()
     const id = parseInt(data.get('id')?.toString() || '')
@@ -619,6 +663,14 @@ export const actions = {
     }
   },
 
+  /**
+   * Toggles the enabled state of a proxy host.
+   * Updates the database record and refreshes the Caddy configuration.
+   *
+   * @param {Object} request - The request object containing form data with host ID and enabled state
+   * @param {Object} locals - The locals object containing user information
+   * @returns {Promise<{success: boolean}|{error: string}>} Success or error message
+   */
   toggle: async ({ request, locals }) => {
     const data = await request.formData()
     const id = parseInt(data.get('id')?.toString() || '')

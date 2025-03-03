@@ -1,5 +1,23 @@
 <script lang="ts">
+  /**
+   * @component Logo
+   * @description ClearProxy logo component that renders the application's logo with support for light or dark variants
+   *
+   * The Logo component renders a scalable vector graphic (SVG) of the ClearProxy logo.
+   * It supports light and dark color variants for use in different themed contexts.
+   */
+
+  /**
+   * Additional CSS classes to apply to the SVG element
+   * @type {string}
+   */
   export let className = ''
+
+  /**
+   * Color variant to display
+   * @type {'light' | 'dark'}
+   * @default 'light'
+   */
   export let variant: 'light' | 'dark' = 'light'
 </script>
 

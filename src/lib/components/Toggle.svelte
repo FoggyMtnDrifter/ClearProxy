@@ -1,16 +1,57 @@
 <script lang="ts">
+  /**
+   * Toggle switch component with optional label and description.
+   * Provides an accessible switch control for boolean settings.
+   */
   import { createEventDispatcher } from 'svelte'
 
+  /**
+   * Whether the toggle is in the on/checked state
+   * @type {boolean}
+   * @default false
+   */
   export let checked = false
+
+  /**
+   * Label text displayed next to the toggle
+   * @type {string | undefined}
+   * @default undefined
+   */
   export let label: string | undefined = undefined
+
+  /**
+   * Optional description text displayed below the label
+   * @type {string | undefined}
+   * @default undefined
+   */
   export let description: string | undefined = undefined
+
+  /**
+   * Name attribute for the toggle, used for form submission and accessibility
+   * @type {string | undefined}
+   * @default undefined
+   */
   export let name: string | undefined = undefined
+
+  /**
+   * Whether the toggle is disabled/non-interactive
+   * @type {boolean}
+   * @default false
+   */
   export let disabled = false
 
+  /**
+   * Event dispatcher for the toggle component
+   * Dispatches 'change' event with the new checked state
+   */
   const dispatch = createEventDispatcher<{
     change: boolean
   }>()
 
+  /**
+   * Toggles the checked state and dispatches change event
+   * Does nothing if the toggle is disabled
+   */
   function toggle() {
     if (!disabled) {
       checked = !checked
@@ -18,6 +59,10 @@
     }
   }
 
+  /**
+   * Computed ID for the toggle based on the name prop
+   * Used for associating labels with the toggle for accessibility
+   */
   $: id = name ? `toggle-${name}` : undefined
 </script>
 

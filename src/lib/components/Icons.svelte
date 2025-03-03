@@ -1,4 +1,9 @@
 <script lang="ts" context="module">
+  /**
+   * Collection of SVG path definitions for icons used throughout the application.
+   * Each icon is defined as an SVG path string that can be rendered within an SVG element.
+   * @type {Record<string, string>}
+   */
   export const Icons = {
     create: `<path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />`,
     update: `<path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />`,
@@ -14,14 +19,41 @@
 </script>
 
 <script lang="ts">
+  /**
+   * Icon component for rendering SVG icons from the predefined collection.
+   * Supports customization of size, appearance, and event forwarding.
+   */
   import { createEventDispatcher } from 'svelte'
 
+  /**
+   * Type of icon to display from the Icons collection
+   * @type {keyof typeof Icons}
+   */
   export let type: keyof typeof Icons
+
+  /**
+   * CSS class(es) to apply to the SVG element
+   * @type {string}
+   * @default 'size-5'
+   */
   export let className = 'size-5'
+
+  /**
+   * Whether to render the icon with stroke styling (outline) instead of fill
+   * @type {boolean}
+   * @default false
+   */
   export let stroke = false
 
+  /**
+   * Event dispatcher for forwarding events from the SVG element
+   */
   const dispatch = createEventDispatcher()
 
+  /**
+   * Forwards DOM events from the SVG element to the component's consumer
+   * @param {Event} e - The DOM event to forward
+   */
   function forwardEvent(e: Event) {
     dispatch(e.type, e)
   }

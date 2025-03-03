@@ -1,13 +1,75 @@
 <script lang="ts">
+  /**
+   * Textarea component for multi-line text input.
+   * Includes support for labels, validation, and error states.
+   */
+
+  /**
+   * Label text for the textarea
+   * @type {string}
+   */
   export let label: string
+
+  /**
+   * Name attribute for the textarea, used for form submission
+   * @type {string}
+   */
   export let name: string
+
+  /**
+   * Current value of the textarea
+   * @type {string}
+   * @default ''
+   */
   export let value = ''
+
+  /**
+   * Placeholder text to display when the textarea is empty
+   * @type {string}
+   * @default ''
+   */
   export let placeholder = ''
+
+  /**
+   * Number of visible text rows
+   * @type {number}
+   * @default 4
+   */
   export let rows = 4
+
+  /**
+   * Whether the textarea is required in a form
+   * @type {boolean}
+   * @default false
+   */
   export let required = false
+
+  /**
+   * Whether the textarea is disabled/non-interactive
+   * @type {boolean}
+   * @default false
+   */
   export let disabled = false
+
+  /**
+   * ID attribute for the textarea, defaults to name if not specified
+   * @type {string}
+   * @default name
+   */
   export let id = name
+
+  /**
+   * Optional help text displayed below the textarea
+   * @type {string|undefined}
+   * @default undefined
+   */
   export let description: string | undefined = undefined
+
+  /**
+   * Error message to display when validation fails
+   * @type {string|undefined}
+   * @default undefined
+   */
   export let error: string | undefined = undefined
 </script>
 

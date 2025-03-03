@@ -1,9 +1,22 @@
+/**
+ * Server-side handling for the audit logs page.
+ * Loads and formats audit log entries for display.
+ * @module routes/audit-logs/+page.server
+ */
 import { db } from '$lib/db'
 import { auditLogs, users } from '$lib/db/schema'
 import type { PageServerLoad } from './$types'
 import { desc, eq } from 'drizzle-orm'
 
+/**
+ * Page load function for the audit logs page
+ * Retrieves recent audit logs with associated user information
+ *
+ * @type {PageServerLoad}
+ * @returns {Promise<{logs: object[]}>} Formatted audit log entries
+ */
 export const load = (async () => {
+  // Query audit logs with user information via join
   const logs = await db
     .select({
       id: auditLogs.id,
@@ -21,6 +34,7 @@ export const load = (async () => {
     .orderBy(desc(auditLogs.createdAt))
     .limit(100)
 
+  // Format logs with normalized user objects
   return {
     logs: logs.map((log) => ({
       ...log,

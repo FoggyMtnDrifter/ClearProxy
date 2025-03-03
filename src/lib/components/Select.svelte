@@ -1,20 +1,83 @@
 <script lang="ts">
+  /**
+   * Custom select/dropdown component with support for keyboard navigation.
+   * Provides a styled alternative to the native select element with better customization.
+   */
   import { createEventDispatcher } from 'svelte'
   import { fade } from 'svelte/transition'
   import { clickOutside } from '$lib/actions/clickOutside'
 
+  /**
+   * Label text for the select field
+   * @type {string}
+   */
   export let label: string
+
+  /**
+   * Current selected value
+   * @type {string}
+   */
   export let value: string
+
+  /**
+   * Array of options to display in the dropdown
+   * Each option must have a value and label property
+   * @type {Array<{value: string, label: string}>}
+   */
   export let options: Array<{ value: string; label: string }>
+
+  /**
+   * Name attribute for form submission
+   * @type {string}
+   * @default ''
+   */
   export let name = ''
+
+  /**
+   * ID attribute for the component
+   * @type {string}
+   * @default ''
+   */
   export let id = ''
+
+  /**
+   * Whether the select is required in a form
+   * @type {boolean}
+   * @default false
+   */
   export let required = false
+
+  /**
+   * Whether the select is disabled/non-interactive
+   * @type {boolean}
+   * @default false
+   */
   export let disabled = false
 
+  /**
+   * Event dispatcher for the select component
+   * Dispatches 'change' event with the new selected value
+   */
   const dispatch = createEventDispatcher()
+
+  /**
+   * Whether the dropdown is currently open
+   * @type {boolean}
+   */
   let isOpen = false
+
+  /**
+   * The currently selected option object
+   * @type {Object}
+   */
   let selectedOption = options.find((opt) => opt.value === value) || options[0]
 
+  /**
+   * Handles selecting an option from the dropdown
+   * Updates the value, closes the dropdown, and dispatches a change event
+   *
+   * @param {Object} option - The selected option
+   */
   function handleSelect(option: (typeof options)[number]) {
     selectedOption = option
     value = option.value
@@ -22,6 +85,12 @@
     dispatch('change', option.value)
   }
 
+  /**
+   * Keyboard event handler for the select component
+   * Handles opening/closing the dropdown and navigating options
+   *
+   * @param {KeyboardEvent} event - The keyboard event
+   */
   function handleKeydown(event: KeyboardEvent) {
     if (disabled) return
 

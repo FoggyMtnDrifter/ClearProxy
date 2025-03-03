@@ -1,4 +1,11 @@
 <script lang="ts">
+  /**
+   * @component AuditLogsPage
+   * @description Displays a chronological list of system changes and configuration updates.
+   *
+   * This page shows a feed of all audit log entries, including details about who made changes,
+   * what was changed, and when the changes occurred.
+   */
   import type { PageData } from './$types'
   import Feed from '$lib/components/Feed.svelte'
   import type { FeedItem } from '$lib/components/Feed.svelte'
@@ -6,11 +13,21 @@
 
   export let data: PageData
 
+  /**
+   * Generates a Gravatar URL for a user's email address
+   * @param {string} email - The user's email address
+   * @returns {string} URL to the user's Gravatar image
+   */
   function getGravatarUrl(email: string) {
     const hash = md5(email.toLowerCase().trim())
     return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`
   }
 
+  /**
+   * Formats a timestamp into a human-readable date and time string
+   * @param {string|Date|null} date - The date to format
+   * @returns {string} Formatted date string or empty string if date is null
+   */
   function formatTimestamp(date: string | Date | null) {
     if (!date) return ''
     return new Intl.DateTimeFormat('en-US', {
@@ -23,6 +40,11 @@
     }).format(new Date(date))
   }
 
+  /**
+   * Formats changes from JSON string into a readable multi-line string
+   * @param {string} changesJson - JSON string containing change details
+   * @returns {string} Formatted string representing changes
+   */
   function formatChanges(changesJson: string) {
     try {
       const changes = JSON.parse(changesJson)
@@ -40,6 +62,11 @@
     }
   }
 
+  /**
+   * Extracts deleted item information from JSON changes string
+   * @param {string} changesJson - JSON string containing change details
+   * @returns {Record<string, any>|undefined} Object with deleted item properties or undefined
+   */
   function extractDeletedItem(changesJson: string): Record<string, any> | undefined {
     try {
       const changes = JSON.parse(changesJson)
@@ -60,6 +87,10 @@
     }
   }
 
+  /**
+   * Transforms audit log data into feed items for display
+   * Uses reactive declaration to automatically update when data changes
+   */
   $: feedItems = data.logs.map(
     (log): FeedItem => ({
       id: log.id.toString(),

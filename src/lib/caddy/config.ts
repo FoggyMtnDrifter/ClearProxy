@@ -1,24 +1,64 @@
+/**
+ * Caddy server configuration module.
+ * Handles generation, application, and management of Caddy reverse proxy configurations.
+ * @module caddy/config
+ */
 import { proxyHosts } from '../db/schema'
 import type { InferModel } from 'drizzle-orm'
 import { caddyLogger } from '../logger'
 import { generateCaddyHash as _generateCaddyHash } from '../auth/password'
 import { fixNullObjectPasswords } from '../db'
+
+/** Base URL for the Caddy API */
 const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019'
+
+/** Maximum number of retries for Caddy API operations */
 const MAX_RETRIES = 3
+
+/** Initial delay between retries in milliseconds */
 const INITIAL_RETRY_DELAY = 1000
+
+/** Maximum delay between retries in milliseconds */
 const MAX_RETRY_DELAY = 5000
+
+/** Type representing a proxy host from the database */
 type ProxyHost = InferModel<typeof proxyHosts>
+
+/**
+ * Encodes a string to Base64
+ *
+ * @param {string} str - The string to encode
+ * @returns {string} Base64 encoded string
+ */
 function base64Encode(str: string): string {
   return Buffer.from(str).toString('base64')
 }
+
+/**
+ * Creates a bcrypt-like hash string format for Caddy
+ * Note: This doesn't actually hash the password, just formats it as expected by Caddy
+ *
+ * @param {string} password - The password to format
+ * @returns {string} Formatted string in Caddy-compatible format
+ * @private
+ */
 function _bcryptHash(password: string): string {
   return `$2a$14$${base64Encode(password)}`
 }
+
+/**
+ * Interface representing a Caddy match condition
+ * Used to define when a route should be applied based on host, protocol, or path
+ */
 interface CaddyMatch {
+  /** Array of hostnames to match */
   host: string[]
+  /** Protocol to match (e.g., "https") */
   protocol?: string
+  /** Array of path patterns to match */
   path?: string[]
 }
+
 interface CaddyHandler {
   handler:
     | 'reverse_proxy'
@@ -128,30 +168,61 @@ interface CaddyHandler {
   match?: Record<string, unknown>[]
   terminal?: boolean
 }
+
+/**
+ * Interface representing a Caddy route configuration
+ * Routes define how requests are matched and handled
+ */
 interface CaddyRoute {
+  /** Conditions to match for this route */
   match: CaddyMatch[]
+  /** Handlers to process matching requests */
   handle: CaddyHandler[]
+  /** Whether this is a terminal route that stops processing */
   terminal?: boolean
 }
+
+/**
+ * Interface representing configuration for a Caddy server instance
+ */
 interface CaddyServerConfig {
+  /** Network addresses to listen on */
   listen: string[]
+  /** Routes for request processing */
   routes: CaddyRoute[]
+  /** Automatic HTTPS configuration */
   automatic_https: {
+    /** Whether to disable automatic HTTPS */
     disable: boolean
   }
+  /** TLS connection policies, if any */
   tls_connection_policies?: Record<string, unknown>[]
 }
+
+/**
+ * Interface representing Caddy TLS configuration for certificate management
+ */
 interface CaddyTLSConfig {
+  /** Certificate configuration */
   certificates?: {
+    /** Domains to automatically obtain certificates for */
     automate: string[]
   }
+  /** Certificate automation policy configuration */
   automation?: {
+    /** Certificate issuance policies */
     policies: {
+      /** Domains subject to this policy */
       subjects: string[]
+      /** Certificate issuers to use */
       issuers: {
+        /** Issuer module to use */
         module: string
+        /** Challenge configurations */
         challenges: {
+          /** HTTP challenge configuration */
           http: {
+            /** Alternate port for HTTP challenges */
             alternate_port: number
           }
         }
@@ -159,37 +230,76 @@ interface CaddyTLSConfig {
     }[]
   }
 }
+
+/**
+ * Interface representing the full Caddy server configuration
+ */
 interface CaddyConfig {
+  /** Admin API configuration */
   admin: {
+    /** Address for the admin API to listen on */
     listen: string
+    /** Whether the admin API is disabled */
     disabled: boolean
+    /** Whether to enforce allowed origins */
     enforce_origin?: boolean
+    /** Allowed origins for admin API requests */
     origins?: string[]
   }
+  /** Logging configuration */
   logging?: {
+    /** Log definitions */
     logs: {
+      /** Default logger configuration */
       default: {
+        /** Log level */
         level: string
       }
     }
   }
+  /** Caddy applications configuration */
   apps: {
+    /** HTTP server configuration */
     http: {
+      /** Server instances */
       servers: {
+        /** Server configurations indexed by name */
         [key: string]: CaddyServerConfig
       }
     }
+    /** TLS configuration, if any */
     tls?: CaddyTLSConfig
   }
 }
+
+/**
+ * Interface representing information about a TLS certificate
+ */
 interface CertificateInfo {
+  /** Whether the certificate is managed by Caddy */
   managed: boolean
+  /** Certificate issuer */
   issuer: string
+  /** Certificate validity start date */
   notBefore: string
+  /** Certificate expiration date */
   notAfter: string
+  /** Error information, if any */
   error?: string
 }
+
+/**
+ * Custom error class for Caddy-related errors
+ * Includes error code and details specific to Caddy
+ */
 class CaddyError extends Error {
+  /**
+   * Creates a new CaddyError
+   *
+   * @param {string} message - Error message
+   * @param {string} code - Error code
+   * @param {unknown} details - Additional error details
+   */
   constructor(
     message: string,
     public readonly code: string,
@@ -199,104 +309,94 @@ class CaddyError extends Error {
     this.name = 'CaddyError'
   }
 }
+
+/**
+ * Pauses execution for the specified number of milliseconds
+ *
+ * @param {number} ms - Time to sleep in milliseconds
+ * @returns {Promise<void>} Promise that resolves after the specified time
+ */
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
+
+/**
+ * Retry an async operation with exponential backoff
+ * Useful for network operations that may fail transiently
+ *
+ * @template T - Return type of the operation
+ * @param {() => Promise<T>} operation - The operation to retry
+ * @param {number} retries - Maximum number of retry attempts
+ * @param {number} delay - Initial delay between retries in milliseconds
+ * @returns {Promise<T>} Result of the operation if successful
+ * @throws The last error encountered if all retries fail
+ */
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
   retries: number = MAX_RETRIES,
   delay: number = INITIAL_RETRY_DELAY
 ): Promise<T> {
-  try {
-    return await operation()
-  } catch (error) {
-    if (retries <= 0) throw error
-    const nextDelay = Math.min(delay + INITIAL_RETRY_DELAY, MAX_RETRY_DELAY)
-    caddyLogger.warn(
-      { error, retriesLeft: retries - 1, nextDelay },
-      'Operation failed, retrying...'
-    )
-    await sleep(delay)
-    return retryWithBackoff(operation, retries - 1, nextDelay)
+  let lastError: Error | undefined
+
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error as Error
+      if (i === retries) break
+
+      caddyLogger.warn(
+        { error, attempt: i + 1, maxRetries: retries },
+        'Operation failed, retrying...'
+      )
+
+      await sleep(delay)
+      // Exponential backoff with maximum cap
+      delay = Math.min(delay * 2, MAX_RETRY_DELAY)
+    }
   }
+
+  throw lastError
 }
+
+/**
+ * Parses advanced Caddy configuration from a JSON string
+ * Allows for custom routing rules beyond the standard proxy configuration
+ *
+ * @param {string} config - JSON string containing advanced Caddy configuration
+ * @returns {CaddyRoute[]} Array of parsed Caddy routes
+ */
 function parseAdvancedConfig(config: string): CaddyRoute[] {
   if (!config) return []
+
   try {
     const parsedConfig = JSON.parse(config)
-    const routes: CaddyRoute[] = []
+
     if (Array.isArray(parsedConfig)) {
-      for (const routeConfig of parsedConfig) {
-        if (routeConfig.match && routeConfig.handle) {
-          const match = Array.isArray(routeConfig.match) ? routeConfig.match : [routeConfig.match]
-          match.forEach((m: CaddyMatch) => {
-            if (!m.host) m.host = []
-          })
-          routes.push({
-            match,
-            handle: routeConfig.handle,
-            terminal: routeConfig.terminal
-          })
-        }
-      }
-      return routes
+      return parsedConfig
+    } else if (
+      typeof parsedConfig === 'object' &&
+      parsedConfig !== null &&
+      'routes' in parsedConfig &&
+      Array.isArray(parsedConfig.routes)
+    ) {
+      return parsedConfig.routes
+    } else {
+      caddyLogger.warn('Invalid advanced config format, expected array or object with routes array')
+      return []
     }
-    if (parsedConfig.redir && Array.isArray(parsedConfig.redir)) {
-      for (const redir of parsedConfig.redir) {
-        if (redir.from && redir.to) {
-          routes.push({
-            match: [
-              {
-                host: [],
-                path: [redir.from]
-              }
-            ],
-            handle: [
-              {
-                handler: 'static_response',
-                status_code: redir.status_code || 301,
-                headers: {
-                  Location: [redir.to]
-                }
-              }
-            ],
-            terminal: true
-          })
-        }
-      }
-      return routes
-    }
-    if (parsedConfig.match && parsedConfig.handle) {
-      const match = Array.isArray(parsedConfig.match) ? parsedConfig.match : [parsedConfig.match]
-      match.forEach((m: CaddyMatch) => {
-        if (!m.host) m.host = []
-      })
-      routes.push({
-        match,
-        handle: parsedConfig.handle,
-        terminal: parsedConfig.terminal
-      })
-      return routes
-    }
-    if (parsedConfig.handler) {
-      routes.push({
-        match: [
-          {
-            host: []
-          }
-        ],
-        handle: [parsedConfig],
-        terminal: parsedConfig.terminal
-      })
-      return routes
-    }
-    caddyLogger.warn({ config }, 'Advanced configuration format not recognized')
-    return []
   } catch (error) {
-    caddyLogger.error({ error, config }, 'Failed to parse advanced configuration')
+    caddyLogger.error({ error }, 'Failed to parse advanced configuration')
     return []
   }
 }
+
+/**
+ * Generates a complete Caddy server configuration from proxy host definitions
+ *
+ * @param {ProxyHost[]} hosts - Array of proxy host configurations
+ * @returns {Promise<CaddyConfig>} Generated Caddy configuration
+ */
 export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConfig> {
   const routes: CaddyRoute[] = []
   const fixedHosts = fixNullObjectPasswords(hosts)
@@ -531,6 +631,14 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConf
   }
   return config
 }
+
+/**
+ * Applies a configuration to the running Caddy server via its API
+ *
+ * @param {CaddyConfig} config - Caddy configuration to apply
+ * @returns {Promise<void>} Promise that resolves when the config is applied
+ * @throws {CaddyError} If the config cannot be applied
+ */
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
     await retryWithBackoff(async () => {
@@ -608,6 +716,13 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
     )
   }
 }
+
+/**
+ * Gets the status of a TLS certificate for a domain
+ *
+ * @param {string} domain - Domain to check certificate status for
+ * @returns {Promise<CertificateInfo | null>} Certificate information or null if not found
+ */
 export async function getCertificateStatus(domain: string): Promise<CertificateInfo | null> {
   try {
     const response = await fetch(`${CADDY_API_URL}/certificates/${domain}`, {
@@ -633,6 +748,14 @@ export async function getCertificateStatus(domain: string): Promise<CertificateI
     return null
   }
 }
+
+/**
+ * Reloads the Caddy configuration with the current proxy hosts
+ * Generates a new config and applies it to the running Caddy server
+ *
+ * @param {ProxyHost[]} hosts - Array of proxy host configurations
+ * @returns {Promise<void>} Promise that resolves when the config is reloaded
+ */
 export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
   try {
     const fixedHosts = fixNullObjectPasswords(hosts)
@@ -705,6 +828,13 @@ export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
     throw error
   }
 }
+
+/**
+ * Gets the current status of the Caddy server
+ * Includes whether it's running, its version, and current config
+ *
+ * @returns {Promise<{running: boolean, version: string, config?: CaddyConfig}>} Caddy status information
+ */
 export async function getCaddyStatus(): Promise<{
   running: boolean
   version: string

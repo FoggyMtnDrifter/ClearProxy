@@ -1,10 +1,22 @@
 <script lang="ts">
+  /**
+   * @component RegisterPage
+   * @description User registration page for creating a new account
+   *
+   * This page provides a form for users to create a new account with full name,
+   * email address, and password inputs. It displays validation errors and
+   * provides navigation to the login page for existing users.
+   */
   import { enhance } from '$app/forms'
   import type { ActionData } from './$types'
   import Input from '$lib/components/Input.svelte'
   import Button from '$lib/components/Button.svelte'
   import Logo from '$lib/components/Logo.svelte'
 
+  /**
+   * Form data returned from the form action, containing any validation errors
+   * @type {ActionData}
+   */
   export let form: ActionData
 </script>
 

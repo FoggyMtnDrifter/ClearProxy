@@ -1,4 +1,9 @@
 <script lang="ts">
+  /**
+   * Root layout component for the application.
+   * Provides navigation, theme controls, and consistent layout across all pages.
+   * Different layouts are shown for authenticated vs unauthenticated states.
+   */
   import '../app.css'
   import { page } from '$app/stores'
   import { isMobileMenuOpen } from '$lib/stores/navigation'
@@ -7,17 +12,28 @@
   import ThemeToggle from '$lib/components/ThemeToggle.svelte'
   import Logo from '$lib/components/Logo.svelte'
 
+  /** Whether the current page is an authentication page (login/register) */
   $: isAuthPage = $page.url.pathname.startsWith('/auth/')
+
+  /** The current path from the URL */
   $: currentPath = $page.url.pathname
 
+  /**
+   * Main navigation items for the application
+   * @type {Array<{name: string, href: string}>}
+   */
   const navigation = [
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Proxy Hosts', href: '/proxy-hosts' },
     { name: 'Audit Logs', href: '/audit-logs' }
   ]
 
+  /** The title of the current page based on the navigation definition */
   $: currentPageTitle = navigation.find((item) => item.href === currentPath)?.name ?? 'Dashboard'
 
+  /**
+   * Toggles the visibility of the mobile navigation menu
+   */
   function toggleMobileMenu() {
     $isMobileMenuOpen = !$isMobileMenuOpen
   }

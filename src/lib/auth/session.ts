@@ -1,13 +1,29 @@
+/**
+ * Session management module for user authentication.
+ * Handles cookies-based session creation, validation, and termination.
+ * @module auth/session
+ */
 import { db } from '$lib/db'
 import { users } from '$lib/db/schema'
 import { eq } from 'drizzle-orm'
 import type { Cookies } from '@sveltejs/kit'
 import { authLogger } from '../logger'
 
+/**
+ * Interface for objects that contain cookie functionality
+ * Used to abstract the SvelteKit-specific event object
+ */
 interface SessionEvent {
+  /** Access to cookie management */
   cookies: Cookies
 }
 
+/**
+ * Retrieves the currently authenticated user from the session cookie
+ *
+ * @param {SessionEvent} event - Object containing cookie access
+ * @returns {Promise<any|null>} User object if authenticated, null otherwise
+ */
 export async function getUserFromSession(event: SessionEvent) {
   const session = event.cookies.get('session')
   if (!session) {
@@ -40,6 +56,13 @@ export async function getUserFromSession(event: SessionEvent) {
   }
 }
 
+/**
+ * Creates a new session for a user
+ * Sets a cookie with the user ID and current timestamp
+ *
+ * @param {SessionEvent} event - Object containing cookie access
+ * @param {number} userId - ID of the user to create session for
+ */
 export function createSession(event: SessionEvent, userId: number) {
   const session = `${userId}:${Date.now()}`
 
@@ -52,6 +75,12 @@ export function createSession(event: SessionEvent, userId: number) {
   authLogger.debug({ userId }, 'Created new session')
 }
 
+/**
+ * Clears the current session
+ * Deletes the session cookie
+ *
+ * @param {SessionEvent} event - Object containing cookie access
+ */
 export function clearSession(event: SessionEvent) {
   const session = event.cookies.get('session')
   if (session) {

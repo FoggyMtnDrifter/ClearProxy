@@ -1,3 +1,8 @@
+/**
+ * Server-side handling for the user registration page.
+ * Manages new user creation and initial admin setup.
+ * @module routes/auth/register/+page.server
+ */
 import { db } from '$lib/db'
 import { users } from '$lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
@@ -7,6 +12,13 @@ import { fail, redirect } from '@sveltejs/kit'
 import { authLogger } from '$lib/logger'
 import type { Actions, PageServerLoad } from './$types'
 
+/**
+ * Page load function for the registration page
+ * Redirects to dashboard if already logged in
+ * Redirects to login if registration is disabled (users already exist)
+ *
+ * @type {PageServerLoad}
+ */
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
     throw redirect(303, '/dashboard')
@@ -23,7 +35,22 @@ export const load: PageServerLoad = async ({ locals }) => {
   return {}
 }
 
+/**
+ * Form actions for the registration page
+ * Handles user creation and initial session establishment
+ *
+ * @type {Actions}
+ */
 export const actions = {
+  /**
+   * Default action that handles form submission for registration
+   * Creates first user with admin privileges
+   *
+   * @param {object} params - Action parameters
+   * @param {Request} params.request - The request object containing form data
+   * @param {import('@sveltejs/kit').Cookies} params.cookies - Cookie access for session management
+   * @returns {Promise<any>} Redirect on success or error data on failure
+   */
   default: async ({ request, cookies }) => {
     const data = await request.formData()
     const email = data.get('email')

@@ -1,6 +1,18 @@
+/**
+ * Password management module for authentication.
+ * Handles password hashing, verification, and generation of special formats.
+ * @module auth/password
+ */
 import { authLogger } from '../logger'
 import { execSync } from 'child_process'
 
+/**
+ * Hashes a password using SHA-256 algorithm
+ *
+ * @param {string} password - Plain text password to hash
+ * @returns {Promise<string>} Hexadecimal string representation of the hash
+ * @throws {Error} If hashing fails
+ */
 export async function hashPassword(password: string): Promise<string> {
   try {
     const encoder = new TextEncoder()
@@ -17,6 +29,14 @@ export async function hashPassword(password: string): Promise<string> {
   }
 }
 
+/**
+ * Verifies a password against a stored hash
+ *
+ * @param {string} password - Plain text password to verify
+ * @param {string} hash - Stored hash to compare against
+ * @returns {Promise<boolean>} True if password matches the hash, false otherwise
+ * @throws {Error} If verification fails
+ */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   try {
     const calculatedHash = await hashPassword(password)
@@ -29,6 +49,14 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 }
 
+/**
+ * Generates a Caddy-compatible password hash using bcrypt algorithm
+ * Tries to use the caddy command-line tool to generate the hash, falls back to a custom implementation
+ *
+ * @param {string} password - Plain text password to hash
+ * @returns {Promise<string>} Bcrypt hash in Caddy-compatible format
+ * @throws {Error} If hashing fails or password is invalid
+ */
 export async function generateCaddyHash(password: string): Promise<string> {
   if (typeof password !== 'string') {
     authLogger.error(

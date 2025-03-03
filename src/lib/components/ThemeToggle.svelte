@@ -1,10 +1,27 @@
 <script lang="ts">
+  /**
+   * ThemeToggle component for switching between light, dark, and system color schemes.
+   * Persists the user's preference in localStorage and handles system preference changes.
+   */
   import { onMount } from 'svelte'
   import Icon from './Icons.svelte'
 
+  /**
+   * Current theme preference
+   * @type {'light' | 'dark' | 'system'}
+   * @default 'system'
+   */
   let theme: 'light' | 'dark' | 'system' = 'system'
+
+  /**
+   * Whether the component has mounted and initialized
+   * Used to prevent SSR hydration issues
+   */
   let mounted = false
 
+  /**
+   * Initialize the theme from localStorage on component mount
+   */
   onMount(() => {
     const savedTheme = localStorage.getItem('theme') as typeof theme | null
     if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
@@ -15,6 +32,10 @@
     mounted = true
   })
 
+  /**
+   * Updates the document theme based on current preference
+   * Applies dark class to document and saves preference to localStorage
+   */
   function updateTheme() {
     const isDark =
       theme === 'dark' ||
@@ -29,11 +50,20 @@
     }
   }
 
+  /**
+   * Sets a new theme preference and applies it
+   *
+   * @param {('light' | 'dark' | 'system')} newTheme - The theme to set
+   */
   function setTheme(newTheme: typeof theme) {
     theme = newTheme
     updateTheme()
   }
 
+  /**
+   * Set up listener for system color scheme changes
+   * Updates the theme if using system preference
+   */
   onMount(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => {

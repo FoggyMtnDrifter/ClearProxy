@@ -1,13 +1,34 @@
 <script lang="ts">
+  /**
+   * Modal component that displays content in a dialog overlay.
+   * Features include click outside to close, escape key to close, and focus trap.
+   */
   import { onMount } from 'svelte'
   import { fade } from 'svelte/transition'
   import Icon from './Icons.svelte'
   import { clickOutside } from '$lib/actions/clickOutside'
 
+  /**
+   * Title of the modal displayed in the header
+   * @type {string}
+   */
   export let title: string
+
+  /**
+   * Whether the modal is currently open and visible
+   * @type {boolean}
+   */
   export let isOpen: boolean
+
+  /**
+   * Callback function to be called when the modal should close
+   * @type {() => void}
+   */
   export let onClose: () => void
 
+  /**
+   * Set up keyboard event handler for Escape key to close modal
+   */
   onMount(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
@@ -19,6 +40,9 @@
     return () => window.removeEventListener('keydown', handleKeydown)
   })
 
+  /**
+   * Prevent body scrolling when modal is open
+   */
   onMount(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -28,6 +52,9 @@
     }
   })
 
+  /**
+   * Handler for click outside the modal content
+   */
   function handleClickOutside() {
     onClose()
   }

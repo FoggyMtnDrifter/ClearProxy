@@ -1,12 +1,24 @@
 <script lang="ts">
+  /**
+   * Input component for text entry with various configurations.
+   * Supports different input types, validation, and styling options.
+   */
   import Icon from './Icons.svelte'
   import { createEventDispatcher } from 'svelte'
 
+  /**
+   * Event dispatcher for the input component
+   * Dispatches 'input' and 'change' events with the current value
+   */
   const dispatch = createEventDispatcher<{
     input: { value: string }
     change: { value: string }
   }>()
 
+  /**
+   * Valid autocomplete attribute values for the input element
+   * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
+   */
   type AutoComplete =
     | 'off'
     | 'on'

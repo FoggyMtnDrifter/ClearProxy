@@ -1,15 +1,51 @@
 <script lang="ts">
+  /**
+   * Loading spinner component for indicating loading states.
+   * Provides a customizable animated spinner with accessibility support.
+   */
+
+  /**
+   * Size of the spinner
+   * @type {'sm'|'md'|'lg'}
+   * @default 'md'
+   */
   export let size: 'sm' | 'md' | 'lg' = 'md'
+
+  /**
+   * Accessible label for screen readers
+   * @type {string}
+   * @default 'Loading...'
+   */
   export let label = 'Loading...'
+
+  /**
+   * Whether to center the spinner horizontally
+   * @type {boolean}
+   * @default false
+   */
   export let center = false
+
+  /**
+   * Color of the spinner
+   * @type {'blue'|'gray'|'green'|'red'|'yellow'|'pink'|'purple'}
+   * @default 'blue'
+   */
   export let color: 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'purple' = 'blue'
 
+  /**
+   * CSS classes for different spinner sizes
+   * @type {Record<string, string>}
+   */
   const sizeClasses = {
     sm: 'h-4 w-4',
     md: 'h-6 w-6',
     lg: 'h-8 w-8'
   }
 
+  /**
+   * CSS classes for different spinner colors
+   * @type {Record<string, string>}
+   */
   const colorClasses = {
     blue: 'fill-blue-600',
     gray: 'fill-gray-600 dark:fill-gray-300',

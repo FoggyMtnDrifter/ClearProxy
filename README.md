@@ -23,19 +23,33 @@ A modern, web-based management interface for [Caddy](https://caddyserver.com/), 
 - 🔄 Automatic database migrations
 
 ![ClearProxy Dashboard](screenshots/dashboard-dark.png)
-*ClearProxy Dashboard - Dark Mode*
+_ClearProxy Dashboard - Dark Mode_
+
+## Documentation
+
+Comprehensive documentation is available in the [docs](./docs) folder:
+
+- [Getting Started](./docs/getting-started.md) - Installation and initial setup
+- [User Guide](./docs/user-guide.md) - Comprehensive guide to using ClearProxy
+- [Proxy Hosts](./docs/proxy-hosts.md) - Managing proxy hosts and domains
+- [Authentication](./docs/authentication.md) - Setting up authentication for proxied hosts
+- [Advanced Configuration](./docs/advanced-configuration.md) - Custom configurations for advanced features
+- [Troubleshooting](./docs/troubleshooting.md) - Common issues and solutions
+- [FAQ](./docs/faq.md) - Frequently asked questions
 
 ## Quick Start
 
 ### Using Docker (Recommended)
 
 1. Create a new directory and download the docker-compose.yml:
+
 ```bash
 mkdir clearproxy && cd clearproxy
 curl -L https://raw.githubusercontent.com/foggymtndrifter/clearproxy/main/docker-compose.yml -o docker-compose.yml
 ```
 
 2. Create required directories and configuration:
+
 ```bash
 mkdir -p data/caddy/data data/caddy/config/caddy data/certificates
 
@@ -61,6 +75,7 @@ EOF
 ```
 
 3. Create or modify docker-compose.yml:
+
 ```yaml
 version: '3.8'
 
@@ -70,7 +85,7 @@ services:
     container_name: clearproxy-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/data/clearproxy.db
@@ -88,13 +103,13 @@ services:
     restart: unless-stopped
     command: caddy run --config /config/caddy/caddy.json
     environment:
-      - CADDY_ADMIN_LISTEN=0.0.0.0:2019  # Required for admin API access
+      - CADDY_ADMIN_LISTEN=0.0.0.0:2019 # Required for admin API access
     security_opt:
       - no-new-privileges:true
     ports:
-      - "80:80"
-      - "443:443"
-      - "2019:2019"  # Admin API port (can be changed, e.g., "3019:2019")
+      - '80:80'
+      - '443:443'
+      - '2019:2019' # Admin API port (can be changed, e.g., "3019:2019")
     volumes:
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
@@ -109,6 +124,7 @@ networks:
 ```
 
 4. Start the application:
+
 ```bash
 docker compose up -d
 ```
@@ -118,8 +134,6 @@ The application will be available at `http://localhost:3000`.
 ### Local Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions.
-
-## Documentation
 
 ### Configuration
 
@@ -136,6 +150,7 @@ The application uses SQLite for data storage and communicates with Caddy's admin
 The setup includes two containers:
 
 1. **ClearProxy App** (`clearproxy-app`):
+
    - SvelteKit application
    - Business logic and UI
    - SQLite database management
@@ -160,6 +175,7 @@ docker compose up -d
 If you encounter issues:
 
 1. Check the logs:
+
 ```bash
 docker compose logs app
 docker compose logs caddy
@@ -170,13 +186,7 @@ docker compose logs caddy
    - Ensure required directories exist with proper permissions
    - Check Caddy admin API accessibility (port 2019)
 
-For more detailed information about:
-- Logging configuration and management
-- Database migrations and management
-- Development setup and guidelines
-- Contributing to the project
-
-Please refer to our [documentation](docs/) directory.
+For more detailed troubleshooting assistance, please see the [Troubleshooting Guide](./docs/troubleshooting.md).
 
 ## Community
 

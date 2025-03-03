@@ -1,5 +1,14 @@
+/**
+ * Database schema definition for the application.
+ * Defines tables and their relationships using Drizzle ORM.
+ * @module db/schema
+ */
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
+/**
+ * Users table schema.
+ * Stores user information including authentication credentials and admin status.
+ */
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   email: text('email').notNull().unique(),
@@ -10,6 +19,10 @@ export const users = sqliteTable('users', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
 
+/**
+ * Proxy hosts table schema.
+ * Stores configuration for proxied domains, including target information and authentication settings.
+ */
 export const proxyHosts = sqliteTable('proxy_hosts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   domain: text('domain').notNull(),
@@ -30,6 +43,10 @@ export const proxyHosts = sqliteTable('proxy_hosts', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
 
+/**
+ * Audit logs table schema.
+ * Stores records of user actions and system changes for accountability and debugging.
+ */
 export const auditLogs = sqliteTable('audit_logs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   actionType: text('action_type').notNull(),
@@ -40,6 +57,10 @@ export const auditLogs = sqliteTable('audit_logs', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
 
+/**
+ * Access logs table schema.
+ * Stores HTTP request logs for proxied domains, including response status and timing information.
+ */
 export const accessLogs = sqliteTable('access_logs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   proxyHostId: integer('proxy_host_id').notNull(),

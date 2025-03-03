@@ -1,25 +1,58 @@
 <script lang="ts" context="module">
+  /**
+   * Base type for feed items, containing common properties for all activity events
+   */
   export type BaseFeedItem = {
+    /** Unique identifier for the item */
     id: string
+    /** Formatted timestamp for when the action occurred */
     timestamp: string
+    /** Type of action performed */
     type: 'create' | 'update' | 'delete'
+    /** User who performed the action */
     user: {
+      /** User's display name */
       name: string
+      /** User's email address */
       email: string
+      /** Optional URL to user's avatar image */
       avatar?: string
     }
+    /** Type of entity that was modified (e.g., 'proxy', 'user') */
     entityType: string
+    /** Optional additional details about the action */
     details?: string
+    /** Optional object containing data about the deleted item */
     deletedItem?: Record<string, any>
   }
 
+  /**
+   * Feed item type used in the component
+   * Currently identical to BaseFeedItem but can be extended in the future
+   */
   export type FeedItem = BaseFeedItem
 </script>
 
 <script lang="ts">
+  /**
+   * Feed component that displays a timeline of user activities
+   * Shows chronological events with user information and action details
+   */
   import Icon from './Icons.svelte'
+
+  /**
+   * Array of feed items to display in the timeline
+   * @type {FeedItem[]}
+   * @default []
+   */
   export let items: FeedItem[] = []
 
+  /**
+   * Determines the appropriate color for an action type
+   *
+   * @param {FeedItem['type']} type - The action type
+   * @returns {string} CSS class for the color
+   */
   function getActionColor(type: FeedItem['type']) {
     switch (type) {
       case 'create':
@@ -31,6 +64,13 @@
     }
   }
 
+  /**
+   * Generates a human-readable description of the action
+   *
+   * @param {FeedItem['type']} type - The action type
+   * @param {string} entityType - The type of entity modified
+   * @returns {string} Description of the action
+   */
   function getActionText(type: FeedItem['type'], entityType: string) {
     switch (type) {
       case 'create':
@@ -42,6 +82,13 @@
     }
   }
 
+  /**
+   * Formats a value for display in the UI
+   * Handles different data types appropriately
+   *
+   * @param {any} value - The value to format
+   * @returns {string} Formatted string representation
+   */
   function formatValue(value: any): string {
     if (value === null) return 'null'
     if (value === undefined) return 'undefined'

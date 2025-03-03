@@ -1,6 +1,21 @@
 <script lang="ts">
+  /**
+   * Error alert component for displaying error messages.
+   * Renders a visually distinct error notification with optional details.
+   */
   import Icon from './Icons.svelte'
+
+  /**
+   * The main error message to display
+   * @type {string}
+   */
   export let error: string
+
+  /**
+   * Optional additional details about the error
+   * @type {string|undefined}
+   * @default undefined
+   */
   export let details: string | undefined = undefined
 </script>
 

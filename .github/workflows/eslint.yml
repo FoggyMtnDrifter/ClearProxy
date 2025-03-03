@@ -30,7 +30,8 @@ jobs:
       - name: Run ESLint
         id: eslint
         continue-on-error: true
-        run: npm run lint -- --format json > eslint-report.json
+        # Increase Node.js memory limit to prevent out of memory errors
+        run: NODE_OPTIONS="--max-old-space-size=8192" npm run lint -- --format json > eslint-report.json
 
       - name: Annotate Code Linting Results
         if: always() && steps.eslint.outcome != 'success'

@@ -15,28 +15,28 @@
   - Main content area with slot
 -->
 <script lang="ts">
-  import '../app.css';
-  import { page } from '$app/stores';
-  import { isMobileMenuOpen } from '$lib/stores/navigation';
-  import Icon from '$lib/components/Icons.svelte';
-  import Button from '$lib/components/Button.svelte';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import Logo from '$lib/components/Logo.svelte';
-  
-  $: isAuthPage = $page.url.pathname.startsWith('/auth/');
-  $: currentPath = $page.url.pathname;
+  import '../app.css'
+  import { page } from '$app/stores'
+  import { isMobileMenuOpen } from '$lib/stores/navigation'
+  import Icon from '$lib/components/Icons.svelte'
+  import Button from '$lib/components/Button.svelte'
+  import ThemeToggle from '$lib/components/ThemeToggle.svelte'
+  import Logo from '$lib/components/Logo.svelte'
+
+  $: isAuthPage = $page.url.pathname.startsWith('/auth/')
+  $: currentPath = $page.url.pathname
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Proxy Hosts', href: '/proxy-hosts' },
     { name: 'Audit Logs', href: '/audit-logs' }
-  ];
+  ]
 
   // Get the current page title based on the path
-  $: currentPageTitle = navigation.find(item => item.href === currentPath)?.name ?? 'Dashboard';
+  $: currentPageTitle = navigation.find((item) => item.href === currentPath)?.name ?? 'Dashboard'
 
   function toggleMobileMenu() {
-    $isMobileMenuOpen = !$isMobileMenuOpen;
+    $isMobileMenuOpen = !$isMobileMenuOpen
   }
 </script>
 
@@ -56,7 +56,9 @@
                 {#each navigation as item}
                   <a
                     href={item.href}
-                    class="rounded-md px-3 py-2 text-sm font-medium {currentPath === item.href ? 'bg-brand-600/15 text-brand-500 dark:bg-brand-500/20 dark:text-brand-300' : 'text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800'}"
+                    class="rounded-md px-3 py-2 text-sm font-medium {currentPath === item.href
+                      ? 'bg-brand-600/15 text-brand-500 dark:bg-brand-500/20 dark:text-brand-300'
+                      : 'text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800'}"
                     aria-current={currentPath === item.href ? 'page' : undefined}
                   >
                     {item.name}
@@ -92,9 +94,17 @@
               <span class="absolute -inset-0.5"></span>
               <span class="sr-only">Open main menu</span>
               <!-- Menu open: "hidden", Menu closed: "block" -->
-              <Icon type="menu" className="block size-6 {$isMobileMenuOpen ? 'hidden' : ''}" stroke={true} />
+              <Icon
+                type="menu"
+                className="block size-6 {$isMobileMenuOpen ? 'hidden' : ''}"
+                stroke={true}
+              />
               <!-- Menu open: "block", Menu closed: "hidden" -->
-              <Icon type="close" className="size-6 {$isMobileMenuOpen ? '' : 'hidden'}" stroke={true} />
+              <Icon
+                type="close"
+                className="size-6 {$isMobileMenuOpen ? '' : 'hidden'}"
+                stroke={true}
+              />
             </button>
           </div>
         </div>
@@ -106,7 +116,9 @@
           {#each navigation as item}
             <a
               href={item.href}
-              class="block rounded-md px-3 py-2 text-base font-medium {currentPath === item.href ? 'bg-brand-600/15 text-brand-500 dark:bg-brand-500/20 dark:text-brand-300' : 'text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800'}"
+              class="block rounded-md px-3 py-2 text-base font-medium {currentPath === item.href
+                ? 'bg-brand-600/15 text-brand-500 dark:bg-brand-500/20 dark:text-brand-300'
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800'}"
               aria-current={currentPath === item.href ? 'page' : undefined}
             >
               {item.name}
@@ -149,4 +161,4 @@
   </div>
 {:else}
   <slot />
-{/if} 
+{/if}

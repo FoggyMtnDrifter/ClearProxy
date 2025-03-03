@@ -3,49 +3,51 @@
   Dashboard page displaying system status and recent activity.
 -->
 <script lang="ts">
-  import Stats from '$lib/components/Stats.svelte';
-  import Feed from '$lib/components/Feed.svelte';
-  import type { FeedItem } from '$lib/components/Feed.svelte';
-  import md5 from 'md5';
-  
-  export let data;
+  import Stats from '$lib/components/Stats.svelte'
+  import Feed from '$lib/components/Feed.svelte'
+  import type { FeedItem } from '$lib/components/Feed.svelte'
+  import md5 from 'md5'
+
+  export let data
 
   const stats = [
     { label: 'Total Hosts', value: data.stats.totalHosts },
     { label: 'Active Hosts', value: data.stats.activeHosts }
-  ];
+  ]
 
   function getGravatarUrl(email: string) {
-    const hash = md5(email.toLowerCase().trim());
-    return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`;
+    const hash = md5(email.toLowerCase().trim())
+    return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`
   }
 
   // Transform activity logs into feed items
-  $: feedItems = data.recentLogs.map((log): FeedItem => ({
-    id: log.id.toString(),
-    timestamp: formatTimestamp(log.createdAt),
-    type: log.actionType.toLowerCase() as FeedItem['type'],
-    user: {
-      name: log.user.name,
-      email: log.user.email,
-      avatar: getGravatarUrl(log.user.email)
-    },
-    entityType: log.entityType
-  }));
+  $: feedItems = data.recentLogs.map(
+    (log): FeedItem => ({
+      id: log.id.toString(),
+      timestamp: formatTimestamp(log.createdAt),
+      type: log.actionType.toLowerCase() as FeedItem['type'],
+      user: {
+        name: log.user.name,
+        email: log.user.email,
+        avatar: getGravatarUrl(log.user.email)
+      },
+      entityType: log.entityType
+    })
+  )
 
   function formatTimestamp(date: string | Date | null) {
-    if (!date) return '';
-    const d = new Date(date);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor(diff / (1000 * 60));
+    if (!date) return ''
+    const d = new Date(date)
+    const now = new Date()
+    const diff = now.getTime() - d.getTime()
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const minutes = Math.floor(diff / (1000 * 60))
 
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return 'just now';
+    if (days > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (minutes > 0) return `${minutes}m ago`
+    return 'just now'
   }
 </script>
 
@@ -57,14 +59,20 @@
     </div>
 
     <!-- Activity Feed -->
-    <div class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg">
+    <div
+      class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
+    >
       <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">Recent Activity</h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Latest system events and configuration changes.</p>
+        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">
+          Recent Activity
+        </h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+          Latest system events and configuration changes.
+        </p>
       </div>
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
         <Feed items={feedItems} />
       </div>
     </div>
   </div>
-</div> 
+</div>

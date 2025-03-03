@@ -73,23 +73,22 @@
   ```
 -->
 <script lang="ts">
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type Component = any;
+  type Component = any
 
   export let columns: {
-    header: string;
-    key: string;
-    class?: string;
-    render?: (item: any) => string;
-  }[];
-  
-  export let data: any[];
+    header: string
+    key: string
+    class?: string
+    render?: (item: any) => string
+  }[]
+
+  export let data: any[]
   export let rowActions: {
-    srLabel: (item: any) => string;
-    onClick: (item: any) => void;
-    component: Component;
-    props: Record<string, any>;
-  }[] = [];
+    srLabel: (item: any) => string
+    onClick: (item: any) => void
+    component: Component
+    props: Record<string, any>
+  }[] = []
 </script>
 
 <div class="flow-root">
@@ -97,7 +96,10 @@
     <thead>
       <tr>
         {#each columns as column}
-          <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0">
+          <th
+            scope="col"
+            class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          >
             {column.header}
           </th>
         {/each}
@@ -112,7 +114,9 @@
       {#each data as item}
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
           {#each columns as column}
-            <td class={`whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 dark:text-gray-100 sm:pl-0 ${column.class || ''}`}>
+            <td
+              class={`whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 dark:text-gray-100 sm:pl-0 ${column.class || ''}`}
+            >
               {#if column.render}
                 {@html column.render(item)}
               {:else}
@@ -121,7 +125,9 @@
             </td>
           {/each}
           {#if rowActions.length > 0}
-            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+            <td
+              class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0"
+            >
               <div class="flex justify-end gap-2">
                 {#each rowActions as action}
                   <svelte:component
@@ -131,7 +137,10 @@
                     aria-label={action.srLabel(item)}
                   >
                     {#if action.props.children}
-                      <svelte:component this={action.props.children} {...action.props.childrenProps} />
+                      <svelte:component
+                        this={action.props.children}
+                        {...action.props.childrenProps}
+                      />
                     {/if}
                   </svelte:component>
                 {/each}
@@ -142,4 +151,4 @@
       {/each}
     </tbody>
   </table>
-</div> 
+</div>

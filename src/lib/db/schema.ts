@@ -1,16 +1,16 @@
 /**
  * Database Schema Definition
- * 
+ *
  * This module defines the database schema using Drizzle ORM, providing a type-safe
  * interface for database operations. The schema is designed for a SQLite database
  * and includes comprehensive auditing and monitoring capabilities.
- * 
+ *
  * Tables:
  * - Users: Authentication and access control
  * - Proxy Hosts: Reverse proxy configurations
  * - Audit Logs: System activity tracking
  * - Access Logs: Request monitoring
- * 
+ *
  * Features:
  * - Type-safe schema definitions
  * - Automatic timestamps
@@ -18,21 +18,21 @@
  * - Boolean flag support
  * - JSON storage for complex data
  * - Comprehensive indexing
- * 
+ *
  * @module database/schema
  */
 
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 /**
  * Users table - Stores user authentication and profile information
- * 
+ *
  * Features:
  * - Secure password hashing
  * - Role-based access control
  * - Automatic timestamp management
  * - Unique email constraint
- * 
+ *
  * @property {number} id - Auto-incrementing primary key
  * @property {string} email - Unique user email address
  * @property {string} passwordHash - Securely hashed password
@@ -49,18 +49,18 @@ export const users = sqliteTable('users', {
   isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
-});
+})
 
 /**
  * Proxy Hosts table - Stores reverse proxy configurations
- * 
+ *
  * Features:
  * - Comprehensive SSL/TLS configuration
  * - HTTP/2 and HTTP/3 support
  * - Basic authentication integration
  * - Advanced custom configuration support
  * - Automatic timestamp management
- * 
+ *
  * @property {number} id - Auto-incrementing primary key
  * @property {string} domain - The domain to proxy (e.g., example.com)
  * @property {string} targetHost - Destination host to proxy to
@@ -96,19 +96,19 @@ export const proxyHosts = sqliteTable('proxy_hosts', {
   basicAuthUsername: text('basic_auth_username'),
   basicAuthPassword: text('basic_auth_password'),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-});
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
 
 /**
  * Audit Logs table - Tracks system activity and changes
- * 
+ *
  * Features:
  * - Comprehensive action tracking
  * - Entity-based organization
  * - Change history storage
  * - User attribution
  * - Automatic timestamps
- * 
+ *
  * @property {number} id - Auto-incrementing primary key
  * @property {string} actionType - Type of action (create/update/delete/toggle)
  * @property {string} entityType - Type of entity modified
@@ -124,18 +124,18 @@ export const auditLogs = sqliteTable('audit_logs', {
   entityId: integer('entity_id'),
   changes: text('changes').notNull(), // JSON string of changes
   userId: integer('user_id'), // Nullable for system actions
-  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-});
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
 
 /**
  * Access Logs table - Records HTTP request details
- * 
+ *
  * Features:
  * - Request metadata capture
  * - Performance monitoring
  * - Client information tracking
  * - Proxy host attribution
- * 
+ *
  * @property {number} id - Auto-incrementing primary key
  * @property {number} proxyHostId - ID of the proxy host that handled the request
  * @property {Date} timestamp - When the request occurred
@@ -155,5 +155,5 @@ export const accessLogs = sqliteTable('access_logs', {
   path: text('path').notNull(),
   statusCode: integer('status_code').notNull(),
   userAgent: text('user_agent'),
-  responseTime: integer('response_time'), // in milliseconds
-}); 
+  responseTime: integer('response_time') // in milliseconds
+})

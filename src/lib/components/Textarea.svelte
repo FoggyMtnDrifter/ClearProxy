@@ -60,23 +60,20 @@
   ```
 -->
 <script lang="ts">
-  export let label: string;
-  export let name: string;
-  export let value = '';
-  export let placeholder = '';
-  export let rows = 4;
-  export let required = false;
-  export let disabled = false;
-  export let id = name;
-  export let description: string | undefined = undefined;
-  export let error: string | undefined = undefined;
+  export let label: string
+  export let name: string
+  export let value = ''
+  export let placeholder = ''
+  export let rows = 4
+  export let required = false
+  export let disabled = false
+  export let id = name
+  export let description: string | undefined = undefined
+  export let error: string | undefined = undefined
 </script>
 
 <div>
-  <label
-    for={id}
-    class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-100"
-  >
+  <label for={id} class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-100">
     {label}
   </label>
   <div class="mt-2">
@@ -88,10 +85,10 @@
       {placeholder}
       {required}
       {disabled}
-      class="block w-full rounded-md bg-white px-3 py-2 text-gray-900 
-        outline outline-1 -outline-offset-1 outline-gray-300 
-        focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-brand-600 
-        disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200 
+      class="block w-full rounded-md bg-white px-3 py-2 text-gray-900
+        outline outline-1 -outline-offset-1 outline-gray-300
+        focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-brand-600
+        disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200
         dark:bg-gray-800 dark:text-gray-100 dark:outline-gray-600 dark:placeholder:text-gray-500
         dark:focus:outline-brand-500 dark:disabled:bg-gray-900 dark:disabled:text-gray-600 dark:disabled:outline-gray-700
         sm:text-sm/6"
@@ -106,4 +103,4 @@
   {:else if description}
     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400" id="{id}-description">{description}</p>
   {/if}
-</div> 
+</div>

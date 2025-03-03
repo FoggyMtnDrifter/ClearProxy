@@ -4,46 +4,47 @@
   Displays a list of configured proxy hosts and allows adding, editing, and deleting them.
 -->
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { invalidate } from '$app/navigation';
-  import { onMount, onDestroy } from 'svelte';
-  import type { ProxyHostFormData } from './types';
-  import type { SubmitFunction } from '@sveltejs/kit';
-  import type { ComponentType, SvelteComponent } from 'svelte';
-  import Modal from '$lib/components/Modal.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-  import ErrorAlert from '$lib/components/ErrorAlert.svelte';
-  import Input from '$lib/components/Input.svelte';
-  import Table from '$lib/components/Table.svelte';
-  import Icon from '$lib/components/Icons.svelte';
-  import Select from '$lib/components/Select.svelte';
-  import Toggle from '$lib/components/Toggle.svelte';
-  import Textarea from '$lib/components/Textarea.svelte';
-  import Button from '$lib/components/Button.svelte';
-  
-  export let data;
-  let form: ProxyHostFormData | null = null;
-  let statusCheckInterval: ReturnType<typeof setInterval>;
-  let searchQuery = '';
-  let searchTimeout: ReturnType<typeof setTimeout>;
-  let filteredHosts = data.hosts;
+  import { enhance } from '$app/forms'
+  import { invalidate } from '$app/navigation'
+  import { onMount, onDestroy } from 'svelte'
+  import type { ProxyHostFormData } from './types'
+  import type { SubmitFunction } from '@sveltejs/kit'
+  import type { ComponentType, SvelteComponent } from 'svelte'
+  import Modal from '$lib/components/Modal.svelte'
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte'
+  import ErrorAlert from '$lib/components/ErrorAlert.svelte'
+  import Input from '$lib/components/Input.svelte'
+  import Table from '$lib/components/Table.svelte'
+  import Icon from '$lib/components/Icons.svelte'
+  import Select from '$lib/components/Select.svelte'
+  import Toggle from '$lib/components/Toggle.svelte'
+  import Textarea from '$lib/components/Textarea.svelte'
+  import Button from '$lib/components/Button.svelte'
+
+  export let data
+  let form: ProxyHostFormData | null = null
+  let statusCheckInterval: ReturnType<typeof setInterval>
+  let searchQuery = ''
+  let searchTimeout: ReturnType<typeof setTimeout>
+  let filteredHosts = data.hosts
 
   // Filter hosts when search query changes
   $: {
-    clearTimeout(searchTimeout);
+    clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
       if (!searchQuery) {
-        filteredHosts = data.hosts;
+        filteredHosts = data.hosts
       } else {
-        const query = searchQuery.toLowerCase();
-        filteredHosts = data.hosts.filter(host => 
-          host.domain.toLowerCase().includes(query) ||
-          host.targetHost.toLowerCase().includes(query) ||
-          host.targetPort.toString().includes(query) ||
-          host.targetProtocol.toLowerCase().includes(query)
-        );
+        const query = searchQuery.toLowerCase()
+        filteredHosts = data.hosts.filter(
+          (host) =>
+            host.domain.toLowerCase().includes(query) ||
+            host.targetHost.toLowerCase().includes(query) ||
+            host.targetPort.toString().includes(query) ||
+            host.targetProtocol.toLowerCase().includes(query)
+        )
       }
-    }, 300); // 300ms debounce delay
+    }, 300) // 300ms debounce delay
   }
 
   // Table configuration
@@ -52,88 +53,90 @@
     { header: 'Target Host', key: 'targetHost' },
     { header: 'Target Port', key: 'targetPort' },
     { header: 'Protocol', key: 'targetProtocol' },
-    { 
-      header: 'Status', 
+    {
+      header: 'Status',
       key: 'status',
       class: 'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
-      render: (host: typeof data.hosts[number]) => `
+      render: (host: (typeof data.hosts)[number]) => `
         <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
           Active
         </span>
       `
     }
-  ];
+  ]
 
   const rowActions = [
     {
-      srLabel: (host: typeof data.hosts[number]) => `Edit ${host.domain}`,
-      onClick: (host: typeof data.hosts[number]) => startEdit(host),
+      srLabel: (host: (typeof data.hosts)[number]) => `Edit ${host.domain}`,
+      onClick: (host: (typeof data.hosts)[number]) => startEdit(host),
       component: Icon,
       props: {
         type: 'edit',
-        className: 'size-5 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 cursor-pointer transition-colors duration-200',
-        tabindex: "0",
-        role: "button",
+        className:
+          'size-5 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 cursor-pointer transition-colors duration-200',
+        tabindex: '0',
+        role: 'button',
         onkeydown: (e: KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
+            e.preventDefault()
             if (e.currentTarget) {
-              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }))
             }
           }
         }
       }
     },
     {
-      srLabel: (host: typeof data.hosts[number]) => `Delete ${host.domain}`,
-      onClick: async (host: typeof data.hosts[number]) => {
+      srLabel: (host: (typeof data.hosts)[number]) => `Delete ${host.domain}`,
+      onClick: async (host: (typeof data.hosts)[number]) => {
         if (confirm(`Are you sure you want to delete ${host.domain}?`)) {
-          const form = new FormData();
-          form.set('id', host.id.toString());
-          
+          const form = new FormData()
+          form.set('id', host.id.toString())
+
           const response = await fetch('?/delete', {
             method: 'POST',
             body: form
-          });
-          
+          })
+
           if (response.ok) {
-            invalidate('app:proxy-hosts');
+            invalidate('app:proxy-hosts')
           }
         }
       },
       component: Icon,
       props: {
         type: 'delete',
-        className: 'size-5 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer ml-3 transition-colors duration-200',
-        tabindex: "0",
-        role: "button",
+        className:
+          'size-5 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer ml-3 transition-colors duration-200',
+        tabindex: '0',
+        role: 'button',
         onkeydown: (e: KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
+            e.preventDefault()
             if (e.currentTarget) {
-              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }))
             }
           }
         }
       }
     }
-  ];
+  ]
 
   // Add function to handle target host input changes
   function handleTargetHostInput(event: Event, targetPortId: string) {
-    const input = event.target as HTMLInputElement;
-    const value = input.value;
-    
+    const input = event.target as HTMLInputElement
+    const value = input.value
+
     // Check for port in the host (e.g., localhost:3000)
-    const match = value.match(/:(\d+)$/);
+    const match = value.match(/:(\d+)$/)
     if (match) {
       // Remove the port from the host
-      input.value = value.replace(/:(\d+)$/, '');
-      
+      input.value = value.replace(/:(\d+)$/, '')
+
       // Set the port value
-      const portInput = document.getElementById(targetPortId) as HTMLInputElement;
+      const portInput = document.getElementById(targetPortId) as HTMLInputElement
       if (portInput && !portInput.value) {
-        portInput.value = match[1];
+        portInput.value = match[1]
       }
     }
   }
@@ -141,229 +144,235 @@
   // Set up periodic status check
   onMount(() => {
     // Initial check
-    invalidate('app:caddy-status');
-    
+    invalidate('app:caddy-status')
+
     // Set up interval for subsequent checks
     statusCheckInterval = setInterval(() => {
-      invalidate('app:caddy-status');
-    }, 5000);
-  });
+      invalidate('app:caddy-status')
+    }, 5000)
+  })
 
   // Clean up interval when component is destroyed
   onDestroy(() => {
     if (statusCheckInterval) {
-      clearInterval(statusCheckInterval);
+      clearInterval(statusCheckInterval)
     }
     if (searchTimeout) {
-      clearTimeout(searchTimeout);
+      clearTimeout(searchTimeout)
     }
-  });
+  })
 
-  let showCreateModal = false;
-  let showEditModal = false;
-  let editingHost: typeof data.hosts[number] | null = null;
-  let sslEnabled = true;
-  let forceSSL = true;
-  let http2Support = true;
-  let http3Support = true;
-  let showAdvanced = false;
-  let advancedConfig = '';
-  let basicAuthEnabled = false;
-  let basicAuthUsername = '';
-  let basicAuthPassword = '';
-  let targetProtocol = 'http';
-  let isSubmitting = false;
-  let error: { message: string; details?: string } | null = null;
-  let ignoreInvalidCert = false;
-  let editDomain = '';
-  let editTargetHost = '';
-  let editTargetPort = '';
+  let showCreateModal = false
+  let showEditModal = false
+  let editingHost: (typeof data.hosts)[number] | null = null
+  let sslEnabled = true
+  let forceSSL = true
+  let http2Support = true
+  let http3Support = true
+  let showAdvanced = false
+  let advancedConfig = ''
+  let basicAuthEnabled = false
+  let basicAuthUsername = ''
+  let basicAuthPassword = ''
+  let targetProtocol = 'http'
+  let isSubmitting = false
+  let error: { message: string; details?: string } | null = null
+  let ignoreInvalidCert = false
+  let editDomain = ''
+  let editTargetHost = ''
+  let editTargetPort = ''
 
   // Watch sslEnabled and update dependent settings
   $: if (!sslEnabled) {
-    forceSSL = false;
-    http2Support = false;
-    http3Support = false;
+    forceSSL = false
+    http2Support = false
+    http3Support = false
   }
 
   function handleBasicAuthToggle(event: CustomEvent<boolean>) {
-    basicAuthEnabled = event.detail;
-    
+    basicAuthEnabled = event.detail
+
     if (!basicAuthEnabled) {
       // When disabling, clear the username and password
-      basicAuthUsername = '';
-      basicAuthPassword = '';
+      basicAuthUsername = ''
+      basicAuthPassword = ''
     }
   }
 
   const handleSubmit: SubmitFunction = ({ formData }) => {
     // Set the form values
-    formData.set('sslEnabled', sslEnabled.toString());
-    formData.set('forceSSL', forceSSL.toString());
-    formData.set('http2Support', http2Support.toString());
-    formData.set('http3Support', http3Support.toString());
-    formData.set('advancedConfig', showAdvanced ? advancedConfig : '');
-    formData.set('basicAuthEnabled', basicAuthEnabled.toString());
-    
+    formData.set('sslEnabled', sslEnabled.toString())
+    formData.set('forceSSL', forceSSL.toString())
+    formData.set('http2Support', http2Support.toString())
+    formData.set('http3Support', http3Support.toString())
+    formData.set('advancedConfig', showAdvanced ? advancedConfig : '')
+    formData.set('basicAuthEnabled', basicAuthEnabled.toString())
+
     // Set username and password values from binding
-    formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '');
-    
+    formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '')
+
     // Only set the password if it's not empty
     if (basicAuthPassword && basicAuthPassword.trim() !== '') {
-      formData.set('basicAuthPassword', basicAuthPassword);
+      formData.set('basicAuthPassword', basicAuthPassword)
     }
-    
-    formData.set('targetProtocol', targetProtocol);
-    formData.set('ignoreInvalidCert', ignoreInvalidCert.toString());
 
-    isSubmitting = true;
-    error = null;
+    formData.set('targetProtocol', targetProtocol)
+    formData.set('ignoreInvalidCert', ignoreInvalidCert.toString())
+
+    isSubmitting = true
+    error = null
 
     return async ({ result, update }) => {
-      isSubmitting = false;
+      isSubmitting = false
       if (result.type === 'success') {
-        showCreateModal = false;
-        resetForm();
-        await update();
+        showCreateModal = false
+        resetForm()
+        await update()
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to create proxy host',
           details: result.data?.details
-        };
+        }
       }
-    };
-  };
+    }
+  }
 
   const handleEditSubmit: SubmitFunction = ({ formData }) => {
-    if (!editingHost) return;
-    
+    if (!editingHost) return
+
     // Set the form values
-    formData.set('id', editingHost.id.toString());
-    formData.set('domain', editDomain);
-    formData.set('targetHost', editTargetHost);
-    formData.set('targetPort', editTargetPort);
-    formData.set('sslEnabled', sslEnabled.toString());
-    formData.set('forceSSL', forceSSL.toString());
-    formData.set('http2Support', http2Support.toString());
-    formData.set('http3Support', http3Support.toString());
-    formData.set('advancedConfig', showAdvanced ? advancedConfig : '');
-    formData.set('basicAuthEnabled', basicAuthEnabled.toString());
-    formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '');
-    
+    formData.set('id', editingHost.id.toString())
+    formData.set('domain', editDomain)
+    formData.set('targetHost', editTargetHost)
+    formData.set('targetPort', editTargetPort)
+    formData.set('sslEnabled', sslEnabled.toString())
+    formData.set('forceSSL', forceSSL.toString())
+    formData.set('http2Support', http2Support.toString())
+    formData.set('http3Support', http3Support.toString())
+    formData.set('advancedConfig', showAdvanced ? advancedConfig : '')
+    formData.set('basicAuthEnabled', basicAuthEnabled.toString())
+    formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '')
+
     // Only set the password if it's not empty
     // Otherwise, delete the field to indicate keeping the existing password
     if (basicAuthPassword && basicAuthPassword.trim() !== '') {
-      formData.set('basicAuthPassword', basicAuthPassword);
+      formData.set('basicAuthPassword', basicAuthPassword)
     } else {
-      formData.delete('basicAuthPassword');
+      formData.delete('basicAuthPassword')
     }
-    
-    formData.set('targetProtocol', targetProtocol);
-    formData.set('ignoreInvalidCert', ignoreInvalidCert.toString());
 
-    isSubmitting = true;
-    error = null;
+    formData.set('targetProtocol', targetProtocol)
+    formData.set('ignoreInvalidCert', ignoreInvalidCert.toString())
+
+    isSubmitting = true
+    error = null
 
     return async ({ result, update }) => {
-      isSubmitting = false;
+      isSubmitting = false
       if (result.type === 'success') {
-        showEditModal = false;
-        editingHost = null;
-        await update();
+        showEditModal = false
+        editingHost = null
+        await update()
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to update proxy host',
           details: result.data?.details
-        };
+        }
       }
-    };
-  };
+    }
+  }
 
   const handleToggle: SubmitFunction = () => {
-    isSubmitting = true;
-    error = null;
+    isSubmitting = true
+    error = null
 
     return async ({ result, update }) => {
-      isSubmitting = false;
+      isSubmitting = false
       if (result.type === 'success') {
-        await update();
+        await update()
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to toggle proxy host status',
           details: result.data?.details
-        };
+        }
       }
-    };
-  };
+    }
+  }
 
   const handleDelete: SubmitFunction = () => {
-    isSubmitting = true;
-    error = null;
+    isSubmitting = true
+    error = null
 
     return async ({ result, update }) => {
-      isSubmitting = false;
+      isSubmitting = false
       if (result.type === 'success') {
-        await update();
+        await update()
       } else if (result.type === 'failure') {
         error = {
           message: result.data?.error || 'Failed to delete proxy host',
           details: result.data?.details
-        };
+        }
       }
-    };
-  };
+    }
+  }
 
-  function startEdit(host: typeof data.hosts[number]) {
+  function startEdit(host: (typeof data.hosts)[number]) {
     // Store the host reference
-    editingHost = host;
-    
+    editingHost = host
+
     // Set all fields directly
-    basicAuthEnabled = Boolean(host.basicAuthEnabled);
-    basicAuthUsername = host.basicAuthUsername || '';
-    basicAuthPassword = ''; // Leave password empty as it's already hashed
-    sslEnabled = host.sslEnabled;
-    forceSSL = host.forceSSL;
-    http2Support = host.http2Support;
-    http3Support = host.http3Support;
-    advancedConfig = host.advancedConfig || '';
-    showAdvanced = !!host.advancedConfig;
-    targetProtocol = host.targetProtocol;
-    ignoreInvalidCert = host.ignoreInvalidCert;
-    
+    basicAuthEnabled = Boolean(host.basicAuthEnabled)
+    basicAuthUsername = host.basicAuthUsername || ''
+    basicAuthPassword = '' // Leave password empty as it's already hashed
+    sslEnabled = host.sslEnabled
+    forceSSL = host.forceSSL
+    http2Support = host.http2Support
+    http3Support = host.http3Support
+    advancedConfig = host.advancedConfig || ''
+    showAdvanced = !!host.advancedConfig
+    targetProtocol = host.targetProtocol
+    ignoreInvalidCert = host.ignoreInvalidCert
+
     // Set local variables for form fields
-    editDomain = host.domain;
-    editTargetHost = host.targetHost;
-    editTargetPort = host.targetPort.toString();
-    
-    showEditModal = true;
-    error = null;
+    editDomain = host.domain
+    editTargetHost = host.targetHost
+    editTargetPort = host.targetPort.toString()
+
+    showEditModal = true
+    error = null
   }
 
   function resetForm() {
-    sslEnabled = true;
-    forceSSL = true;
-    http2Support = true;
-    http3Support = true;
-    showAdvanced = false;
-    advancedConfig = '';
-    basicAuthEnabled = false;
-    basicAuthUsername = '';
-    basicAuthPassword = '';
-    targetProtocol = 'http';
-    ignoreInvalidCert = false;
-    error = null;
+    sslEnabled = true
+    forceSSL = true
+    http2Support = true
+    http3Support = true
+    showAdvanced = false
+    advancedConfig = ''
+    basicAuthEnabled = false
+    basicAuthUsername = ''
+    basicAuthPassword = ''
+    targetProtocol = 'http'
+    ignoreInvalidCert = false
+    error = null
   }
 </script>
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
     <!-- Table -->
-    <div class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg">
+    <div
+      class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
+    >
       <div class="px-4 py-5 sm:px-6">
         <div class="flex justify-between items-center">
           <div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Proxy Hosts</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Configure and manage your proxy host settings.</p>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+              Proxy Hosts
+            </h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+              Configure and manage your proxy host settings.
+            </p>
           </div>
           <div class="flex gap-4">
             <div>
@@ -379,8 +388,8 @@
               size="xl"
               class_name="py-2 px-4"
               on:click={() => {
-                showCreateModal = true;
-                resetForm();
+                showCreateModal = true
+                resetForm()
               }}
             >
               Add Host
@@ -389,7 +398,7 @@
         </div>
       </div>
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
-        <Table columns={columns} data={filteredHosts} rowActions={rowActions} />
+        <Table {columns} data={filteredHosts} {rowActions} />
       </div>
     </div>
 
@@ -399,19 +408,16 @@
         title="Add Proxy Host"
         isOpen={showCreateModal}
         onClose={() => {
-          showCreateModal = false;
-          resetForm();
+          showCreateModal = false
+          resetForm()
         }}
       >
-        <form
-          method="POST"
-          action="?/create"
-          use:enhance={handleSubmit}
-          class="space-y-6"
-        >
+        <form method="POST" action="?/create" use:enhance={handleSubmit} class="space-y-6">
           <!-- Basic Configuration -->
           <div class="space-y-4">
-            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">Basic Configuration</h4>
+            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
+              Basic Configuration
+            </h4>
             <Input
               label="Domain Name"
               name="domain"
@@ -419,7 +425,7 @@
               required
               placeholder="example.com"
             />
-            
+
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
               <div class="sm:col-span-3">
                 <Select
@@ -468,11 +474,7 @@
 
           <!-- SSL Configuration -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
-            <Toggle
-              bind:checked={sslEnabled}
-              label="SSL Configuration"
-              name="sslEnabled"
-            />
+            <Toggle bind:checked={sslEnabled} label="SSL Configuration" name="sslEnabled" />
 
             {#if sslEnabled}
               <div class="mt-4 space-y-4">
@@ -561,8 +563,8 @@
               variant="secondary"
               size="xl"
               on:click={() => {
-                showCreateModal = false;
-                resetForm();
+                showCreateModal = false
+                resetForm()
               }}
             >
               Cancel
@@ -588,27 +590,18 @@
         title="Edit Proxy Host"
         isOpen={showEditModal}
         onClose={() => {
-          showEditModal = false;
-          editingHost = null;
+          showEditModal = false
+          editingHost = null
         }}
       >
-        <form
-          method="POST"
-          action="?/edit"
-          use:enhance={handleEditSubmit}
-          class="space-y-6"
-        >
+        <form method="POST" action="?/edit" use:enhance={handleEditSubmit} class="space-y-6">
           <!-- Basic Configuration -->
           <div class="space-y-4">
-            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">Basic Configuration</h4>
-            <Input
-              label="Domain Name"
-              name="domain"
-              type="text"
-              required
-              bind:value={editDomain}
-            />
-            
+            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
+              Basic Configuration
+            </h4>
+            <Input label="Domain Name" name="domain" type="text" required bind:value={editDomain} />
+
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
               <div class="sm:col-span-3">
                 <Select
@@ -657,11 +650,7 @@
 
           <!-- SSL Configuration -->
           <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
-            <Toggle
-              bind:checked={sslEnabled}
-              label="SSL Configuration"
-              name="sslEnabled"
-            />
+            <Toggle bind:checked={sslEnabled} label="SSL Configuration" name="sslEnabled" />
 
             {#if sslEnabled}
               <div class="mt-4 space-y-4">
@@ -750,8 +739,8 @@
               variant="secondary"
               size="xl"
               on:click={() => {
-                showEditModal = false;
-                editingHost = null;
+                showEditModal = false
+                editingHost = null
               }}
             >
               Cancel

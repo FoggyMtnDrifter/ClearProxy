@@ -55,16 +55,16 @@
   ```
 -->
 <script lang="ts">
-  export let size: 'sm' | 'md' | 'lg' = 'md';
-  export let label = 'Loading...';
-  export let center = false;
-  export let color: 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'purple' = 'blue';
+  export let size: 'sm' | 'md' | 'lg' = 'md'
+  export let label = 'Loading...'
+  export let center = false
+  export let color: 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'purple' = 'blue'
 
   const sizeClasses = {
     sm: 'h-4 w-4',
     md: 'h-6 w-6',
     lg: 'h-8 w-8'
-  };
+  }
 
   const colorClasses = {
     blue: 'fill-blue-600',
@@ -74,10 +74,13 @@
     yellow: 'fill-yellow-400',
     pink: 'fill-pink-600',
     purple: 'fill-purple-600'
-  };
+  }
 </script>
 
-<div class={`inline-flex items-center gap-2 ${center ? 'justify-center w-full' : ''}`} role="status">
+<div
+  class={`inline-flex items-center gap-2 ${center ? 'justify-center w-full' : ''}`}
+  role="status"
+>
   <svg
     class={`animate-spin text-gray-200 dark:text-gray-600 ${sizeClasses[size]} ${colorClasses[color]}`}
     viewBox="0 0 100 101"
@@ -97,4 +100,4 @@
   {#if label}
     <span class="sr-only">{label}</span>
   {/if}
-</div> 
+</div>

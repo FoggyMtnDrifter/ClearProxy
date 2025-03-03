@@ -1,7 +1,7 @@
 /**
  * Type definitions for proxy host form handling.
  * Used for both creation and editing of proxy hosts.
- * 
+ *
  * @module proxy-hosts/types
  */
 
@@ -11,9 +11,9 @@
  */
 export type ProxyHostFormData = {
   /** Indicates if the operation was successful */
-  success?: boolean;
+  success?: boolean
   /** General error message if operation failed */
-  error?: string;
+  error?: string
   /** Detailed error information (e.g., validation errors) */
-  details?: string;
-}; 
+  details?: string
+}

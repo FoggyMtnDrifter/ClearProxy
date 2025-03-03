@@ -39,62 +39,60 @@
   ```
 -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  import { fade } from 'svelte/transition';
-  import { clickOutside } from '$lib/actions/clickOutside';
+  import { createEventDispatcher } from 'svelte'
+  import { fade } from 'svelte/transition'
+  import { clickOutside } from '$lib/actions/clickOutside'
 
-  export let label: string;
-  export let value: string;
-  export let options: Array<{ value: string; label: string }>;
-  export let name = '';
-  export let id = '';
-  export let required = false;
-  export let disabled = false;
+  export let label: string
+  export let value: string
+  export let options: Array<{ value: string; label: string }>
+  export let name = ''
+  export let id = ''
+  export let required = false
+  export let disabled = false
 
-  const dispatch = createEventDispatcher();
-  let isOpen = false;
-  let selectedOption = options.find(opt => opt.value === value) || options[0];
+  const dispatch = createEventDispatcher()
+  let isOpen = false
+  let selectedOption = options.find((opt) => opt.value === value) || options[0]
 
-  function handleSelect(option: typeof options[number]) {
-    selectedOption = option;
-    value = option.value;
-    isOpen = false;
-    dispatch('change', option.value);
+  function handleSelect(option: (typeof options)[number]) {
+    selectedOption = option
+    value = option.value
+    isOpen = false
+    dispatch('change', option.value)
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (disabled) return;
-    
+    if (disabled) return
+
     if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      isOpen = !isOpen;
+      event.preventDefault()
+      isOpen = !isOpen
     } else if (event.key === 'Escape') {
-      isOpen = false;
+      isOpen = false
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
+      event.preventDefault()
       if (!isOpen) {
-        isOpen = true;
-        return;
+        isOpen = true
+        return
       }
-      
-      const currentIndex = options.findIndex(opt => opt.value === value);
-      const nextIndex = event.key === 'ArrowDown'
-        ? (currentIndex + 1) % options.length
-        : (currentIndex - 1 + options.length) % options.length;
-      handleSelect(options[nextIndex]);
+
+      const currentIndex = options.findIndex((opt) => opt.value === value)
+      const nextIndex =
+        event.key === 'ArrowDown'
+          ? (currentIndex + 1) % options.length
+          : (currentIndex - 1 + options.length) % options.length
+      handleSelect(options[nextIndex])
     }
   }
 
-  $: if (value && !options.find(opt => opt.value === value)) {
-    console.warn(`Invalid value "${value}" for select "${label}"`);
+  $: if (value && !options.find((opt) => opt.value === value)) {
+    console.warn(`Invalid value "${value}" for select "${label}"`)
   }
 </script>
 
-<div use:clickOutside on:click_outside={() => isOpen = false}>
-  <label 
-    for={id || name}
-    class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
-  >
+<div use:clickOutside on:click_outside={() => (isOpen = false)}>
+  <label for={id || name} class="block text-sm/6 font-medium text-gray-900 dark:text-gray-100">
     {label}
   </label>
   <div class="relative mt-2">
@@ -104,12 +102,12 @@
       {disabled}
       on:keydown={handleKeydown}
       on:click={() => !disabled && (isOpen = !isOpen)}
-      class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 
-        outline outline-1 -outline-offset-1 outline-gray-300 
-        focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-brand-600 
-        disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200 
-        dark:bg-gray-800 dark:text-gray-100 dark:outline-gray-600 
-        dark:focus:outline-brand-500 
+      class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900
+        outline outline-1 -outline-offset-1 outline-gray-300
+        focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-brand-600
+        disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 disabled:outline-gray-200
+        dark:bg-gray-800 dark:text-gray-100 dark:outline-gray-600
+        dark:focus:outline-brand-500
         dark:disabled:bg-gray-900 dark:disabled:text-gray-600 dark:disabled:outline-gray-700
         sm:text-sm/6"
       aria-haspopup="listbox"
@@ -119,16 +117,16 @@
       <span class="col-start-1 row-start-1 truncate pr-6">
         {selectedOption.label}
       </span>
-      <svg 
-        class="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-500 dark:text-gray-400 sm:size-4" 
-        viewBox="0 0 16 16" 
-        fill="currentColor" 
+      <svg
+        class="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-500 dark:text-gray-400 sm:size-4"
+        viewBox="0 0 16 16"
+        fill="currentColor"
         aria-hidden="true"
       >
-        <path 
-          fill-rule="evenodd" 
-          d="M5.22 10.22a.75.75 0 0 1 1.06 0L8 11.94l1.72-1.72a.75.75 0 1 1 1.06 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 0 1 0-1.06ZM10.78 5.78a.75.75 0 0 1-1.06 0L8 4.06 6.28 5.78a.75.75 0 0 1-1.06-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06Z" 
-          clip-rule="evenodd" 
+        <path
+          fill-rule="evenodd"
+          d="M5.22 10.22a.75.75 0 0 1 1.06 0L8 11.94l1.72-1.72a.75.75 0 1 1 1.06 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0l-2.25-2.25a.75.75 0 0 1 0-1.06ZM10.78 5.78a.75.75 0 0 1-1.06 0L8 4.06 6.28 5.78a.75.75 0 0 1-1.06-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06Z"
+          clip-rule="evenodd"
         />
       </svg>
     </button>
@@ -153,17 +151,23 @@
             on:keydown={(e) => e.key === 'Enter' && handleSelect(option)}
             tabindex="0"
           >
-            <span class="block truncate" class:font-semibold={isSelected} class:font-normal={!isSelected}>
+            <span
+              class="block truncate"
+              class:font-semibold={isSelected}
+              class:font-normal={!isSelected}
+            >
               {option.label}
             </span>
 
             {#if isSelected}
-              <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-brand-600 dark:text-brand-500">
+              <span
+                class="absolute inset-y-0 right-0 flex items-center pr-4 text-brand-600 dark:text-brand-500"
+              >
                 <svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path 
-                    fill-rule="evenodd" 
-                    d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" 
-                    clip-rule="evenodd" 
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                    clip-rule="evenodd"
                   />
                 </svg>
               </span>
@@ -180,4 +184,4 @@
 
 <style>
   /* Add any custom styles here */
-</style> 
+</style>

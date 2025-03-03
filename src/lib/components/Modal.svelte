@@ -23,51 +23,46 @@
   ```
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { fade } from 'svelte/transition';
-  import Icon from './Icons.svelte';
-  import { clickOutside } from '$lib/actions/clickOutside';
+  import { onMount } from 'svelte'
+  import { fade } from 'svelte/transition'
+  import Icon from './Icons.svelte'
+  import { clickOutside } from '$lib/actions/clickOutside'
 
-  export let title: string;
-  export let isOpen: boolean;
-  export let onClose: () => void;
+  export let title: string
+  export let isOpen: boolean
+  export let onClose: () => void
 
   // Handle escape key to close modal
   onMount(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
-        onClose();
+        onClose()
       }
-    };
+    }
 
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
-  });
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  })
 
   // Prevent scrolling when modal is open
   onMount(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden'
     }
     return () => {
-      document.body.style.overflow = 'unset';
-    };
-  });
+      document.body.style.overflow = 'unset'
+    }
+  })
 
   function handleClickOutside() {
-    onClose();
+    onClose()
   }
 </script>
 
 {#if isOpen}
-  <div 
-    class="relative z-50" 
-    role="dialog" 
-    aria-labelledby="modal-title" 
-    aria-modal="true"
-  >
+  <div class="relative z-50" role="dialog" aria-labelledby="modal-title" aria-modal="true">
     <!-- Background backdrop -->
-    <div 
+    <div
       class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity dark:bg-black/50"
       transition:fade={{ duration: 200 }}
     ></div>
@@ -94,7 +89,10 @@
 
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-              <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100" id="modal-title">
+              <h3
+                class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100"
+                id="modal-title"
+              >
                 {title}
               </h3>
               <div class="mt-4">
@@ -106,4 +104,4 @@
       </div>
     </div>
   </div>
-{/if} 
+{/if}

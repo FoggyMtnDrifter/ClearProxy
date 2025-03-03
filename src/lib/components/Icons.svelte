@@ -58,30 +58,30 @@
     sun: `<path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM12 18a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM2.25 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75zM18 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5h-2.25A.75.75 0 0118 12zM5.636 5.636a.75.75 0 011.06 0l1.59 1.591a.75.75 0 01-1.061 1.06l-1.59-1.59a.75.75 0 010-1.06zM18.364 5.636a.75.75 0 010 1.06l-1.59 1.591a.75.75 0 11-1.061-1.06l1.59-1.591a.75.75 0 011.06 0zM5.636 18.364a.75.75 0 010-1.06l1.591-1.591a.75.75 0 111.06 1.061l-1.59 1.59a.75.75 0 01-1.06 0zM18.364 18.364a.75.75 0 01-1.06 0l-1.591-1.591a.75.75 0 011.061-1.06l1.59 1.59a.75.75 0 010 1.06z" clip-rule="evenodd" />`,
     moon: `<path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clip-rule="evenodd" />`,
     system: `<path fill-rule="evenodd" d="M2.25 5.25a3 3 0 013-3h13.5a3 3 0 013 3V15a3 3 0 01-3 3h-3v.257c0 .597.237 1.17.659 1.591l.621.622a.75.75 0 01-.53 1.28h-9a.75.75 0 01-.53-1.28l.621-.622a2.25 2.25 0 00.659-1.59V18h-3a3 3 0 01-3-3V5.25zm1.5 0v9.75c0 .83.67 1.5 1.5 1.5h13.5c.83 0 1.5-.67 1.5-1.5V5.25c0-.83-.67-1.5-1.5-1.5H5.25c-.83 0-1.5.67-1.5 1.5z" clip-rule="evenodd" />`
-  };
-</script>
-
-<script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  
-  export let type: keyof typeof Icons;
-  export let className = 'size-5';
-  export let stroke = false;
-  
-  // Set up event forwarding
-  const dispatch = createEventDispatcher();
-  
-  function forwardEvent(e: Event) {
-    dispatch(e.type, e);
   }
 </script>
 
-<svg 
-  class={className} 
-  viewBox="0 0 24 24" 
-  fill={stroke ? 'none' : 'currentColor'} 
-  stroke={stroke ? 'currentColor' : 'none'} 
-  stroke-width={stroke ? 1.5 : undefined} 
+<script lang="ts">
+  import { createEventDispatcher } from 'svelte'
+
+  export let type: keyof typeof Icons
+  export let className = 'size-5'
+  export let stroke = false
+
+  // Set up event forwarding
+  const dispatch = createEventDispatcher()
+
+  function forwardEvent(e: Event) {
+    dispatch(e.type, e)
+  }
+</script>
+
+<svg
+  class={className}
+  viewBox="0 0 24 24"
+  fill={stroke ? 'none' : 'currentColor'}
+  stroke={stroke ? 'currentColor' : 'none'}
+  stroke-width={stroke ? 1.5 : undefined}
   aria-hidden="true"
   on:click={forwardEvent}
   on:mouseenter={forwardEvent}
@@ -91,4 +91,4 @@
   on:keydown={forwardEvent}
 >
   {@html Icons[type]}
-</svg> 
+</svg>

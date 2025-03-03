@@ -200,6 +200,12 @@ For more detailed troubleshooting assistance, please see the [Troubleshooting Gu
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+## Support the Project
+
+If you find ClearProxy useful, consider buying me a coffee to support ongoing development!
+
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-Support-yellow.svg)](https://foggymtndrifter.com/contact/#/portal/support)
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

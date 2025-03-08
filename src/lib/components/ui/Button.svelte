@@ -79,6 +79,7 @@
     sizeClasses[size],
     variantClasses[variant],
     disabled && 'opacity-50 cursor-not-allowed',
+    !disabled && 'cursor-pointer',
     class_name
   )
 </script>

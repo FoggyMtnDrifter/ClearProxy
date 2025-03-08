@@ -32,4 +32,8 @@
   .brand-ring {
     @apply ring-brand-600 dark:ring-brand-500;
   }
+
+  .clickable {
+    @apply cursor-pointer;
+  }
 }

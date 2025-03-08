@@ -57,7 +57,7 @@
 <div class="relative" use:clickOutside={{ enabled: isOpen, callback: closeMenu }}>
   <button
     type="button"
-    class="relative flex max-w-xs items-center rounded-full bg-gray-700 text-sm hover:bg-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors focus:outline-none"
+    class="relative flex max-w-xs items-center rounded-full bg-gray-700 text-sm hover:bg-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors focus:outline-none cursor-pointer"
     id="user-menu-button"
     aria-expanded={isOpen}
     aria-haspopup="true"
@@ -88,7 +88,7 @@
       <div class="py-1">
         <a
           href="/dashboard/profile"
-          class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/50 group"
+          class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/50 group cursor-pointer"
           role="menuitem"
           tabindex="-1"
         >
@@ -100,7 +100,7 @@
         <form action="/auth/logout" method="POST" class="block w-full">
           <button
             type="submit"
-            class="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700/50 group"
+            class="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700/50 group cursor-pointer"
             role="menuitem"
             tabindex="-1"
           >

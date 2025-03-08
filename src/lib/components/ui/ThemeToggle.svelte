@@ -83,7 +83,7 @@
   >
     <button
       type="button"
-      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 {theme ===
+      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 cursor-pointer {theme ===
       'light'
         ? 'bg-gray-600/50 text-white shadow-sm dark:bg-gray-700'
         : ''}"
@@ -95,7 +95,7 @@
 
     <button
       type="button"
-      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 {theme ===
+      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 cursor-pointer {theme ===
       'dark'
         ? 'bg-gray-600/50 text-white shadow-sm dark:bg-gray-700'
         : ''}"
@@ -107,7 +107,7 @@
 
     <button
       type="button"
-      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 {theme ===
+      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 cursor-pointer {theme ===
       'system'
         ? 'bg-gray-600/50 text-white shadow-sm dark:bg-gray-700'
         : ''}"

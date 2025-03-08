@@ -5,6 +5,7 @@
    */
   import { createEventDispatcher } from 'svelte'
   import type { SvelteComponent } from 'svelte'
+  import { clsx } from 'clsx'
 
   // Event dispatcher
   const dispatch = createEventDispatcher()
@@ -43,6 +44,10 @@
    */
   export let ariaLabel = ''
 
+  // Determine if buttonClass already includes cursor-pointer
+  $: hasPointerCursor = buttonClass.includes('cursor-pointer')
+  $: combinedButtonClass = clsx(buttonClass, !hasPointerCursor && 'cursor-pointer')
+
   /**
    * Handle click event and forward it
    */
@@ -63,7 +68,7 @@
 
 <button
   type="button"
-  class={buttonClass}
+  class={combinedButtonClass}
   on:click={handleClick}
   on:keydown={handleKeydown}
   aria-label={ariaLabel}

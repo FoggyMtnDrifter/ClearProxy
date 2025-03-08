@@ -6,13 +6,14 @@ services:
     container_name: clearproxy-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/data/clearproxy.db
       - CADDY_API_URL=http://caddy:2019
     volumes:
       - ./data:/data
+      - ./logs:/app/build/logs
     networks:
       - proxy-network
     depends_on:
@@ -28,9 +29,9 @@ services:
     security_opt:
       - no-new-privileges:true
     ports:
-      - "80:80"
-      - "443:443"
-      - "2019:2019"
+      - '80:80'
+      - '443:443'
+      - '2019:2019'
     volumes:
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
@@ -41,4 +42,4 @@ services:
 networks:
   proxy-network:
     name: proxy-network
-    driver: bridge 
+    driver: bridge

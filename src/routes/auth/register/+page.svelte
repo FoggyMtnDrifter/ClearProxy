@@ -9,9 +9,7 @@
    */
   import { enhance } from '$app/forms'
   import type { ActionData } from './$types'
-  import Input from '$lib/components/ui/Input.svelte'
-  import Button from '$lib/components/ui/Button.svelte'
-  import Logo from '$lib/components/Logo.svelte'
+  import { Input, Button, Logo } from '$lib/components'
 
   /**
    * Form data returned from the form action, containing any validation errors

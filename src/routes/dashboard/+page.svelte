@@ -6,8 +6,7 @@
    * The dashboard provides an overview of the system status with key metrics
    * and a feed of recent activity for at-a-glance monitoring of the application.
    */
-  import Stats from '$lib/components/features/Stats.svelte'
-  import Feed from '$lib/components/features/Feed.svelte'
+  import { Stats, Feed, Card } from '$lib/components'
   import type { FeedItem } from '$lib/components/features/Feed.svelte'
   import md5 from 'md5'
 
@@ -26,16 +25,6 @@
   ]
 
   /**
-   * Generates a Gravatar URL for a user's email address
-   * @param {string} email - The user's email address
-   * @returns {string} URL to the user's Gravatar image
-   */
-  function getGravatarUrl(email: string) {
-    const hash = md5(email.toLowerCase().trim())
-    return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`
-  }
-
-  /**
    * Transforms recent log data into feed items for display
    * Uses reactive declaration to automatically update when data changes
    */
@@ -47,7 +36,7 @@
       user: {
         name: log.user.name,
         email: log.user.email,
-        avatar: getGravatarUrl(log.user.email)
+        avatar: `https://www.gravatar.com/avatar/${log.user.email ? md5(log.user.email.toLowerCase().trim()) : ''}?d=mp&s=80`
       },
       entityType: log.entityType
     })
@@ -80,20 +69,8 @@
       <Stats {stats} columns={2} />
     </div>
 
-    <div
-      class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
-    >
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">
-          Recent Activity
-        </h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-          Latest system events and configuration changes.
-        </p>
-      </div>
-      <div class="px-4 pb-5 sm:px-6 sm:pb-6">
-        <Feed items={feedItems} />
-      </div>
-    </div>
+    <Card title="Recent Activity" description="Latest system events and configuration changes.">
+      <Feed items={feedItems} />
+    </Card>
   </div>
 </div>

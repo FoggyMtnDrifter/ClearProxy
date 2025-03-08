@@ -4,7 +4,7 @@
    * Provides a consistent interface for action buttons in the Table component.
    */
   import { createEventDispatcher } from 'svelte'
-  import type { ComponentProps, SvelteComponent } from 'svelte'
+  import type { SvelteComponent } from 'svelte'
 
   // Event dispatcher
   const dispatch = createEventDispatcher()
@@ -68,7 +68,6 @@
   on:keydown={handleKeydown}
   aria-label={ariaLabel}
   tabindex="0"
-  role="button"
 >
   <svelte:component this={icon} class={iconClass} {...iconProps} />
 </button>

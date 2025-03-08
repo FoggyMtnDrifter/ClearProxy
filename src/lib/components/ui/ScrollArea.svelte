@@ -453,6 +453,8 @@
   style="width: {width}; height: {height};"
   on:mouseenter={handleMouseEnter}
   on:mouseleave={handleMouseLeave}
+  role="region"
+  aria-label="Scrollable content"
 >
   <!-- Viewport - the scrollable container -->
   <div
@@ -486,6 +488,13 @@
           2}px; left: 1px;"
         on:mousedown={startDragY}
         on:touchstart={startDragY}
+        role="scrollbar"
+        aria-orientation="vertical"
+        aria-controls="viewport"
+        aria-valuenow={Math.round(($scrollTop / (contentHeight - viewportHeight || 1)) * 100) || 0}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        tabindex="0"
       ></div>
     </div>
   {/if}
@@ -506,6 +515,13 @@
           2}px; top: 1px;"
         on:mousedown={startDragX}
         on:touchstart={startDragX}
+        role="scrollbar"
+        aria-orientation="horizontal"
+        aria-controls="viewport"
+        aria-valuenow={Math.round(($scrollLeft / (contentWidth - viewportWidth || 1)) * 100) || 0}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        tabindex="0"
       ></div>
     </div>
   {/if}

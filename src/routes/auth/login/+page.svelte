@@ -1,9 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms'
   import type { ActionData, PageData } from './$types'
-  import Input from '$lib/components/ui/Input.svelte'
-  import Button from '$lib/components/ui/Button.svelte'
-  import Logo from '$lib/components/Logo.svelte'
+  import { Input, Button, Logo } from '$lib/components'
 
   export let form: ActionData
   export let data: PageData

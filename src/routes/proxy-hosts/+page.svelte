@@ -4,18 +4,22 @@
   import { onMount, onDestroy } from 'svelte'
   import type { ProxyHostFormData } from './types'
   import type { SubmitFunction } from '@sveltejs/kit'
-  import type { ComponentType, SvelteComponent } from 'svelte'
-  import Modal from '$lib/components/layout/Modal.svelte'
-  import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte'
-  import ErrorAlert from '$lib/components/ui/ErrorAlert.svelte'
-  import Input from '$lib/components/ui/Input.svelte'
-  import Table from '$lib/components/layout/Table.svelte'
+  import {
+    Modal,
+    ErrorAlert,
+    Input,
+    Table,
+    Select,
+    Toggle,
+    Textarea,
+    ActionButton,
+    Card,
+    TableHeader,
+    FormSection,
+    FormGroup,
+    FormActions
+  } from '$lib/components'
   import { PencilLine, Trash2 } from 'lucide-svelte'
-  import Select from '$lib/components/ui/Select.svelte'
-  import Toggle from '$lib/components/ui/Toggle.svelte'
-  import Textarea from '$lib/components/ui/Textarea.svelte'
-  import Button from '$lib/components/ui/Button.svelte'
-  import ActionButton from '$lib/components/features/ActionButton.svelte'
 
   export let data
   let form: ProxyHostFormData | null = null
@@ -319,46 +323,25 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    <div
-      class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
-    >
-      <div class="px-4 py-5 sm:px-6">
-        <div class="flex justify-between items-center">
-          <div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
-              Proxy Hosts
-            </h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Configure and manage your proxy host settings.
-            </p>
-          </div>
-          <div class="flex gap-4">
-            <div>
-              <input
-                type="text"
-                bind:value={searchQuery}
-                placeholder="Search hosts..."
-                class="block rounded-md border-0 py-2 px-4 text-gray-900 dark:text-gray-100 dark:bg-gray-700 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-inset focus:ring-brand-600 dark:focus:ring-brand-500 sm:text-sm sm:leading-6"
-              />
-            </div>
-            <Button
-              variant="primary"
-              size="xl"
-              class_name="py-2 px-4"
-              on:click={() => {
-                showCreateModal = true
-                resetForm()
-              }}
-            >
-              Add Host
-            </Button>
-          </div>
-        </div>
-      </div>
+    <Card>
+      <TableHeader
+        title="Proxy Hosts"
+        description="Configure and manage your proxy host settings."
+        bind:searchQuery
+        searchPlaceholder="Search hosts..."
+        actionText="Add Host"
+        on:search={() => {
+          // Search is handled by the reactive statement
+        }}
+        on:action={() => {
+          showCreateModal = true
+          resetForm()
+        }}
+      />
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
         <Table {columns} data={filteredHosts} {rowActions} />
       </div>
-    </div>
+    </Card>
 
     {#if showCreateModal}
       <Modal
@@ -370,10 +353,7 @@
         }}
       >
         <form method="POST" action="?/create" use:enhance={handleSubmit} class="space-y-6">
-          <div class="space-y-4">
-            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
-              Basic Configuration
-            </h4>
+          <FormSection title="Basic Configuration" bordered={false}>
             <Input
               label="Domain Name"
               name="domain"
@@ -382,7 +362,7 @@
               placeholder="example.com"
             />
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
+            <FormGroup layout="grid" cols={12} gap={4}>
               <div class="sm:col-span-3">
                 <Select
                   label="Target Protocol"
@@ -414,25 +394,25 @@
                   placeholder="8080"
                 />
               </div>
-            </div>
-          </div>
+            </FormGroup>
+          </FormSection>
 
           {#if targetProtocol === 'https'}
-            <div class="mt-4">
+            <FormSection bordered={false}>
               <Toggle
                 bind:checked={ignoreInvalidCert}
                 label="Ignore Invalid Certificate"
                 description="Skip SSL certificate validation for target"
                 name="ignoreInvalidCert"
               />
-            </div>
+            </FormSection>
           {/if}
 
-          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
-            <Toggle bind:checked={sslEnabled} label="SSL Configuration" name="sslEnabled" />
+          <FormSection title="SSL Configuration">
+            <Toggle bind:checked={sslEnabled} label="Enable SSL" name="sslEnabled" />
 
             {#if sslEnabled}
-              <div class="mt-4 space-y-4">
+              <FormGroup layout="stack" gap={4}>
                 <Toggle
                   bind:checked={forceSSL}
                   label="Force SSL"
@@ -451,21 +431,21 @@
                   description="Enable HTTP/3 protocol support"
                   name="http3Support"
                 />
-              </div>
+              </FormGroup>
             {/if}
-          </div>
+          </FormSection>
 
-          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
+          <FormSection title="Security">
             <Toggle
               bind:checked={basicAuthEnabled}
-              label="Security"
+              label="Basic Authentication"
               description="Enable basic authentication for this proxy"
               name="basicAuthEnabled"
               on:change={handleBasicAuthToggle}
             />
 
             {#if basicAuthEnabled}
-              <div class="mt-4 space-y-4">
+              <FormGroup layout="stack" gap={4}>
                 <Input
                   label="Username"
                   name="basicAuthUsername"
@@ -482,57 +462,44 @@
                   bind:value={basicAuthPassword}
                   helpText="Enter a new password"
                 />
-              </div>
+              </FormGroup>
             {/if}
-          </div>
+          </FormSection>
 
-          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
+          <FormSection title="Advanced Configuration">
             <Toggle
               bind:checked={showAdvanced}
-              label="Advanced Configuration"
+              label="Custom Caddyfile Directives"
               description="Additional Caddyfile directives for advanced users"
               name="showAdvanced"
             />
 
             {#if showAdvanced}
-              <div class="mt-4 space-y-4">
-                <Textarea
-                  label="Additional Caddyfile Configuration"
-                  name="advancedConfig"
-                  bind:value={advancedConfig}
-                  rows={4}
-                  placeholder="Enter Caddyfile directives (e.g., header /* &#123;X-Frame-Options SAMEORIGIN&#125;)"
-                />
-              </div>
+              <Textarea
+                label="Additional Caddyfile Configuration"
+                name="advancedConfig"
+                bind:value={advancedConfig}
+                rows={4}
+                placeholder="Enter Caddyfile directives (e.g., header /* &#123;X-Frame-Options SAMEORIGIN&#125;)"
+              />
             {/if}
-          </div>
+          </FormSection>
 
           {#if error}
             <ErrorAlert error={error.message} details={error.details} />
           {/if}
 
-          <div class="mt-6 flex items-center justify-end gap-3">
-            <Button
-              variant="secondary"
-              size="xl"
-              on:click={() => {
-                showCreateModal = false
-                resetForm()
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="xl"
-              disabled={isSubmitting}
-              loading={isSubmitting}
-              loadingText="Creating..."
-            >
-              Create Host
-            </Button>
-          </div>
+          <FormActions
+            submitText="Create Host"
+            cancelText="Cancel"
+            loading={isSubmitting}
+            loadingText="Creating..."
+            disabled={isSubmitting}
+            on:cancel={() => {
+              showCreateModal = false
+              resetForm()
+            }}
+          />
         </form>
       </Modal>
     {/if}
@@ -547,13 +514,10 @@
         }}
       >
         <form method="POST" action="?/update" use:enhance={handleEditSubmit} class="space-y-6">
-          <div class="space-y-4">
-            <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
-              Basic Configuration
-            </h4>
+          <FormSection title="Basic Configuration" bordered={false}>
             <Input label="Domain Name" name="domain" type="text" required bind:value={editDomain} />
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12">
+            <FormGroup layout="grid" cols={12} gap={4}>
               <div class="sm:col-span-3">
                 <Select
                   label="Target Protocol"
@@ -585,25 +549,25 @@
                   bind:value={editTargetPort}
                 />
               </div>
-            </div>
-          </div>
+            </FormGroup>
+          </FormSection>
 
           {#if targetProtocol === 'https'}
-            <div class="mt-4">
+            <FormSection bordered={false}>
               <Toggle
                 bind:checked={ignoreInvalidCert}
                 label="Ignore Invalid Certificate"
                 description="Skip SSL certificate validation for target"
                 name="ignoreInvalidCert"
               />
-            </div>
+            </FormSection>
           {/if}
 
-          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
-            <Toggle bind:checked={sslEnabled} label="SSL Configuration" name="sslEnabled" />
+          <FormSection title="SSL Configuration">
+            <Toggle bind:checked={sslEnabled} label="Enable SSL" name="sslEnabled" />
 
             {#if sslEnabled}
-              <div class="mt-4 space-y-4">
+              <FormGroup layout="stack" gap={4}>
                 <Toggle
                   bind:checked={forceSSL}
                   label="Force SSL"
@@ -622,21 +586,21 @@
                   description="Enable HTTP/3 protocol support"
                   name="http3Support"
                 />
-              </div>
+              </FormGroup>
             {/if}
-          </div>
+          </FormSection>
 
-          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
+          <FormSection title="Security">
             <Toggle
               bind:checked={basicAuthEnabled}
-              label="Security"
+              label="Basic Authentication"
               description="Enable basic authentication for this proxy"
               name="basicAuthEnabled"
               on:change={handleBasicAuthToggle}
             />
 
             {#if basicAuthEnabled}
-              <div class="mt-4 space-y-4">
+              <FormGroup layout="stack" gap={4}>
                 <Input
                   label="Username"
                   name="basicAuthUsername"
@@ -653,57 +617,44 @@
                   bind:value={basicAuthPassword}
                   helpText="Enter a new password or leave blank to keep the existing one"
                 />
-              </div>
+              </FormGroup>
             {/if}
-          </div>
+          </FormSection>
 
-          <div class="border-t border-gray-200 dark:border-gray-700/30 pt-6">
+          <FormSection title="Advanced Configuration">
             <Toggle
               bind:checked={showAdvanced}
-              label="Advanced Configuration"
+              label="Custom Caddyfile Directives"
               description="Additional Caddyfile directives for advanced users"
               name="showAdvanced"
             />
 
             {#if showAdvanced}
-              <div class="mt-4 space-y-4">
-                <Textarea
-                  label="Additional Caddyfile Configuration"
-                  name="advancedConfig"
-                  bind:value={advancedConfig}
-                  rows={4}
-                  placeholder="Enter Caddyfile directives (e.g., header /* &#123;X-Frame-Options SAMEORIGIN&#125;)"
-                />
-              </div>
+              <Textarea
+                label="Additional Caddyfile Configuration"
+                name="advancedConfig"
+                bind:value={advancedConfig}
+                rows={4}
+                placeholder="Enter Caddyfile directives (e.g., header /* &#123;X-Frame-Options SAMEORIGIN&#125;)"
+              />
             {/if}
-          </div>
+          </FormSection>
 
           {#if error}
             <ErrorAlert error={error.message} details={error.details} />
           {/if}
 
-          <div class="mt-6 flex items-center justify-end gap-3">
-            <Button
-              variant="secondary"
-              size="xl"
-              on:click={() => {
-                showEditModal = false
-                editingHost = null
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="xl"
-              disabled={isSubmitting}
-              loading={isSubmitting}
-              loadingText="Saving..."
-            >
-              Save Changes
-            </Button>
-          </div>
+          <FormActions
+            submitText="Save Changes"
+            cancelText="Cancel"
+            loading={isSubmitting}
+            loadingText="Saving..."
+            disabled={isSubmitting}
+            on:cancel={() => {
+              showEditModal = false
+              editingHost = null
+            }}
+          />
         </form>
       </Modal>
     {/if}

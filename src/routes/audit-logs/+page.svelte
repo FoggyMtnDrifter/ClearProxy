@@ -7,21 +7,11 @@
    * what was changed, and when the changes occurred.
    */
   import type { PageData } from './$types'
-  import Feed from '$lib/components/features/Feed.svelte'
+  import { Card, Feed } from '$lib/components'
   import type { FeedItem } from '$lib/components/features/Feed.svelte'
   import md5 from 'md5'
 
   export let data: PageData
-
-  /**
-   * Generates a Gravatar URL for a user's email address
-   * @param {string} email - The user's email address
-   * @returns {string} URL to the user's Gravatar image
-   */
-  function getGravatarUrl(email: string) {
-    const hash = md5(email.toLowerCase().trim())
-    return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`
-  }
 
   /**
    * Formats a timestamp into a human-readable date and time string
@@ -101,7 +91,7 @@
       user: {
         name: log.user.name,
         email: log.user.email,
-        avatar: getGravatarUrl(log.user.email)
+        avatar: `https://www.gravatar.com/avatar/${log.user.email ? md5(log.user.email.toLowerCase().trim()) : ''}?d=mp&s=80`
       },
       entityType: log.entityType,
       details: formatChanges(log.changes),
@@ -114,18 +104,11 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    <div
-      class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
+    <Card
+      title="Audit Logs"
+      description="Detailed history of system changes and configuration updates."
     >
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">Audit Logs</h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-          Detailed history of system changes and configuration updates.
-        </p>
-      </div>
-      <div class="px-4 pb-5 sm:px-6 sm:pb-6">
-        <Feed items={feedItems} />
-      </div>
-    </div>
+      <Feed items={feedItems} />
+    </Card>
   </div>
 </div>

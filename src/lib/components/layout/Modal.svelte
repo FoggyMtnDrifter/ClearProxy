@@ -82,7 +82,7 @@
               on:click={onClose}
             >
               <span class="sr-only">Close</span>
-              <X class="size-6" stroke={true} />
+              <X class="size-6" />
             </button>
           </div>
 

@@ -17,9 +17,10 @@
     TableHeader,
     FormSection,
     FormGroup,
-    FormActions
+    FormActions,
+    EmptyState
   } from '$lib/components'
-  import { PencilLine, Trash2 } from 'lucide-svelte'
+  import { PencilLine, Trash2, Server } from 'lucide-svelte'
 
   export let data
   let form: ProxyHostFormData | null = null
@@ -339,7 +340,21 @@
         }}
       />
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
-        <Table {columns} data={filteredHosts} {rowActions} />
+        {#if filteredHosts.length > 0}
+          <Table {columns} data={filteredHosts} {rowActions} />
+        {:else}
+          <EmptyState
+            title="No proxy hosts yet"
+            description="Add your first proxy host to get started with ClearProxy"
+            icon={Server}
+            actionText="Add Host"
+            className="mt-10"
+            on:action={() => {
+              showCreateModal = true
+              resetForm()
+            }}
+          />
+        {/if}
       </div>
     </Card>
 

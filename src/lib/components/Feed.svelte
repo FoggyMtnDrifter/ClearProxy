@@ -38,7 +38,7 @@
    * Feed component that displays a timeline of user activities
    * Shows chronological events with user information and action details
    */
-  import Icon from './Icons.svelte'
+  import { Trash2, PencilLine, Plus } from 'lucide-svelte'
 
   /**
    * Array of feed items to display in the timeline
@@ -61,6 +61,25 @@
         return 'text-blue-500'
       case 'delete':
         return 'text-red-500'
+    }
+  }
+
+  /**
+   * Gets the appropriate icon component based on action type
+   *
+   * @param {FeedItem['type']} type - The action type
+   * @returns {typeof import('svelte').SvelteComponent} The icon component to use
+   */
+  function getActionIcon(type: FeedItem['type']) {
+    switch (type) {
+      case 'create':
+        return Plus
+      case 'update':
+        return PencilLine
+      case 'delete':
+        return Trash2
+      default:
+        return Plus
     }
   }
 
@@ -139,7 +158,7 @@
               {/if}
               <span class="absolute -bottom-1 -right-1">
                 <div class={getActionColor(item.type)} style="filter: url(#icon-stroke)">
-                  <Icon type={item.type} />
+                  <svelte:component this={getActionIcon(item.type)} class="size-4" />
                 </div>
               </span>
             </div>

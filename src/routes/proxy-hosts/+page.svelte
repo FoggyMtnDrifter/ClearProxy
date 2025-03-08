@@ -10,11 +10,12 @@
   import ErrorAlert from '$lib/components/ErrorAlert.svelte'
   import Input from '$lib/components/Input.svelte'
   import Table from '$lib/components/Table.svelte'
-  import Icon from '$lib/components/Icons.svelte'
+  import { PencilLine, Trash2 } from 'lucide-svelte'
   import Select from '$lib/components/Select.svelte'
   import Toggle from '$lib/components/Toggle.svelte'
   import Textarea from '$lib/components/Textarea.svelte'
   import Button from '$lib/components/Button.svelte'
+  import ActionButton from '$lib/components/ActionButton.svelte'
 
   export let data
   let form: ProxyHostFormData | null = null
@@ -62,21 +63,12 @@
     {
       srLabel: (host: (typeof data.hosts)[number]) => `Edit ${host.domain}`,
       onClick: (host: (typeof data.hosts)[number]) => startEdit(host),
-      component: Icon,
+      component: ActionButton,
       props: {
-        type: 'edit',
-        className:
-          'size-5 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 cursor-pointer transition-colors duration-200',
-        tabindex: '0',
-        role: 'button',
-        onkeydown: (e: KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            if (e.currentTarget) {
-              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-            }
-          }
-        }
+        icon: PencilLine,
+        buttonClass:
+          'text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 cursor-pointer transition-colors duration-200',
+        iconClass: 'size-5'
       }
     },
     {
@@ -96,21 +88,12 @@
           }
         }
       },
-      component: Icon,
+      component: ActionButton,
       props: {
-        type: 'delete',
-        className:
-          'size-5 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer ml-3 transition-colors duration-200',
-        tabindex: '0',
-        role: 'button',
-        onkeydown: (e: KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            if (e.currentTarget) {
-              e.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-            }
-          }
-        }
+        icon: Trash2,
+        buttonClass:
+          'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer ml-3 transition-colors duration-200',
+        iconClass: 'size-5'
       }
     }
   ]

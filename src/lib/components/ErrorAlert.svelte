@@ -3,7 +3,7 @@
    * Error alert component for displaying error messages.
    * Renders a visually distinct error notification with optional details.
    */
-  import Icon from './Icons.svelte'
+  import { CircleX } from 'lucide-svelte'
 
   /**
    * The main error message to display
@@ -22,7 +22,7 @@
 <div class="rounded-md bg-red-50 p-4 dark:bg-red-950">
   <div class="flex">
     <div class="shrink-0">
-      <Icon type="error" className="size-5 text-red-400 dark:text-red-300" />
+      <CircleX class="size-5 text-red-400 dark:text-red-300" />
     </div>
     <div class="ml-3">
       <h3 class="text-sm font-medium text-red-800 dark:text-red-300">{error}</h3>

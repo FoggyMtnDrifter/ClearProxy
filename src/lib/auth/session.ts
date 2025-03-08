@@ -3,11 +3,9 @@
  * Handles cookies-based session creation, validation, and termination.
  * @module auth/session
  */
-import { db } from '$lib/db'
-import { users } from '$lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { userRepository } from '$lib/repositories/userRepository'
 import type { Cookies } from '@sveltejs/kit'
-import { authLogger } from '../logger'
+import { authLogger } from '../utils/logger'
 
 /**
  * Interface for objects that contain cookie functionality
@@ -39,10 +37,7 @@ export async function getUserFromSession(event: SessionEvent) {
       return null
     }
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, parseInt(userId)))
+    const user = await userRepository.getById(parseInt(userId))
     if (!user) {
       authLogger.warn({ userId }, 'Session user not found in database')
       return null

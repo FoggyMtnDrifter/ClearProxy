@@ -52,6 +52,7 @@
     "better-sqlite3": "^11.8.1",
     "drizzle-kit": "^0.30.5",
     "drizzle-orm": "^0.40.0",
+    "lucide-svelte": "^0.479.0",
     "md5": "^2.3.0",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",

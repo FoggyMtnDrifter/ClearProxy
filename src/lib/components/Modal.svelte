@@ -5,7 +5,7 @@
    */
   import { onMount } from 'svelte'
   import { fade } from 'svelte/transition'
-  import Icon from './Icons.svelte'
+  import { X } from 'lucide-svelte'
   import { clickOutside } from '$lib/actions/clickOutside'
 
   /**
@@ -82,7 +82,7 @@
               on:click={onClose}
             >
               <span class="sr-only">Close</span>
-              <Icon type="close" className="size-6" stroke={true} />
+              <X class="size-6" stroke={true} />
             </button>
           </div>
 

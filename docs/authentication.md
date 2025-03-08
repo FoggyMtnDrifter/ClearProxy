@@ -53,11 +53,22 @@ When basic authentication is enabled, visitors to your proxied service will see 
 
 If you're having trouble logging into the admin interface:
 
-1. **Forgotten Credentials**: If you've forgotten your password and there is no reset mechanism implemented yet, you may need to:
+1. **Forgotten Credentials**: If you've forgotten your password, there are two ways to reset it:
 
-   - Access the SQLite database file directly and update the user credentials
-   - For Docker installations: Use a SQLite client to modify the `clearproxy.db` file
-   - Consider adding a column to update the `password_hash` value
+   - **Using the Reset Script**: ClearProxy includes a shell script for admin password resets:
+
+     ```bash
+     # Reset password for a user
+     ./src/cli/reset-password.sh --email user@example.com --password newpassword
+
+     # Show help information
+     ./src/cli/reset-password.sh --help
+     ```
+
+   - **Manual Database Update**: For advanced users, you can:
+     - Access the SQLite database file directly and update the user credentials
+     - For Docker installations: Use a SQLite client to modify the `clearproxy.db` file
+     - Update the `password_hash` column with a properly hashed bcrypt password
 
 2. **Login Issues**: If you're unable to log in despite having correct credentials:
    - Check for browser issues (clear cache/cookies)

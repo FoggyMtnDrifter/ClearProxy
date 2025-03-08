@@ -5,7 +5,7 @@
  */
 import { proxyHosts } from '../db/schema'
 import type { InferModel } from 'drizzle-orm'
-import { caddyLogger } from '../logger'
+import { caddyLogger } from '../utils/logger'
 import { generateCaddyHash as _generateCaddyHash } from '../auth/password'
 import { fixNullObjectPasswords } from '../db'
 
@@ -642,6 +642,7 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConf
 export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
   try {
     await retryWithBackoff(async () => {
+      caddyLogger.debug(`Fetching current Caddy configuration from ${CADDY_API_URL}/config/`)
       const currentConfig = await fetch(`${CADDY_API_URL}/config/`).then((r) =>
         r.ok ? r.json() : null
       )
@@ -651,6 +652,7 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
       const configJson = JSON.stringify(config)
       caddyLogger.debug(
         {
+          action: 'apply_config',
           url: `${CADDY_API_URL}/load`,
           configLength: configJson.length,
           adminConfig: config.admin,
@@ -658,41 +660,81 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
           routeWithAuth: config.apps?.http?.servers?.srv0?.routes?.some((r) =>
             r.handle?.some((h) => h.handler === 'authentication')
           ),
-          authHandlers: config.apps?.http?.servers?.srv0?.routes
-            ?.filter((r) => r.handle?.some((h) => h.handler === 'authentication'))
-            ?.map((r) => ({
-              domain: r.match?.[0]?.host?.[0],
-              auth: r.handle?.find((h) => h.handler === 'authentication')
-            }))
+          configSample: configJson.substring(0, 500) + '...',
+          domains: config.apps?.http?.servers?.srv0?.routes
+            ?.map((r) => r.match?.[0]?.host?.[0])
+            .filter(Boolean)
         },
         'Sending configuration to Caddy API with authentication details'
       )
-      const response = await fetch(`${CADDY_API_URL}/load`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: configJson
-      })
-      if (!response.ok) {
-        const error = await response.text()
-        caddyLogger.error(
+
+      try {
+        // Log the exact request being made
+        caddyLogger.debug(
+          {
+            method: 'POST',
+            url: `${CADDY_API_URL}/load`,
+            headers: { 'Content-Type': 'application/json' },
+            bodyLength: configJson.length
+          },
+          'Making request to Caddy API'
+        )
+
+        const response = await fetch(`${CADDY_API_URL}/load`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: configJson
+        })
+
+        // Log the response details
+        caddyLogger.debug(
           {
             statusCode: response.status,
             statusText: response.statusText,
-            error,
-            requestUrl: `${CADDY_API_URL}/load`,
-            configSample: configJson.substring(0, 500) + '...'
+            headers: Object.fromEntries([...response.headers.entries()])
           },
-          'Caddy API returned error response'
+          'Received response from Caddy API'
         )
-        throw new CaddyError(
-          `Failed to apply Caddy configuration: ${error}`,
-          'CONFIG_APPLY_ERROR',
-          { statusCode: response.status, error }
+
+        if (!response.ok) {
+          const error = await response.text()
+          caddyLogger.error(
+            {
+              statusCode: response.status,
+              statusText: response.statusText,
+              error,
+              requestUrl: `${CADDY_API_URL}/load`,
+              configSample: configJson.substring(0, 500) + '...'
+            },
+            'Caddy API returned error response'
+          )
+          throw new CaddyError(
+            `Failed to apply Caddy configuration: ${error}`,
+            'CONFIG_APPLY_ERROR',
+            { statusCode: response.status, error }
+          )
+        }
+
+        caddyLogger.info(
+          {
+            statusCode: response.status,
+            statusText: response.statusText
+          },
+          'Successfully applied Caddy configuration'
         )
+      } catch (fetchError) {
+        caddyLogger.error(
+          {
+            error: fetchError,
+            errorMessage: fetchError instanceof Error ? fetchError.message : 'unknown error',
+            caddyApiUrl: CADDY_API_URL
+          },
+          'Error making request to Caddy API'
+        )
+        throw fetchError
       }
-      caddyLogger.info('Successfully applied Caddy configuration')
     })
   } catch (error) {
     caddyLogger.error(
@@ -700,20 +742,11 @@ export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
         error,
         errorName: error instanceof Error ? error.name : 'unknown',
         errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown',
-        errorCause: error instanceof Error ? error.cause : undefined,
-        caddyApiUrl: CADDY_API_URL
+        errorStack: error instanceof Error ? error.stack : 'unknown'
       },
-      'Failed to apply Caddy configuration'
+      'Failed to apply Caddy configuration after retry attempts'
     )
-    if (error instanceof CaddyError) {
-      throw error
-    }
-    throw new CaddyError(
-      'Failed to apply Caddy configuration after retries',
-      'CONFIG_APPLY_ERROR',
-      error
-    )
+    throw error
   }
 }
 
@@ -750,6 +783,62 @@ export async function getCertificateStatus(domain: string): Promise<CertificateI
 }
 
 /**
+ * Checks connectivity to the Caddy API
+ *
+ * @returns {Promise<boolean>} True if connectivity is successful, false otherwise
+ */
+async function checkCaddyConnectivity(): Promise<boolean> {
+  try {
+    caddyLogger.debug(`Checking Caddy API connectivity at ${CADDY_API_URL}`)
+
+    // Log the full request details
+    caddyLogger.debug(
+      {
+        action: 'connectivity_check',
+        method: 'GET',
+        url: `${CADDY_API_URL}/config/`,
+        headers: { Accept: 'application/json' }
+      },
+      'Sending request to Caddy API'
+    )
+
+    const response = await fetch(`${CADDY_API_URL}/config/`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    })
+
+    const isConnected = response.ok
+
+    caddyLogger.debug(
+      {
+        caddyApiUrl: CADDY_API_URL,
+        connected: isConnected,
+        statusCode: response.status,
+        statusText: response.statusText,
+        responseHeaders: Object.fromEntries([...response.headers.entries()]),
+        bodyPreview: isConnected ? '(body available)' : '(no body)'
+      },
+      isConnected ? 'Successfully connected to Caddy API' : 'Failed to connect to Caddy API'
+    )
+
+    return isConnected
+  } catch (error) {
+    caddyLogger.error(
+      {
+        error,
+        errorName: error instanceof Error ? error.name : 'unknown',
+        errorMessage: error instanceof Error ? error.message : 'unknown',
+        caddyApiUrl: CADDY_API_URL,
+        errorStack: error instanceof Error ? error.stack : 'unknown'
+      },
+      'Error connecting to Caddy API - check if Caddy is running and accessible'
+    )
+
+    return false
+  }
+}
+
+/**
  * Reloads the Caddy configuration with the current proxy hosts
  * Generates a new config and applies it to the running Caddy server
  *
@@ -758,6 +847,13 @@ export async function getCertificateStatus(domain: string): Promise<CertificateI
  */
 export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
   try {
+    // First check Caddy connectivity
+    const isConnected = await checkCaddyConnectivity()
+
+    if (!isConnected) {
+      throw new Error('Cannot reload Caddy configuration: Caddy API is not reachable')
+    }
+
     const fixedHosts = fixNullObjectPasswords(hosts)
     caddyLogger.debug(
       {
@@ -794,20 +890,37 @@ export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
       },
       'Attempting to reload Caddy configuration with detailed host info'
     )
-    const config = await generateCaddyConfig(fixedHosts)
-    caddyLogger.debug(
-      {
-        config,
-        configStr: JSON.stringify(config).substring(0, 200) + '...'
-      },
-      'Generated Caddy configuration'
-    )
-    await applyCaddyConfig(config)
-    caddyLogger.info('Successfully reloaded Caddy configuration', {
-      hostCount: hosts.length,
-      activeHosts: fixedHosts.filter((h) => h.enabled).length,
-      hostsWithBasicAuth: fixedHosts.filter((h) => h.enabled && h.basicAuthEnabled).length
-    })
+
+    try {
+      const config = await generateCaddyConfig(fixedHosts)
+      caddyLogger.debug(
+        {
+          config,
+          configStr: JSON.stringify(config).substring(0, 200) + '...'
+        },
+        'Generated Caddy configuration'
+      )
+
+      await applyCaddyConfig(config)
+
+      caddyLogger.info('Successfully reloaded Caddy configuration', {
+        hostCount: hosts.length,
+        activeHosts: fixedHosts.filter((h) => h.enabled).length,
+        hostsWithBasicAuth: fixedHosts.filter((h) => h.enabled && h.basicAuthEnabled).length
+      })
+    } catch (configError) {
+      caddyLogger.error(
+        {
+          error: configError,
+          errorMessage: configError instanceof Error ? configError.message : 'unknown error',
+          hostsCount: hosts.length,
+          enabledHosts: hosts.filter((h) => h.enabled).length,
+          caddyApiUrl: CADDY_API_URL
+        },
+        'Error generating or applying Caddy configuration'
+      )
+      throw configError
+    }
   } catch (error) {
     caddyLogger.error(
       {

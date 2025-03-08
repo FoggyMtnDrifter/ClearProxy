@@ -4,7 +4,7 @@
    * Persists the user's preference in localStorage and handles system preference changes.
    */
   import { onMount } from 'svelte'
-  import Icon from './Icons.svelte'
+  import { Sun, Moon, Laptop } from 'lucide-svelte'
 
   /**
    * Current theme preference
@@ -90,7 +90,7 @@
       aria-label="Use light theme"
       on:click={() => setTheme('light')}
     >
-      <Icon type="sun" className="size-4" />
+      <Sun class="size-4" />
     </button>
 
     <button
@@ -102,7 +102,7 @@
       aria-label="Use dark theme"
       on:click={() => setTheme('dark')}
     >
-      <Icon type="moon" className="size-4" />
+      <Moon class="size-4" />
     </button>
 
     <button
@@ -114,7 +114,7 @@
       aria-label="Use system theme"
       on:click={() => setTheme('system')}
     >
-      <Icon type="system" className="size-4" />
+      <Laptop class="size-4" />
     </button>
   </div>
 {/if}

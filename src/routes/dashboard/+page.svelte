@@ -6,9 +6,9 @@
    * The dashboard provides an overview of the system status with key metrics
    * and a feed of recent activity for at-a-glance monitoring of the application.
    */
-  import Stats from '$lib/components/Stats.svelte'
-  import Feed from '$lib/components/Feed.svelte'
-  import type { FeedItem } from '$lib/components/Feed.svelte'
+  import Stats from '$lib/components/features/Stats.svelte'
+  import Feed from '$lib/components/features/Feed.svelte'
+  import type { FeedItem } from '$lib/components/features/Feed.svelte'
   import md5 from 'md5'
 
   /**

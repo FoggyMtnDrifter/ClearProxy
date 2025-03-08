@@ -13,9 +13,9 @@
   import { enhance } from '$app/forms'
   import type { PageData } from './$types'
   import { fade } from 'svelte/transition'
-  import Input from '$lib/components/Input.svelte'
-  import Button from '$lib/components/Button.svelte'
-  import ErrorAlert from '$lib/components/ErrorAlert.svelte'
+  import Input from '$lib/components/ui/Input.svelte'
+  import Button from '$lib/components/ui/Button.svelte'
+  import ErrorAlert from '$lib/components/ui/ErrorAlert.svelte'
   import { invalidateAll } from '$app/navigation'
   import { ClipboardCopy, Check } from 'lucide-svelte'
 

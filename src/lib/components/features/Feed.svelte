@@ -176,19 +176,6 @@
                     <pre
                       class="whitespace-pre-wrap rounded bg-gray-50 dark:bg-gray-900 p-3 font-mono text-xs text-gray-900 dark:text-gray-200">{item.details}</pre>
                   {/if}
-                  {#if item.type === 'delete' && item.deletedItem}
-                    <div
-                      class="rounded border border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-950 p-3"
-                    >
-                      <h4 class="mb-2 font-medium text-red-900 dark:text-red-300">
-                        Deleted Item Details:
-                      </h4>
-                      <pre
-                        class="whitespace-pre-wrap font-mono text-xs text-red-800 dark:text-red-300">{formatValue(
-                          item.deletedItem
-                        )}</pre>
-                    </div>
-                  {/if}
                 </div>
               {/if}
             </div>

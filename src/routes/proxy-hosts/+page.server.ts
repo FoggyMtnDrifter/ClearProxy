@@ -43,5 +43,12 @@ export const actions = {
    */
   delete: async (event) => {
     return await proxyHostController.deleteProxyHost(event)
+  },
+
+  /**
+   * Toggles a proxy host's enabled status
+   */
+  toggle: async (event) => {
+    return await proxyHostController.toggleProxyHost(event)
   }
 } satisfies Actions

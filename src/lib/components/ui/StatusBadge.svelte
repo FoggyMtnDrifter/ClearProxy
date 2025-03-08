@@ -8,36 +8,34 @@
   export let text: string
 
   /** The status type which determines colors */
-  export let type: 'success' | 'warning' | 'error' | 'info' | 'neutral' = 'neutral'
-
-  /** Whether the badge should be a pill shape */
-  export let pill: boolean = true
-
-  /** Size of the badge */
-  export let size: 'xs' | 'sm' | 'md' = 'xs'
+  export let type:
+    | 'success'
+    | 'warning'
+    | 'error'
+    | 'info'
+    | 'neutral'
+    | 'indigo'
+    | 'purple'
+    | 'pink' = 'neutral'
 
   /** Additional CSS classes */
   export let className: string = ''
 
   // Color mappings for different status types
   const colors = {
-    success: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    neutral: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-  }
-
-  // Size mappings
-  const sizes = {
-    xs: 'px-2 py-0.5 text-xs',
-    sm: 'px-2.5 py-0.5 text-sm',
-    md: 'px-3 py-1 text-sm'
+    success: 'bg-green-50 text-green-700 ring-green-600/20',
+    warning: 'bg-yellow-50 text-yellow-800 ring-yellow-600/20',
+    error: 'bg-red-50 text-red-700 ring-red-600/10',
+    info: 'bg-blue-50 text-blue-700 ring-blue-700/10',
+    neutral: 'bg-gray-50 text-gray-600 ring-gray-500/10',
+    indigo: 'bg-indigo-50 text-indigo-700 ring-indigo-700/10',
+    purple: 'bg-purple-50 text-purple-700 ring-purple-700/10',
+    pink: 'bg-pink-50 text-pink-700 ring-pink-700/10'
   }
 </script>
 
 <span
-  class="inline-flex font-medium {pill ? 'rounded-full' : 'rounded'} {sizes[size]} {colors[
+  class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset {colors[
     type
   ]} {className}"
 >

@@ -214,3 +214,45 @@ export async function deleteProxyHost(event: RequestEvent) {
     return fail(500, { error: 'Failed to delete proxy host' })
   }
 }
+
+/**
+ * Toggles the enabled status of a proxy host
+ *
+ * @param {Object} event - The request event
+ * @returns {Promise<Object>} Result of the operation
+ */
+export async function toggleProxyHost(event: RequestEvent) {
+  const { locals, request } = event
+  const formData = await request.formData()
+
+  const formId = formData.get('id')
+  const id = formId ? parseInt(formId.toString(), 10) : 0
+
+  if (!id) {
+    return fail(400, { error: 'Invalid host ID' })
+  }
+
+  const enabled = formData.get('enabled') === 'true'
+
+  try {
+    // Get the existing proxy host
+    const existingHost = await proxyHostService.getProxyHostById(id)
+
+    if (!existingHost) {
+      return fail(404, { error: 'Proxy host not found' })
+    }
+
+    // Update only the enabled status while preserving all other properties
+    const userId = locals.user?.id || 0
+    const updatedHost = await proxyHostService.updateProxyHost(id, { enabled }, userId)
+
+    if (!updatedHost) {
+      return fail(404, { error: 'Failed to update proxy host' })
+    }
+
+    return { success: true, host: updatedHost }
+  } catch (error) {
+    apiLogger.error({ error }, 'Failed to toggle proxy host status')
+    return fail(500, { error: 'Failed to toggle proxy host status' })
+  }
+}

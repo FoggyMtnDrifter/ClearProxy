@@ -169,17 +169,42 @@ export async function updateProxyHost(
 
   const updatedHost = await proxyHostRepository.update(id.toString(), updatedData)
 
-  // Create audit log entry
-  await createAuditLog({
-    actionType: 'update',
-    entityType: 'proxy_host',
-    entityId: id,
-    userId,
-    changes: {
-      domain: hostData.domain,
-      targetHost: hostData.targetHost
+  // Create audit log entry with appropriate information
+  const changes: Record<string, any> = {}
+
+  // Only include changes that were actually changed from previous values
+  if (hostData.domain && hostData.domain !== existingHost.domain) {
+    changes.domain = {
+      from: existingHost.domain,
+      to: hostData.domain
     }
-  })
+  }
+
+  if (hostData.targetHost && hostData.targetHost !== existingHost.targetHost) {
+    changes.targetHost = {
+      from: existingHost.targetHost,
+      to: hostData.targetHost
+    }
+  }
+
+  // Special handling for status toggle
+  if (hostData.enabled !== undefined && hostData.enabled !== existingHost.enabled) {
+    changes.status = {
+      from: existingHost.enabled ? 'active' : 'disabled',
+      to: hostData.enabled ? 'active' : 'disabled'
+    }
+  }
+
+  // Only create an audit log if there were actual changes
+  if (Object.keys(changes).length > 0) {
+    await createAuditLog({
+      actionType: 'update',
+      entityType: 'proxy_host',
+      entityId: id,
+      userId,
+      changes
+    })
+  }
 
   // Reload Caddy configuration
   const allHosts = await proxyHostRepository.getAll()

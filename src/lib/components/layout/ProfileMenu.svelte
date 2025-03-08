@@ -91,6 +91,7 @@
           class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/50 group cursor-pointer"
           role="menuitem"
           tabindex="-1"
+          on:click={closeMenu}
         >
           <User
             class="mr-3 size-4 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300"

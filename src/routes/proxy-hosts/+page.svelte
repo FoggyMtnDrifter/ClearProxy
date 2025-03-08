@@ -18,7 +18,8 @@
     FormSection,
     FormGroup,
     FormActions,
-    EmptyState
+    EmptyState,
+    StatusBadge
   } from '$lib/components'
   import { PencilLine, Trash2, Server } from 'lucide-svelte'
 
@@ -47,6 +48,45 @@
     }, 300)
   }
 
+  // Function to toggle host status
+  async function toggleHostStatus(host: (typeof data.hosts)[number]) {
+    const formData = new FormData()
+    formData.set('id', host.id.toString())
+    formData.set('enabled', (!host.enabled).toString())
+
+    console.log(`Toggling host ${host.id} to ${!host.enabled ? 'enabled' : 'disabled'}`)
+
+    isSubmitting = true
+    error = null
+
+    try {
+      const response = await fetch('?/toggle', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        console.log('Toggle successful, refreshing data')
+        await invalidate('app:proxy-hosts')
+      } else {
+        const data = await response.json()
+        console.error('Toggle failed', data)
+        error = {
+          message: data?.error || 'Failed to toggle proxy host status',
+          details: data?.details
+        }
+      }
+    } catch (err) {
+      console.error('Toggle error', err)
+      error = {
+        message: 'Failed to toggle proxy host status',
+        details: err instanceof Error ? err.message : String(err)
+      }
+    } finally {
+      isSubmitting = false
+    }
+  }
+
   const columns = [
     { header: 'Domain Name', key: 'domain', class: 'font-medium text-gray-900' },
     { header: 'Target Host', key: 'targetHost' },
@@ -55,12 +95,7 @@
     {
       header: 'Status',
       key: 'status',
-      class: 'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
-      render: (host: (typeof data.hosts)[number]) => `
-        <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
-          Active
-        </span>
-      `
+      class: 'whitespace-nowrap px-3 py-4 text-sm text-gray-500'
     }
   ]
 
@@ -341,7 +376,20 @@
       />
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
         {#if filteredHosts.length > 0}
-          <Table {columns} data={filteredHosts} {rowActions} />
+          <Table {columns} data={filteredHosts} {rowActions}>
+            <svelte:fragment slot="status" let:row>
+              <button
+                type="button"
+                on:click={() => toggleHostStatus(row)}
+                class="cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <StatusBadge
+                  text={row.enabled ? 'Active' : 'Disabled'}
+                  type={row.enabled ? 'success' : 'neutral'}
+                />
+              </button>
+            </svelte:fragment>
+          </Table>
         {:else}
           <EmptyState
             title="No proxy hosts yet"

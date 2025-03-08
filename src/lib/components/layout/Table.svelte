@@ -67,16 +67,18 @@
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-      {#each data as item}
+      {#each data as row}
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
           {#each columns as column}
             <td
               class={`whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 dark:text-gray-100 sm:pl-0 ${column.class || ''}`}
             >
-              {#if column.render}
-                {@html column.render(item)}
+              {#if column.key === 'status' && $$slots.status}
+                <slot name="status" {row} />
+              {:else if column.render}
+                {@html column.render(row)}
               {:else}
-                {item[column.key]}
+                {row[column.key]}
               {/if}
             </td>
           {/each}
@@ -89,8 +91,8 @@
                   <svelte:component
                     this={action.component}
                     {...action.props}
-                    on:click={() => action.onClick(item)}
-                    aria-label={action.srLabel(item)}
+                    on:click={() => action.onClick(row)}
+                    aria-label={action.srLabel(row)}
                   >
                     {#if action.props.children}
                       <svelte:component

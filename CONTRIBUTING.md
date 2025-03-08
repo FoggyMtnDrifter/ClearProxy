@@ -4,7 +4,7 @@ Thank you for your interest in contributing to ClearProxy! This document provide
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our Code of Conduct (to be implemented). We are committed to providing a welcoming and inclusive environment for all contributors.
+By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md). We are committed to providing a welcoming and inclusive environment for all contributors.
 
 ## Getting Started
 

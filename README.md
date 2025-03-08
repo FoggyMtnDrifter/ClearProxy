@@ -144,8 +144,12 @@ The application uses SQLite for data storage and communicates with Caddy's admin
 #### Environment Variables
 
 - `CADDY_API_URL`: URL of Caddy's admin API (default: `http://localhost:2019`)
-- `DATABASE_PATH`: Path to SQLite database file (default: `./clearproxy.db`)
+- `DATABASE_URL`: SQLite database connection URL (default: `file:./clearproxy.db`)
 - `LOG_LEVEL`: Logging level (default: `info`)
+- `NODE_ENV`: Environment mode (development or production)
+- `PORT`: Application port (default: `3000`)
+- `ORIGIN`: The URL origin for the application (default: `http://localhost`)
+- `MIGRATIONS_PATH`: Path to database migration files
 
 ### Docker Architecture
 

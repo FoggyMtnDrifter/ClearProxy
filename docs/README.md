@@ -9,6 +9,7 @@ Welcome to the official ClearProxy documentation. This guide is designed to help
 - [Proxy Hosts](./proxy-hosts.md) - Managing proxy hosts and domains
 - [Authentication](./authentication.md) - Setting up authentication for admin interface and proxied hosts
 - [Advanced Configuration](./advanced-configuration.md) - Using custom JSON configuration for advanced features
+- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
 - [FAQ](./faq.md) - Frequently asked questions
 
 ## Key Features

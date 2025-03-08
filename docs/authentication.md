@@ -61,6 +61,9 @@ If you're having trouble logging into the admin interface:
      # Reset password for a user
      ./src/cli/reset-password.sh --email user@example.com --password newpassword
 
+     # For Docker installations
+     docker exec -it clearproxy-app /bin/sh -c "/app/src/cli/reset-password.sh --email user@example.com --password newpassword"
+
      # Show help information
      ./src/cli/reset-password.sh --help
      ```

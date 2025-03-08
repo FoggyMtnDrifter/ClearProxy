@@ -377,8 +377,8 @@
               placeholder="example.com"
             />
 
-            <FormGroup layout="grid" cols={12} gap={4}>
-              <div class="sm:col-span-3">
+            <div class="flex flex-row space-x-4">
+              <div class="w-1/4">
                 <Select
                   label="Target Protocol"
                   name="targetProtocol"
@@ -389,7 +389,7 @@
                   ]}
                 />
               </div>
-              <div class="sm:col-span-6">
+              <div class="w-1/2">
                 <Input
                   label="Target Host"
                   name="targetHost"
@@ -399,7 +399,7 @@
                   on:input={(e) => handleTargetHostInput(e, 'targetPort')}
                 />
               </div>
-              <div class="sm:col-span-3">
+              <div class="w-1/4">
                 <Input
                   label="Target Port"
                   name="targetPort"
@@ -409,7 +409,7 @@
                   placeholder="8080"
                 />
               </div>
-            </FormGroup>
+            </div>
           </FormSection>
 
           {#if targetProtocol === 'https'}
@@ -532,8 +532,8 @@
           <FormSection title="Basic Configuration" bordered={false}>
             <Input label="Domain Name" name="domain" type="text" required bind:value={editDomain} />
 
-            <FormGroup layout="grid" cols={12} gap={4}>
-              <div class="sm:col-span-3">
+            <div class="flex flex-row space-x-4">
+              <div class="w-1/4">
                 <Select
                   label="Target Protocol"
                   name="targetProtocol"
@@ -544,7 +544,7 @@
                   ]}
                 />
               </div>
-              <div class="sm:col-span-6">
+              <div class="w-1/2">
                 <Input
                   label="Target Host"
                   name="targetHost"
@@ -554,7 +554,7 @@
                   on:input={(e) => handleTargetHostInput(e, 'targetPort')}
                 />
               </div>
-              <div class="sm:col-span-3">
+              <div class="w-1/4">
                 <Input
                   label="Target Port"
                   name="targetPort"
@@ -564,7 +564,7 @@
                   bind:value={editTargetPort}
                 />
               </div>
-            </FormGroup>
+            </div>
           </FormSection>
 
           {#if targetProtocol === 'https'}

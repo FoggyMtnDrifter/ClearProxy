@@ -20,7 +20,7 @@
    * Calculate grid classes based on columns
    */
   function getGridCols(cols: number): string {
-    return `sm:grid-cols-${cols}`
+    return `grid-cols-${cols} sm:grid-cols-${cols}`
   }
 </script>
 

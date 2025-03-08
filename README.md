@@ -52,7 +52,7 @@ curl -L https://raw.githubusercontent.com/foggymtndrifter/clearproxy/main/docker
 2. Create required directories and configuration:
 
 ```bash
-mkdir -p data/caddy/data data/caddy/config/caddy data/certificates
+mkdir -p data/caddy/data data/caddy/config/caddy data/certificates logs
 
 cat > data/caddy/config/caddy/caddy.json << 'EOF'
 {
@@ -93,6 +93,7 @@ services:
       - CADDY_API_URL=http://caddy:2019
     volumes:
       - ./data:/data
+      - ./logs:/app/build/logs
     networks:
       - proxy-network
     depends_on:

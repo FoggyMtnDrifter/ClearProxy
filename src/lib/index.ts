@@ -6,4 +6,22 @@
  * @module lib
  */
 
-// place files you want to import through the `$lib` alias in this folder.
+// Export all public modules
+export * from './interfaces'
+export * from './models'
+export * from './middleware'
+export * from './components'
+export * from './stores'
+export * from './caddy'
+export * from './actions'
+export * from './auth'
+export * from './db'
+
+// Export namespaced modules to avoid collisions
+import * as controllers from './controllers'
+import * as services from './services'
+import * as repositories from './repositories'
+import * as utils from './utils'
+import * as config from './config'
+
+export { controllers, services, repositories, utils, config }

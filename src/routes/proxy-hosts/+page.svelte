@@ -189,6 +189,7 @@
     formData.set('http3Support', http3Support.toString())
     formData.set('advancedConfig', showAdvanced ? advancedConfig : '')
     formData.set('basicAuthEnabled', basicAuthEnabled.toString())
+    formData.set('enabled', 'true')
 
     formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '')
 
@@ -231,6 +232,7 @@
     formData.set('advancedConfig', showAdvanced ? advancedConfig : '')
     formData.set('basicAuthEnabled', basicAuthEnabled.toString())
     formData.set('basicAuthUsername', basicAuthEnabled ? basicAuthUsername : '')
+    formData.set('enabled', 'true')
 
     if (basicAuthPassword && basicAuthPassword.trim() !== '') {
       formData.set('basicAuthPassword', basicAuthPassword)
@@ -561,7 +563,7 @@
           editingHost = null
         }}
       >
-        <form method="POST" action="?/edit" use:enhance={handleEditSubmit} class="space-y-6">
+        <form method="POST" action="?/update" use:enhance={handleEditSubmit} class="space-y-6">
           <div class="space-y-4">
             <h4 class="text-base font-medium text-gray-900 dark:text-gray-100">
               Basic Configuration

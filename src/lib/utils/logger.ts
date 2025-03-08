@@ -10,7 +10,7 @@ import { mkdirSync, existsSync } from 'fs'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const isDevelopment = process.env.NODE_ENV === 'development'
 const LOG_LEVEL = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info')
-const logDir = join(dirname(__dirname), 'logs')
+const logDir = join(dirname(dirname(__dirname)), 'logs')
 if (!existsSync(logDir)) {
   mkdirSync(logDir, { recursive: true })
 }

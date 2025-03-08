@@ -3,13 +3,11 @@
  * Manages user authentication and session creation.
  * @module routes/auth/login/+page.server
  */
-import { db } from '$lib/db'
-import { users } from '$lib/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { userRepository } from '$lib/repositories/userRepository'
 import { verifyPassword } from '$lib/auth/password'
 import { createSession } from '$lib/auth/session'
 import { fail, redirect } from '@sveltejs/kit'
-import { authLogger } from '$lib/logger'
+import { authLogger } from '$lib/utils/logger'
 import type { Actions, PageServerLoad } from './$types'
 
 /**
@@ -24,11 +22,8 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(303, '/dashboard')
   }
 
-  const userCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(users)
-    .get()
-  const registrationAllowed = (userCount?.count ?? 0) === 0
+  const userCount = await userRepository.count()
+  const registrationAllowed = userCount === 0
 
   return {
     registrationAllowed
@@ -63,7 +58,7 @@ export const actions = {
       return fail(400, { error: 'Email and password are required' })
     }
 
-    const user = await db.select().from(users).where(eq(users.email, email.toString())).get()
+    const user = await userRepository.getByEmail(email.toString())
 
     if (!user) {
       authLogger.warn({ email }, 'Login attempt with non-existent user')

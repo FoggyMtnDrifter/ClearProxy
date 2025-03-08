@@ -5,7 +5,7 @@
  */
 import { redirect, type Handle } from '@sveltejs/kit'
 import { getUserFromSession } from '$lib/auth/session'
-import { authLogger } from '$lib/logger'
+import { authLogger } from '$lib/utils/logger'
 
 /** Routes that can be accessed without authentication */
 const publicRoutes = ['/auth/login', '/auth/register']

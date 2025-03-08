@@ -103,7 +103,7 @@
         <div class="flex h-16 items-center justify-between">
           <div class="flex items-center">
             <div class="shrink-0">
-              <a href="/" class="flex items-center">
+              <a href="/dashboard" class="flex items-center">
                 <Logo className="h-8 w-auto" />
               </a>
             </div>

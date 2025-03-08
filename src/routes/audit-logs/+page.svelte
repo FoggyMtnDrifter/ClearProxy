@@ -108,7 +108,13 @@
       title="Audit Logs"
       description="Detailed history of system changes and configuration updates."
     >
-      <Feed items={feedItems} />
+      {#if feedItems.length > 0}
+        <Feed items={feedItems} />
+      {:else}
+        <div class="px-4 py-5 sm:px-6">
+          <Feed items={[]} />
+        </div>
+      {/if}
     </Card>
   </div>
 </div>

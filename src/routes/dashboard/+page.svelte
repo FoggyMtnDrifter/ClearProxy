@@ -70,7 +70,13 @@
     </div>
 
     <Card title="Recent Activity" description="Latest system events and configuration changes.">
-      <Feed items={feedItems} />
+      {#if feedItems.length > 0}
+        <Feed items={feedItems} />
+      {:else}
+        <div class="px-4 py-5 sm:px-6">
+          <Feed items={[]} />
+        </div>
+      {/if}
     </Card>
   </div>
 </div>

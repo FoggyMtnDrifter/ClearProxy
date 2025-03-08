@@ -44,22 +44,36 @@
    */
   export let ariaLabel = ''
 
-  // Determine if buttonClass already includes cursor-pointer
+  /**
+   * Whether the button is disabled
+   * @type {boolean}
+   * @default false
+   */
+  export let disabled = false
+
+  // Determine cursor style based on disabled state and existing class
   $: hasPointerCursor = buttonClass.includes('cursor-pointer')
-  $: combinedButtonClass = clsx(buttonClass, !hasPointerCursor && 'cursor-pointer')
+  $: hasNotAllowedCursor = buttonClass.includes('cursor-not-allowed')
+  $: combinedButtonClass = clsx(
+    buttonClass,
+    !hasPointerCursor && !hasNotAllowedCursor && !disabled && 'cursor-pointer',
+    disabled && !hasNotAllowedCursor && 'cursor-not-allowed opacity-70'
+  )
 
   /**
    * Handle click event and forward it
    */
   function handleClick(e: MouseEvent) {
-    dispatch('click', e)
+    if (!disabled) {
+      dispatch('click', e)
+    }
   }
 
   /**
    * Handle keydown event for keyboard accessibility
    */
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault()
       dispatch('click', new MouseEvent('click'))
     }
@@ -72,7 +86,8 @@
   on:click={handleClick}
   on:keydown={handleKeydown}
   aria-label={ariaLabel}
-  tabindex="0"
+  aria-disabled={disabled}
+  tabindex={disabled ? -1 : 0}
 >
   <svelte:component this={icon} class={iconClass} {...iconProps} />
 </button>

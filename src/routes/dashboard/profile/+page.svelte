@@ -13,7 +13,7 @@
   import { enhance } from '$app/forms'
   import type { PageData } from './$types'
   import { fade } from 'svelte/transition'
-  import { Input, ErrorAlert, Card, FormActions, FormGroup } from '$lib/components'
+  import { Input, Alert, Card, FormActions, FormGroup } from '$lib/components'
   import { invalidateAll } from '$app/navigation'
   import { ClipboardCopy, Check } from 'lucide-svelte'
 
@@ -76,7 +76,7 @@
           {/if}
 
           {#if form?.updateProfile && form?.error}
-            <ErrorAlert error={form.error} />
+            <Alert type="error" title={form.error} />
           {/if}
 
           <form
@@ -148,7 +148,7 @@
           {/if}
 
           {#if form?.changePassword && form?.error}
-            <ErrorAlert error={form.error} />
+            <Alert type="error" title={form.error} />
           {/if}
 
           <form

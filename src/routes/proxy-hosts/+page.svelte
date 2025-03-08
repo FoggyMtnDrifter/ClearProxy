@@ -6,7 +6,7 @@
   import type { SubmitFunction } from '@sveltejs/kit'
   import {
     Modal,
-    ErrorAlert,
+    Alert,
     Input,
     Table,
     Select,
@@ -29,6 +29,13 @@
   let searchQuery = ''
   let searchTimeout: ReturnType<typeof setTimeout>
   let filteredHosts = data.hosts
+  let isCaddyRunning = data.caddyRunning
+
+  // Ensure isCaddyRunning is always up to date with data.caddyRunning
+  $: {
+    isCaddyRunning = data.caddyRunning
+    console.log(`Caddy running state updated: ${isCaddyRunning}`)
+  }
 
   $: {
     clearTimeout(searchTimeout)
@@ -50,6 +57,14 @@
 
   // Function to toggle host status
   async function toggleHostStatus(host: (typeof data.hosts)[number]) {
+    if (!data.caddyRunning) {
+      error = {
+        message: 'Cannot modify proxy hosts',
+        details: 'Caddy server is not running. Please start Caddy before making changes.'
+      }
+      return
+    }
+
     const formData = new FormData()
     formData.set('id', host.id.toString())
     formData.set('enabled', (!host.enabled).toString())
@@ -102,18 +117,35 @@
   const rowActions = [
     {
       srLabel: (host: (typeof data.hosts)[number]) => `Edit ${host.domain}`,
-      onClick: (host: (typeof data.hosts)[number]) => startEdit(host),
+      onClick: (host: (typeof data.hosts)[number]) => {
+        if (!data.caddyRunning) {
+          error = {
+            message: 'Cannot edit proxy hosts',
+            details: 'Caddy server is not running. Please start Caddy before making changes.'
+          }
+          return
+        }
+        startEdit(host)
+      },
       component: ActionButton,
       props: {
         icon: PencilLine,
-        buttonClass:
-          'text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 cursor-pointer transition-colors duration-200',
-        iconClass: 'size-5'
+        buttonClass: 'text-gray-600 dark:text-gray-300 transition-colors duration-200',
+        iconClass: 'size-5',
+        disabled: !data.caddyRunning
       }
     },
     {
       srLabel: (host: (typeof data.hosts)[number]) => `Delete ${host.domain}`,
       onClick: async (host: (typeof data.hosts)[number]) => {
+        if (!data.caddyRunning) {
+          error = {
+            message: 'Cannot delete proxy hosts',
+            details: 'Caddy server is not running. Please start Caddy before making changes.'
+          }
+          return
+        }
+
         if (confirm(`Are you sure you want to delete ${host.domain}?`)) {
           const form = new FormData()
           form.set('id', host.id.toString())
@@ -131,9 +163,9 @@
       component: ActionButton,
       props: {
         icon: Trash2,
-        buttonClass:
-          'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer ml-3 transition-colors duration-200',
-        iconClass: 'size-5'
+        buttonClass: 'text-red-600 dark:text-red-300 ml-3 transition-colors duration-200',
+        iconClass: 'size-5',
+        disabled: !data.caddyRunning
       }
     }
   ]
@@ -169,6 +201,9 @@
       clearTimeout(searchTimeout)
     }
   })
+
+  // Update isCaddyRunning whenever data.caddyRunning changes
+  $: isCaddyRunning = data.caddyRunning
 
   let showCreateModal = false
   let showEditModal = false
@@ -359,6 +394,16 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
+    {#if !data.caddyRunning}
+      <div class="mb-4">
+        <Alert
+          type="warning"
+          title="Caddy Server Not Running"
+          message="The Caddy server is currently not running. Proxy configuration changes are disabled until Caddy is started."
+        />
+      </div>
+    {/if}
+
     <Card>
       <TableHeader
         title="Proxy Hosts"
@@ -366,30 +411,48 @@
         bind:searchQuery
         searchPlaceholder="Search hosts..."
         actionText="Add Host"
+        actionDisabled={!data.caddyRunning}
         on:search={() => {
           // Search is handled by the reactive statement
         }}
         on:action={() => {
+          if (!data.caddyRunning) {
+            error = {
+              message: 'Cannot add proxy hosts',
+              details: 'Caddy server is not running. Please start Caddy before making changes.'
+            }
+            return
+          }
           showCreateModal = true
           resetForm()
         }}
       />
       <div class="px-4 pb-5 sm:px-6 sm:pb-6">
         {#if filteredHosts.length > 0}
-          <Table {columns} data={filteredHosts} {rowActions}>
-            <svelte:fragment slot="status" let:row>
-              <button
-                type="button"
-                on:click={() => toggleHostStatus(row)}
-                class="cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <StatusBadge
-                  text={row.enabled ? 'Active' : 'Disabled'}
-                  type={row.enabled ? 'success' : 'neutral'}
-                />
-              </button>
-            </svelte:fragment>
-          </Table>
+          <div class="relative">
+            {#if !data.caddyRunning}
+              <div
+                class="absolute inset-0 bg-gray-200 dark:bg-gray-800 opacity-10 z-10 pointer-events-none rounded-md"
+              ></div>
+            {/if}
+            <Table {columns} data={filteredHosts} {rowActions}>
+              <svelte:fragment slot="status" let:row>
+                <button
+                  type="button"
+                  on:click={() => toggleHostStatus(row)}
+                  class={data.caddyRunning
+                    ? 'cursor-pointer hover:opacity-80 transition-opacity'
+                    : 'cursor-not-allowed opacity-90 transition-opacity'}
+                  aria-disabled={!data.caddyRunning}
+                >
+                  <StatusBadge
+                    text={row.enabled ? 'Active' : 'Disabled'}
+                    type={row.enabled ? 'success' : 'neutral'}
+                  />
+                </button>
+              </svelte:fragment>
+            </Table>
+          </div>
         {:else}
           <EmptyState
             title="No proxy hosts yet"
@@ -397,7 +460,15 @@
             icon={Server}
             actionText="Add Host"
             className="mt-10"
+            disabled={!data.caddyRunning}
             on:action={() => {
+              if (!data.caddyRunning) {
+                error = {
+                  message: 'Cannot add proxy hosts',
+                  details: 'Caddy server is not running. Please start Caddy before making changes.'
+                }
+                return
+              }
               showCreateModal = true
               resetForm()
             }}
@@ -549,7 +620,7 @@
           </FormSection>
 
           {#if error}
-            <ErrorAlert error={error.message} details={error.details} />
+            <Alert type="error" title={error.message} message={error.details} />
           {/if}
 
           <FormActions
@@ -704,7 +775,7 @@
           </FormSection>
 
           {#if error}
-            <ErrorAlert error={error.message} details={error.details} />
+            <Alert type="error" title={error.message} message={error.details} />
           {/if}
 
           <FormActions

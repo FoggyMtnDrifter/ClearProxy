@@ -24,6 +24,9 @@
   /** Action button text */
   export let actionText: string | undefined = undefined
 
+  /** Disable the action button */
+  export let disabled: boolean = false
+
   /** Additional CSS classes */
   export let className: string = ''
 
@@ -49,7 +52,7 @@
 
   {#if actionText}
     <div class="mt-6">
-      <Button on:click={() => dispatch('action')} variant="primary">
+      <Button on:click={() => dispatch('action')} variant="primary" {disabled}>
         {actionText}
       </Button>
     </div>

@@ -3,16 +3,27 @@
    * Stats component for displaying a grid of statistics.
    * Renders a responsive grid of stat cards with labels and values.
    */
+  import { StatusBadge } from '$lib/components'
+  import type { ComponentType } from 'svelte'
 
   /**
    * Interface for a single statistic item
    * @interface Stat
    * @property {string} label - The label/title for the statistic
    * @property {string|number} value - The value to display for the statistic
+   * @property {string} [type] - Optional type for status indicators (success, warning, error, etc.)
+   * @property {Object} [icon] - Optional icon configuration
+   * @property {ComponentType} [icon.component] - The icon component to display
+   * @property {string} [icon.color] - CSS color class for the icon
    */
   interface Stat {
     label: string
     value: string | number
+    type?: 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'indigo' | 'purple' | 'pink'
+    icon?: {
+      component: ComponentType
+      color?: string
+    }
   }
 
   /**
@@ -49,7 +60,23 @@
     >
       <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</dt>
       <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-        {stat.value}
+        {#if stat.type}
+          <StatusBadge
+            text={stat.value.toString()}
+            type={stat.type}
+            className="text-base px-3 py-1.5"
+          />
+        {:else if stat.icon}
+          <div class="flex items-center">
+            <svelte:component
+              this={stat.icon.component}
+              class="size-6 mr-2 {stat.icon.color || ''}"
+            />
+            <span>{stat.value}</span>
+          </div>
+        {:else}
+          {stat.value}
+        {/if}
       </dd>
     </div>
   {/each}

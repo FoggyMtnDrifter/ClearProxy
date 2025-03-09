@@ -15,7 +15,6 @@
     { name: 'Audit Logs', href: '/audit-logs' }
   ]
 
-  /** The current path from the URL */
   $: currentPath = $page.url.pathname
 </script>
 

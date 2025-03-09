@@ -60,7 +60,6 @@
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
     <div class="space-y-6">
-      <!-- Profile Information Form -->
       <Card
         title="Profile Information"
         description="Update your personal details and contact information."
@@ -84,8 +83,6 @@
             action="?/updateProfile"
             use:enhance={() => {
               return async ({ update, result }) => {
-                // Apply the form result from the server without resetting the form
-                // This keeps the form values intact
                 await update({ reset: false })
 
                 if (
@@ -93,11 +90,9 @@
                   result.data?.updateProfile &&
                   result.data?.success
                 ) {
-                  // Show success message
                   profileSuccess = true
                   resetSuccessMessages()
 
-                  // Reload page data to get updated user information
                   await invalidateAll()
                 }
               }
@@ -132,7 +127,6 @@
         </div>
       </Card>
 
-      <!-- Change Password Form -->
       <Card
         title="Change Password"
         description="Update your password to maintain account security."
@@ -156,7 +150,6 @@
             action="?/changePassword"
             use:enhance={() => {
               return async ({ update, result, formElement }) => {
-                // Apply the form result from the server
                 await update({ reset: false })
 
                 if (
@@ -164,13 +157,10 @@
                   result.data?.changePassword &&
                   result.data?.success
                 ) {
-                  // Show success message
                   passwordSuccess = true
-                  // For password fields, we want to clear them after success for security
                   formElement.reset()
                   resetSuccessMessages()
 
-                  // Reload page data to get updated user information
                   await invalidateAll()
                 }
               }

@@ -5,28 +5,21 @@
    */
   import { createEventDispatcher } from 'svelte'
 
-  /** Input placeholder text */
   export let placeholder: string = 'Search...'
 
-  /** Search query value */
   export let value: string = ''
 
-  /** Debounce delay in milliseconds */
   export let debounceMs: number = 300
 
-  /** Additional CSS classes */
   export let className: string = ''
 
-  /** Size of the input field */
   export let size: 'sm' | 'md' | 'lg' = 'md'
 
-  /** Icon to display in the input */
   export let icon: typeof import('lucide-svelte').Search | null = null
 
   const dispatch = createEventDispatcher<{ search: string; input: string }>()
   let timeout: ReturnType<typeof setTimeout>
 
-  // Size class mapping
   const sizeClasses = {
     sm: 'py-1.5 px-3 text-xs',
     md: 'py-2 px-4 text-sm',
@@ -40,10 +33,8 @@
     const target = event.target as HTMLInputElement
     const newValue = target.value
 
-    // Always dispatch the immediate input event
     dispatch('input', newValue)
 
-    // Debounce the search event
     clearTimeout(timeout)
     timeout = setTimeout(() => {
       dispatch('search', newValue)

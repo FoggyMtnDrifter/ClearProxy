@@ -4,19 +4,14 @@
    * A consistent card container for content with optional header
    */
 
-  /** Title for the card header */
   export let title: string | undefined = undefined
 
-  /** Optional description for the card header */
   export let description: string | undefined = undefined
 
-  /** Additional CSS classes for the card container */
   export let className: string = ''
 
-  /** Custom padding for card content */
   export let padding: string = 'px-4 py-5 sm:px-6'
 
-  /** Show shadow around the card */
   export let shadow: boolean = true
 </script>
 

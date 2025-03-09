@@ -6,7 +6,6 @@
    */
   import { CircleX, AlertTriangle, Info } from 'lucide-svelte'
 
-  /** Alert type: 'error', 'warning', or 'info' */
   export let type: 'error' | 'warning' | 'info' = 'error'
 
   /**
@@ -22,7 +21,6 @@
    */
   export let message: string | undefined = undefined
 
-  // Define colors and icons based on the alert type
   $: alertConfig = {
     error: {
       bg: 'bg-red-50 dark:bg-red-900/20',

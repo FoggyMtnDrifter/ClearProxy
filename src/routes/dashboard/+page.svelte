@@ -14,21 +14,37 @@
   import { invalidate } from '$app/navigation'
 
   /**
+   * Debug function to log audit changes structure
+   * @param {string} actionType - The action type
+   * @param {any} changes - The changes object
+   */
+  function debugAuditLogChanges(actionType: string, changes: any): void {
+    if (process.env.NODE_ENV !== 'production') {
+      console.group(`Audit Log (${actionType})`)
+      console.log('Changes structure:', changes)
+      if (typeof changes === 'object') {
+        console.log('Keys:', Object.keys(changes))
+        if (changes.domain) {
+          console.log('Domain field:', changes.domain)
+        }
+      }
+      console.groupEnd()
+    }
+  }
+
+  /**
    * Page data loaded from the server containing statistics and recent logs
    */
   export let data
 
-  // Setup refresh interval for Caddy status
   let statusCheckInterval: ReturnType<typeof setInterval>
 
   onMount(() => {
-    // Immediately check for updates
     invalidate('app:caddy-status')
 
-    // Then set up periodic checking
     statusCheckInterval = setInterval(() => {
       invalidate('app:caddy-status')
-    }, 5000) // Check every 5 seconds
+    }, 5000)
   })
 
   onDestroy(() => {
@@ -60,8 +76,65 @@
    * Transforms recent log data into feed items for display
    * Uses reactive declaration to automatically update when data changes
    */
-  $: feedItems = data.recentLogs.map(
-    (log): FeedItem => ({
+  $: feedItems = data.recentLogs.map((log): FeedItem => {
+    let domain: string | undefined = undefined
+
+    if (
+      log.entityType.toLowerCase() === 'proxyhost' ||
+      log.entityType.toLowerCase() === 'proxy_host'
+    ) {
+      try {
+        const changes = typeof log.changes === 'string' ? JSON.parse(log.changes) : log.changes
+        const actionType = log.actionType.toLowerCase()
+
+        debugAuditLogChanges(actionType, changes)
+
+        if (changes) {
+          if (typeof changes.domain === 'string') {
+            domain = changes.domain
+          } else if (changes.domain && typeof changes.domain === 'object') {
+            if (changes.domain.to) {
+              domain = changes.domain.to
+            } else if (changes.domain.from) {
+              domain = changes.domain.from
+            }
+          }
+
+          if (process.env.NODE_ENV !== 'production' && domain) {
+            console.log(`Extracted domain: ${domain} from action type: ${actionType}`)
+          }
+
+          if (!domain && (changes.basicAuth || changes.basicAuthEnabled)) {
+            Object.entries(changes).forEach(([key, value]) => {
+              if (key === 'domain' && typeof value === 'string') {
+                domain = value
+              }
+            })
+          }
+
+          if (!domain && actionType === 'delete') {
+            if (typeof changes === 'object') {
+              ;['domain', 'host', 'address'].forEach((fieldName) => {
+                if (!domain && changes[fieldName] && typeof changes[fieldName] === 'string') {
+                  domain = changes[fieldName]
+                }
+              })
+            }
+          }
+
+          if (!domain && changes.target && changes.target.domain) {
+            domain = changes.target.domain
+          }
+          if (!domain && changes.host && changes.host.domain) {
+            domain = changes.host.domain
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing changes for audit log', e)
+      }
+    }
+
+    return {
       id: log.id.toString(),
       timestamp: formatTimestamp(log.createdAt),
       type: log.actionType.toLowerCase() as FeedItem['type'],
@@ -70,9 +143,10 @@
         email: log.user.email,
         avatar: `https://www.gravatar.com/avatar/${log.user.email ? md5(log.user.email.toLowerCase().trim()) : ''}?d=mp&s=80`
       },
-      entityType: log.entityType
-    })
-  )
+      entityType: log.entityType,
+      domain
+    }
+  })
 
   /**
    * Formats a timestamp into a relative time string (e.g., "3h ago")

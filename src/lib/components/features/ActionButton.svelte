@@ -7,7 +7,6 @@
   import type { SvelteComponent } from 'svelte'
   import { clsx } from 'clsx'
 
-  // Event dispatcher
   const dispatch = createEventDispatcher()
 
   /**
@@ -51,7 +50,6 @@
    */
   export let disabled = false
 
-  // Determine cursor style based on disabled state and existing class
   $: hasPointerCursor = buttonClass.includes('cursor-pointer')
   $: hasNotAllowedCursor = buttonClass.includes('cursor-not-allowed')
   $: combinedButtonClass = clsx(

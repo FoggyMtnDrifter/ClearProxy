@@ -8,7 +8,6 @@
   import ThemeToggle from '../ui/ThemeToggle.svelte'
   import UserAvatar from '../ui/UserAvatar.svelte'
 
-  /** Whether the menu is currently visible */
   export let isOpen: boolean = false
 
   /**
@@ -21,10 +20,8 @@
     { name: 'Audit Logs', href: '/audit-logs' }
   ]
 
-  /** The current user object from $page.data.user */
   export let user: { name?: string; email?: string } | undefined | null = undefined
 
-  /** The current path from the URL */
   $: currentPath = $page.url.pathname
 </script>
 

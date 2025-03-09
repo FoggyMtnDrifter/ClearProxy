@@ -142,7 +142,6 @@ export function formatErrorResponse(error: Error) {
     }
   }
 
-  // Default error response
   return {
     status: 500,
     body: {

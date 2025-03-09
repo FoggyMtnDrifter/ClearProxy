@@ -9,19 +9,14 @@
 
   const dispatch = createEventDispatcher<{ scroll: { scrollTop: number; scrollLeft: number } }>()
 
-  /** Height of the viewport area (can be any CSS value) */
   export let height: string = '100%'
 
-  /** Width of the viewport area (can be any CSS value) */
   export let width: string = '100%'
 
-  /** Whether to show the custom scrollbar */
   export let scrollbarVisible: boolean = true
 
-  /** The width of the scrollbar in pixels */
   export let scrollbarWidth: number = 8
 
-  /** Whether to show a scrollbar when not scrolling */
   export let alwaysShowScrollbar: boolean = false
 
   /**
@@ -30,19 +25,14 @@
    */
   export let autoHide: boolean = true
 
-  /** Delay in ms before hiding the scrollbar when idle */
   export let hideDelay: number = 1000
 
-  /** Direction for scrolling (vertical or horizontal) */
   export let direction: 'vertical' | 'horizontal' | 'both' = 'vertical'
 
-  /** Additional CSS class for the viewport */
   export let viewportClass: string = ''
 
-  /** Additional CSS class for the scrollbar */
   export let scrollbarClass: string = ''
 
-  /** CSS class for the content container */
   export let contentClass: string = ''
 
   let viewport: HTMLDivElement
@@ -94,13 +84,11 @@
     if (!viewport || !content) return
 
     const thumbRatio = Math.min(viewportHeight / contentHeight, 1)
-    const minThumbSize = 20 // Minimum size for the thumb
+    const minThumbSize = 20
 
-    // Calculate thumb height with a minimum size
     const calculatedThumbHeight = Math.max(minThumbSize, viewportHeight * thumbRatio)
     thumbYHeight.set(calculatedThumbHeight)
 
-    // Calculate thumb position
     const availableTrackHeight = viewportHeight - calculatedThumbHeight
     const scrollRatio = $scrollTop / (contentHeight - viewportHeight)
     thumbYPosition.set(availableTrackHeight * scrollRatio)
@@ -113,13 +101,11 @@
     if (!viewport || !content) return
 
     const thumbRatio = Math.min(viewportWidth / contentWidth, 1)
-    const minThumbSize = 20 // Minimum size for the thumb
+    const minThumbSize = 20
 
-    // Calculate thumb width with a minimum size
     const calculatedThumbWidth = Math.max(minThumbSize, viewportWidth * thumbRatio)
     thumbXWidth.set(calculatedThumbWidth)
 
-    // Calculate thumb position
     const availableTrackWidth = viewportWidth - calculatedThumbWidth
     const scrollRatio = $scrollLeft / (contentWidth - viewportWidth)
     thumbXPosition.set(availableTrackWidth * scrollRatio)
@@ -139,11 +125,9 @@
     updateThumbY()
     updateThumbX()
 
-    // Show scrollbar on scroll
     showScrollbar = true
     scrolling = true
 
-    // Hide scrollbar after delay if autoHide is enabled
     if (autoHide && !alwaysShowScrollbar) {
       if (hideTimeoutId) clearTimeout(hideTimeoutId)
 
@@ -173,7 +157,6 @@
     isDraggingY = true
     showScrollbar = true
 
-    // Add document event listeners for drag
     document.addEventListener('mousemove', dragY)
     document.addEventListener('touchmove', dragY)
     document.addEventListener('mouseup', stopDragY)
@@ -195,18 +178,14 @@
 
     const deltaY = clientY - dragStartY
 
-    // Calculate available track height and apply movement
     const availableTrackHeight = viewportHeight - $thumbYHeight
     const newThumbPos = Math.max(0, Math.min(availableTrackHeight, dragStartThumbY + deltaY))
 
-    // Update thumb position
     thumbYPosition.set(newThumbPos, { duration: 0 })
 
-    // Calculate and apply scroll position
     const scrollRatio = newThumbPos / availableTrackHeight
     const newScrollTop = Math.round(scrollRatio * (contentHeight - viewportHeight))
 
-    // Set scrollTop via direct property access for immediate effect
     if (viewport) {
       viewport.scrollTop = newScrollTop
       scrollTop.set(newScrollTop, { duration: 0 })
@@ -219,13 +198,11 @@
   function stopDragY() {
     isDraggingY = false
 
-    // Remove document event listeners
     document.removeEventListener('mousemove', dragY)
     document.removeEventListener('touchmove', dragY)
     document.removeEventListener('mouseup', stopDragY)
     document.removeEventListener('touchend', stopDragY)
 
-    // Hide scrollbar after delay if autoHide is enabled
     if (autoHide && !alwaysShowScrollbar) {
       if (hideTimeoutId) clearTimeout(hideTimeoutId)
 
@@ -253,7 +230,6 @@
     isDraggingX = true
     showScrollbar = true
 
-    // Add document event listeners for drag
     document.addEventListener('mousemove', dragX)
     document.addEventListener('touchmove', dragX)
     document.addEventListener('mouseup', stopDragX)
@@ -275,18 +251,14 @@
 
     const deltaX = clientX - dragStartX
 
-    // Calculate available track width and apply movement
     const availableTrackWidth = viewportWidth - $thumbXWidth
     const newThumbPos = Math.max(0, Math.min(availableTrackWidth, dragStartThumbX + deltaX))
 
-    // Update thumb position
     thumbXPosition.set(newThumbPos, { duration: 0 })
 
-    // Calculate and apply scroll position
     const scrollRatio = newThumbPos / availableTrackWidth
     const newScrollLeft = Math.round(scrollRatio * (contentWidth - viewportWidth))
 
-    // Set scrollLeft via direct property access for immediate effect
     if (viewport) {
       viewport.scrollLeft = newScrollLeft
       scrollLeft.set(newScrollLeft, { duration: 0 })
@@ -299,13 +271,11 @@
   function stopDragX() {
     isDraggingX = false
 
-    // Remove document event listeners
     document.removeEventListener('mousemove', dragX)
     document.removeEventListener('touchmove', dragX)
     document.removeEventListener('mouseup', stopDragX)
     document.removeEventListener('touchend', stopDragX)
 
-    // Hide scrollbar after delay if autoHide is enabled
     if (autoHide && !alwaysShowScrollbar) {
       if (hideTimeoutId) clearTimeout(hideTimeoutId)
 
@@ -382,13 +352,11 @@
   onMount(() => {
     if (!viewport || !content) return
 
-    // Initial measurements
     contentHeight = content.scrollHeight
     contentWidth = content.scrollWidth
     viewportHeight = viewport.clientHeight
     viewportWidth = viewport.clientWidth
 
-    // Setup observers for size changes
     const unobserveContent = observeContentSize()
     const unobserveViewport = observeViewportSize()
 
@@ -403,7 +371,6 @@
       unobserveContent && unobserveContent()
       unobserveViewport && unobserveViewport()
 
-      // Clean up any event listeners
       document.removeEventListener('mousemove', dragY)
       document.removeEventListener('touchmove', dragY)
       document.removeEventListener('mouseup', stopDragY)
@@ -415,14 +382,12 @@
     }
   })
 
-  // Update the scrollbar when the content changes
   afterUpdate(() => {
     updateScrollbarVisibility()
     updateThumbY()
     updateThumbX()
   })
 
-  // Programmatic scrolling API
   export function scrollTo({ top, left }: { top?: number; left?: number }) {
     if (viewport) {
       if (top !== undefined) {
@@ -456,7 +421,6 @@
   role="region"
   aria-label="Scrollable content"
 >
-  <!-- Viewport - the scrollable container -->
   <div
     bind:this={viewport}
     class="scroll-area-viewport overflow-auto h-full w-full {viewportClass}"
@@ -465,13 +429,11 @@
       ? 'overflow-y: hidden;'
       : ''} {direction === 'vertical' ? 'overflow-x: hidden;' : ''}"
   >
-    <!-- Content - the actual content that scrolls -->
     <div bind:this={content} class="scroll-area-content {contentClass}">
       <slot />
     </div>
   </div>
 
-  <!-- Custom scrollbars -->
   {#if scrollbarVisible && scrollYVisible}
     <div
       bind:this={scrollbarY}
@@ -480,7 +442,6 @@
         : 'opacity-0'}"
       style="--scrollbar-width: {scrollbarWidth}px; width: {scrollbarWidth}px;"
     >
-      <!-- Custom scrollbar thumb -->
       <div
         bind:this={thumbY}
         class="scroll-area-thumb absolute right-0 rounded-full bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors touch-none cursor-pointer"
@@ -507,7 +468,6 @@
         : 'opacity-0'}"
       style="--scrollbar-width: {scrollbarWidth}px; height: {scrollbarWidth}px;"
     >
-      <!-- Custom scrollbar thumb -->
       <div
         bind:this={thumbX}
         class="scroll-area-thumb absolute bottom-0 rounded-full bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors touch-none cursor-pointer"
@@ -528,7 +488,6 @@
 </div>
 
 <style>
-  /* Hide default scrollbars in all browsers */
   .scroll-area-viewport::-webkit-scrollbar {
     display: none;
   }

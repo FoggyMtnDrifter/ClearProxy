@@ -7,28 +7,20 @@
   import Modal from '../layout/Modal.svelte'
   import Button from './Button.svelte'
 
-  /** Title for the confirmation dialog */
   export let title: string = 'Confirm Action'
 
-  /** Message/body text for the confirmation */
   export let message: string
 
-  /** Label for the confirm button */
   export let confirmLabel: string = 'Confirm'
 
-  /** Label for the cancel button */
   export let cancelLabel: string = 'Cancel'
 
-  /** Whether the dialog is currently open */
   export let isOpen: boolean = false
 
-  /** Type of action (affects button styling) */
   export let type: 'danger' | 'warning' | 'info' = 'danger'
 
-  /** Loading state for the confirm button */
   export let loading: boolean = false
 
-  /** Loading text for the confirm button */
   export let loadingText: string = 'Processing...'
 
   const dispatch = createEventDispatcher<{
@@ -51,7 +43,6 @@
     dispatch('close')
   }
 
-  // Button styling based on type
   function getButtonClass(type: 'danger' | 'warning' | 'info'): string {
     if (type === 'danger') {
       return 'bg-red-600 hover:bg-red-700 focus:ring-red-500'

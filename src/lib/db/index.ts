@@ -20,6 +20,19 @@ const migrationsPath =
 /** Path to the SQLite database file */
 const dbPath = path.join(projectRoot, 'clearproxy.db')
 
+// Configuration for SQLite connection
+const SQLITE_CONFIG = {
+  // Enable WAL mode for better concurrency
+  pragma: {
+    journal_mode: 'WAL',
+    synchronous: 'NORMAL',
+    foreign_keys: 'ON',
+    cache_size: process.env.DB_CACHE_SIZE ? parseInt(process.env.DB_CACHE_SIZE, 10) : -2000
+  },
+  // Optional: Configure a memory cache size in pages, -2000 is approximately 2MB
+  timeout: process.env.DB_TIMEOUT ? parseInt(process.env.DB_TIMEOUT, 10) : 5000
+}
+
 /**
  * Initializes the database connection and runs migrations.
  * Creates the database file if it doesn't exist.
@@ -35,7 +48,11 @@ async function initializeDatabase() {
       dbLogger.info('Database file does not exist, it will be created')
     }
 
-    const sqlite = new Database(dbPath)
+    const sqlite = new Database(dbPath, SQLITE_CONFIG)
+
+    // Enable pragmas for optimal performance
+    sqlite.pragma('temp_store = MEMORY')
+
     const db = drizzle(sqlite, { schema })
     dbLogger.info('Database connection initialized successfully')
 
@@ -66,6 +83,19 @@ process.on('SIGINT', () => {
   dbLogger.info('Closing database connection on SIGINT')
   sqlite.close()
   process.exit()
+})
+
+// More comprehensive cleanup handling
+process.on('SIGTERM', () => {
+  dbLogger.info('Closing database connection on SIGTERM')
+  sqlite.close()
+  process.exit()
+})
+
+process.on('uncaughtException', (err) => {
+  dbLogger.error({ error: err }, 'Uncaught exception, closing database connection')
+  sqlite.close()
+  process.exit(1)
 })
 
 /** Drizzle ORM database instance */

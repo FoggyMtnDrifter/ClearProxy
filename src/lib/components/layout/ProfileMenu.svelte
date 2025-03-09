@@ -7,10 +7,8 @@
   import { User, LogOut } from 'lucide-svelte'
   import UserAvatar from '../ui/UserAvatar.svelte'
 
-  /** The current user object from $page.data.user */
   export let user: { name?: string; email?: string } | undefined | null = undefined
 
-  /** Whether the menu is currently open */
   export let isOpen: boolean = false
 
   /**
@@ -43,12 +41,10 @@
     }
   }
 
-  /** Toggles the profile menu visibility */
   function toggleMenu() {
     isOpen = !isOpen
   }
 
-  /** Closes the profile menu */
   function closeMenu() {
     isOpen = false
   }

@@ -8,7 +8,6 @@ import { fail } from '@sveltejs/kit'
 import type { RequestEvent } from '@sveltejs/kit'
 import { apiLogger } from '$lib/utils/logger'
 
-// Extended RequestEvent type that includes the depends method
 interface ExtendedRequestEvent extends RequestEvent {
   depends: (dep: string) => void
 }
@@ -46,7 +45,6 @@ export async function createProxyHost(event: RequestEvent) {
   const { request, locals } = event
   const formData = await request.formData()
 
-  // Extract form data
   const domain = formData.get('domain')?.toString() || ''
   const targetHost = formData.get('targetHost')?.toString() || ''
   const targetPort = parseInt(formData.get('targetPort')?.toString() || '80', 10)
@@ -59,7 +57,6 @@ export async function createProxyHost(event: RequestEvent) {
   const basicAuthUsername = formData.get('basicAuthUsername')?.toString() || ''
   const basicAuthPassword = formData.get('basicAuthPassword')?.toString() || ''
 
-  // Validate required fields
   if (!domain) {
     return fail(400, { error: 'Domain is required' })
   }
@@ -68,7 +65,6 @@ export async function createProxyHost(event: RequestEvent) {
     return fail(400, { error: 'Target host is required' })
   }
 
-  // Create host data object
   const hostData = {
     domain,
     targetHost,
@@ -112,10 +108,8 @@ export async function updateProxyHost(event: RequestEvent) {
   const { request, locals, params } = event
   const formData = await request.formData()
 
-  // Try to get ID from URL params first, then from form data
   let id = parseInt(params.id || '0', 10)
 
-  // If ID is not in URL params, try to get it from form data
   if (!id) {
     const formId = formData.get('id')
     id = formId ? parseInt(formId.toString(), 10) : 0
@@ -125,7 +119,6 @@ export async function updateProxyHost(event: RequestEvent) {
     return fail(400, { error: 'Invalid host ID' })
   }
 
-  // Extract form data
   const domain = formData.get('domain')?.toString() || ''
   const targetHost = formData.get('targetHost')?.toString() || ''
   const targetPort = parseInt(formData.get('targetPort')?.toString() || '80', 10)
@@ -138,7 +131,6 @@ export async function updateProxyHost(event: RequestEvent) {
   const basicAuthUsername = formData.get('basicAuthUsername')?.toString() || ''
   const basicAuthPassword = formData.get('basicAuthPassword')?.toString() || ''
 
-  // Validate required fields
   if (!domain) {
     return fail(400, { error: 'Domain is required' })
   }
@@ -147,7 +139,6 @@ export async function updateProxyHost(event: RequestEvent) {
     return fail(400, { error: 'Target host is required' })
   }
 
-  // Create host data object
   const hostData = {
     domain,
     targetHost,
@@ -186,10 +177,8 @@ export async function updateProxyHost(event: RequestEvent) {
 export async function deleteProxyHost(event: RequestEvent) {
   const { locals, params, request } = event
 
-  // Try to get ID from URL params first, then from form data
   let id = parseInt(params.id || '0', 10)
 
-  // If ID is not in URL params, try to get it from form data
   if (!id) {
     const formData = await request.formData()
     const formId = formData.get('id')
@@ -235,14 +224,12 @@ export async function toggleProxyHost(event: RequestEvent) {
   const enabled = formData.get('enabled') === 'true'
 
   try {
-    // Get the existing proxy host
     const existingHost = await proxyHostService.getProxyHostById(id)
 
     if (!existingHost) {
       return fail(404, { error: 'Proxy host not found' })
     }
 
-    // Update only the enabled status while preserving all other properties
     const userId = locals.user?.id || 0
     const updatedHost = await proxyHostService.updateProxyHost(id, { enabled }, userId)
 

@@ -9,6 +9,10 @@ import { UnauthorizedError } from '$lib/utils/errors'
 import { apiLogger } from '$lib/utils/logger'
 import type { User } from '$lib/models/user'
 
+const recentAuthChecks = new Map<string, { userId: number; timestamp: number }>()
+const AUTH_CACHE_TTL = 3000 // 3 seconds cache TTL (reduced from 5s)
+const AUTH_CACHE_MAX_SIZE = 500 // Reduced max cache size
+
 /**
  * Middleware that requires the user to be authenticated
  *
@@ -16,14 +20,29 @@ import type { User } from '$lib/models/user'
  * @returns {Object|undefined} Redirects if not logged in, otherwise returns undefined
  */
 export function requireAuth(event: RequestEvent) {
-  const { locals, route } = event
+  const { locals, route, url } = event
 
-  if (!locals.user) {
-    apiLogger.info({ path: route.id }, 'Unauthenticated user attempting to access protected route')
+  const sessionId = event.cookies.get('session')
+  const routeId = route.id ?? url.pathname
 
-    // Redirect to login
+  if (!sessionId) {
+    apiLogger.info({ path: routeId }, 'No session found for protected route')
     throw redirect(302, '/auth/login')
   }
+
+  const cacheKey = `${sessionId}:${routeId}`
+  const cachedAuth = recentAuthChecks.get(cacheKey)
+
+  if (cachedAuth && Date.now() - cachedAuth.timestamp < AUTH_CACHE_TTL) {
+    return
+  }
+
+  if (!locals.user) {
+    apiLogger.info({ path: routeId }, 'Unauthenticated user attempting to access protected route')
+    throw redirect(302, '/auth/login')
+  }
+
+  updateAuthCache(cacheKey, (locals.user as User).id)
 }
 
 /**
@@ -33,26 +52,57 @@ export function requireAuth(event: RequestEvent) {
  * @throws {UnauthorizedError} If the user is not an admin
  */
 export function requireAdmin(event: RequestEvent) {
-  const { locals, route } = event
+  const { locals, route, url } = event
 
-  // First check if the user is authenticated
   requireAuth(event)
 
   const user = locals.user as User
+  const routeId = route.id ?? url.pathname
 
-  // Then check if they're an admin
+  const cacheKey = `admin:${user.id}:${routeId}`
+  const cachedAuth = recentAuthChecks.get(cacheKey)
+
+  if (cachedAuth && Date.now() - cachedAuth.timestamp < AUTH_CACHE_TTL) {
+    return
+  }
+
   if (!user.isAdmin) {
     apiLogger.warn(
       {
         userId: user.id,
         isAdmin: user.isAdmin,
-        path: route.id
+        path: routeId
       },
       'Non-admin user attempting to access admin route'
     )
 
     throw new UnauthorizedError('Admin access required')
   }
+
+  updateAuthCache(cacheKey, user.id)
+}
+
+/**
+ * Updates the auth cache, maintaining maximum size
+ *
+ * @private
+ * @param {string} cacheKey - The cache key
+ * @param {number} userId - The authenticated user ID
+ */
+function updateAuthCache(cacheKey: string, userId: number): void {
+  if (recentAuthChecks.size >= AUTH_CACHE_MAX_SIZE) {
+    const keysToDelete = [...recentAuthChecks.entries()]
+      .sort((a, b) => a[1].timestamp - b[1].timestamp)
+      .slice(0, Math.floor(AUTH_CACHE_MAX_SIZE * 0.1))
+      .map(([key]) => key)
+
+    keysToDelete.forEach((key) => recentAuthChecks.delete(key))
+  }
+
+  recentAuthChecks.set(cacheKey, {
+    userId,
+    timestamp: Date.now()
+  })
 }
 
 /**
@@ -63,31 +113,46 @@ export function requireAdmin(event: RequestEvent) {
  */
 export function requireOwnership(paramName: string = 'userId') {
   return (event: RequestEvent) => {
-    const { locals, params } = event
+    const { locals, params, route, url } = event
 
-    // First ensure the user is authenticated
     requireAuth(event)
 
     const user = locals.user as User
     const resourceOwnerId = parseInt(params[paramName] || '0', 10)
 
-    // Allow admins to access any user's resources
-    if (user.isAdmin) {
-      return
-    }
-
-    // For non-admins, check if they own the resource
-    if (user.id !== resourceOwnerId) {
+    if (isNaN(resourceOwnerId) || resourceOwnerId <= 0) {
       apiLogger.warn(
         {
           userId: user.id,
-          resourceOwnerId,
-          paramName
+          paramName,
+          paramValue: params[paramName]
         },
-        'User attempting to access resource they do not own'
+        'Invalid resource owner ID'
       )
-
-      throw new UnauthorizedError('Access denied')
+      throw new UnauthorizedError('Invalid resource ID')
     }
+
+    if (user.id === resourceOwnerId) {
+      return
+    }
+
+    if (user.isAdmin) {
+      const routeId = route.id ?? url.pathname
+      const cacheKey = `admin-access:${user.id}:${resourceOwnerId}:${routeId}`
+
+      updateAuthCache(cacheKey, user.id)
+      return
+    }
+
+    apiLogger.warn(
+      {
+        userId: user.id,
+        resourceOwnerId,
+        paramName
+      },
+      'User attempting to access resource they do not own'
+    )
+
+    throw new UnauthorizedError('Access denied')
   }
 }

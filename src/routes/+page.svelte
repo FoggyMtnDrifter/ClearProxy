@@ -11,11 +11,8 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
 
-  // Client-side redirect as a fallback in case server redirect doesn't trigger
   if (browser) {
-    // Check if user is authenticated by examining the page data
     const isAuthenticated = !!$page.data.user
-    // Redirect to the appropriate page
     goto(isAuthenticated ? '/dashboard' : '/auth/login')
   }
 </script>

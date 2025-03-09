@@ -6,42 +6,30 @@
   import { createEventDispatcher } from 'svelte'
   import Button from './Button.svelte'
 
-  /** Text for the submit button */
   export let submitText: string = 'Submit'
 
-  /** Text for the cancel button */
   export let cancelText: string = 'Cancel'
 
-  /** Loading state for the submit button */
   export let loading: boolean = false
 
-  /** Text to show when loading */
   export let loadingText: string = 'Submitting...'
 
-  /** Whether the submit button is disabled */
   export let disabled: boolean = false
 
-  /** Show the cancel button */
   export let showCancel: boolean = true
 
-  /** Alignment of the buttons */
   export let align: 'left' | 'center' | 'right' = 'right'
 
-  /** Button size */
   export let size: 'sm' | 'md' | 'lg' | 'xl' = 'lg'
 
-  /** Space between buttons */
   export let gap: number = 3
 
-  /** Additional CSS classes */
   export let className: string = ''
 
-  /** Form ID to associate the submit button with */
   export let form: string | undefined = undefined
 
   const dispatch = createEventDispatcher<{ cancel: null; submit: null }>()
 
-  // Alignment class mapping
   const alignClasses = {
     left: 'justify-start',
     center: 'justify-center',

@@ -13,7 +13,6 @@ import { invalidate } from '$app/navigation'
  * @type {PageLoad}
  */
 export const load = (({ data, depends }) => {
-  // Register dependencies for page invalidation
   depends('app:caddy-status')
 
   return {

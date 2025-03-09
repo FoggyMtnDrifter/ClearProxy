@@ -55,7 +55,6 @@
    */
   export let class_name = ''
 
-  /** CSS classes for different button sizes */
   const sizeClasses = {
     xs: 'rounded px-2 py-1 text-xs',
     sm: 'rounded px-2 py-1 text-sm',
@@ -64,7 +63,6 @@
     xl: 'rounded-md px-3.5 py-2.5 text-sm'
   }
 
-  /** CSS classes for different button variants */
   const variantClasses = {
     primary:
       'bg-brand-600 text-white shadow-sm hover:bg-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus-visible:outline-brand-500',
@@ -73,7 +71,6 @@
     soft: 'bg-brand-50 text-brand-600 shadow-sm hover:bg-brand-100 dark:bg-brand-900 dark:text-brand-300 dark:hover:bg-brand-800'
   }
 
-  /** Combined CSS classes for the button based on props */
   $: classes = clsx(
     'font-semibold',
     sizeClasses[size],

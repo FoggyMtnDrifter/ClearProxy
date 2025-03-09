@@ -4,19 +4,14 @@
    * A consistent section for forms with optional title and description
    */
 
-  /** Title for the form section */
   export let title: string | undefined = undefined
 
-  /** Optional description for the form section */
   export let description: string | undefined = undefined
 
-  /** Whether to show a border at the top of the section */
   export let bordered: boolean = true
 
-  /** Additional CSS classes */
   export let className: string = ''
 
-  /** Spacing between elements */
   export let spacing: string = 'space-y-4'
 </script>
 

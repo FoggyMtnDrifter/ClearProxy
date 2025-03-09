@@ -6,7 +6,6 @@
  * @module lib
  */
 
-// Export all public modules
 export * from './interfaces'
 export * from './models'
 export * from './middleware'
@@ -17,7 +16,6 @@ export * from './actions'
 export * from './auth'
 export * from './db'
 
-// Export namespaced modules to avoid collisions
 import * as controllers from './controllers'
 import * as services from './services'
 import * as repositories from './repositories'

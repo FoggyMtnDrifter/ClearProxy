@@ -9,19 +9,21 @@ import { caddyLogger } from '../utils/logger'
 import { generateCaddyHash as _generateCaddyHash } from '../auth/password'
 import { fixNullObjectPasswords } from '../db'
 
-/** Base URL for the Caddy API */
 const CADDY_API_URL = process.env.CADDY_API_URL || 'http://localhost:2019'
 
-/** Maximum number of retries for Caddy API operations */
+const CADDY_ENDPOINTS = {
+  LOAD: '/load',
+  CONFIG: '/config/',
+  ID: '/id/',
+  STOP: '/stop'
+}
+
 const MAX_RETRIES = 3
 
-/** Initial delay between retries in milliseconds */
 const INITIAL_RETRY_DELAY = 1000
 
-/** Maximum delay between retries in milliseconds */
 const MAX_RETRY_DELAY = 5000
 
-/** Type representing a proxy host from the database */
 type ProxyHost = InferModel<typeof proxyHosts>
 
 /**
@@ -51,11 +53,8 @@ function _bcryptHash(password: string): string {
  * Used to define when a route should be applied based on host, protocol, or path
  */
 interface CaddyMatch {
-  /** Array of hostnames to match */
   host: string[]
-  /** Protocol to match (e.g., "https") */
   protocol?: string
-  /** Array of path patterns to match */
   path?: string[]
 }
 
@@ -174,11 +173,8 @@ interface CaddyHandler {
  * Routes define how requests are matched and handled
  */
 interface CaddyRoute {
-  /** Conditions to match for this route */
   match: CaddyMatch[]
-  /** Handlers to process matching requests */
   handle: CaddyHandler[]
-  /** Whether this is a terminal route that stops processing */
   terminal?: boolean
 }
 
@@ -186,16 +182,11 @@ interface CaddyRoute {
  * Interface representing configuration for a Caddy server instance
  */
 interface CaddyServerConfig {
-  /** Network addresses to listen on */
   listen: string[]
-  /** Routes for request processing */
   routes: CaddyRoute[]
-  /** Automatic HTTPS configuration */
   automatic_https: {
-    /** Whether to disable automatic HTTPS */
     disable: boolean
   }
-  /** TLS connection policies, if any */
   tls_connection_policies?: Record<string, unknown>[]
 }
 
@@ -203,26 +194,16 @@ interface CaddyServerConfig {
  * Interface representing Caddy TLS configuration for certificate management
  */
 interface CaddyTLSConfig {
-  /** Certificate configuration */
   certificates?: {
-    /** Domains to automatically obtain certificates for */
     automate: string[]
   }
-  /** Certificate automation policy configuration */
   automation?: {
-    /** Certificate issuance policies */
     policies: {
-      /** Domains subject to this policy */
       subjects: string[]
-      /** Certificate issuers to use */
       issuers: {
-        /** Issuer module to use */
         module: string
-        /** Challenge configurations */
         challenges: {
-          /** HTTP challenge configuration */
           http: {
-            /** Alternate port for HTTP challenges */
             alternate_port: number
           }
         }
@@ -235,39 +216,25 @@ interface CaddyTLSConfig {
  * Interface representing the full Caddy server configuration
  */
 interface CaddyConfig {
-  /** Admin API configuration */
   admin: {
-    /** Address for the admin API to listen on */
     listen: string
-    /** Whether the admin API is disabled */
     disabled: boolean
-    /** Whether to enforce allowed origins */
     enforce_origin?: boolean
-    /** Allowed origins for admin API requests */
     origins?: string[]
   }
-  /** Logging configuration */
   logging?: {
-    /** Log definitions */
     logs: {
-      /** Default logger configuration */
       default: {
-        /** Log level */
         level: string
       }
     }
   }
-  /** Caddy applications configuration */
   apps: {
-    /** HTTP server configuration */
     http: {
-      /** Server instances */
       servers: {
-        /** Server configurations indexed by name */
         [key: string]: CaddyServerConfig
       }
     }
-    /** TLS configuration, if any */
     tls?: CaddyTLSConfig
   }
 }
@@ -276,15 +243,10 @@ interface CaddyConfig {
  * Interface representing information about a TLS certificate
  */
 interface CertificateInfo {
-  /** Whether the certificate is managed by Caddy */
   managed: boolean
-  /** Certificate issuer */
   issuer: string
-  /** Certificate validity start date */
   notBefore: string
-  /** Certificate expiration date */
   notAfter: string
-  /** Error information, if any */
   error?: string
 }
 
@@ -351,7 +313,6 @@ async function retryWithBackoff<T>(
       )
 
       await sleep(delay)
-      // Exponential backoff with maximum cap
       delay = Math.min(delay * 2, MAX_RETRY_DELAY)
     }
   }
@@ -391,6 +352,42 @@ function parseAdvancedConfig(config: string): CaddyRoute[] {
   }
 }
 
+function hasValidBasicAuth(host: ProxyHost): boolean {
+  if (!host.basicAuthEnabled || !host.basicAuthUsername) {
+    return false
+  }
+
+  const hasValidPasswordHash =
+    (host.basicAuthPassword &&
+      typeof host.basicAuthPassword === 'string' &&
+      host.basicAuthPassword.startsWith('$2')) ||
+    (host.basicAuthHash &&
+      typeof host.basicAuthHash === 'string' &&
+      host.basicAuthHash.startsWith('$2'))
+
+  return hasValidPasswordHash === true
+}
+
+function getBestAuthHash(host: ProxyHost): string | null {
+  if (
+    host.basicAuthHash &&
+    typeof host.basicAuthHash === 'string' &&
+    host.basicAuthHash.startsWith('$2')
+  ) {
+    return host.basicAuthHash
+  }
+
+  if (
+    host.basicAuthPassword &&
+    typeof host.basicAuthPassword === 'string' &&
+    host.basicAuthPassword.startsWith('$2')
+  ) {
+    return host.basicAuthPassword
+  }
+
+  return null
+}
+
 /**
  * Generates a complete Caddy server configuration from proxy host definitions
  *
@@ -400,28 +397,30 @@ function parseAdvancedConfig(config: string): CaddyRoute[] {
 export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConfig> {
   const routes: CaddyRoute[] = []
   const fixedHosts = fixNullObjectPasswords(hosts)
+
+  const hostsWithValidAuth = fixedHosts.filter(
+    (host) => host.enabled && hasValidBasicAuth(host)
+  ).length
+
   caddyLogger.info(
     {
       hostCount: hosts.length,
       enabledHostCount: fixedHosts.filter((h) => h.enabled).length,
       basicAuthHostCount: fixedHosts.filter((h) => h.enabled && h.basicAuthEnabled).length,
-      hostsWithValidAuth: fixedHosts.filter(
-        (h) =>
-          h.enabled &&
-          h.basicAuthEnabled &&
-          h.basicAuthUsername &&
-          h.basicAuthPassword &&
-          typeof h.basicAuthPassword === 'string' &&
-          h.basicAuthPassword.startsWith('$2')
-      ).length
+      hostsWithValidAuth
     },
     'Generating Caddy configuration'
   )
+
   for (const host of fixedHosts) {
     if (!host.enabled) {
       caddyLogger.debug({ domain: host.domain }, 'Skipping disabled host')
       continue
     }
+
+    const hasAuth = hasValidBasicAuth(host)
+    const authHash = getBestAuthHash(host)
+
     caddyLogger.debug(
       {
         domain: host.domain,
@@ -429,9 +428,10 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConf
         targetPort: host.targetPort,
         basicAuthEnabled: host.basicAuthEnabled,
         hasUsername: !!host.basicAuthUsername,
-        hasPassword: !!host.basicAuthPassword,
-        passwordType: typeof host.basicAuthPassword,
-        validBcrypt: host.basicAuthPassword?.startsWith('$2')
+        hasValidAuth: hasAuth,
+        hasPasswordField: !!host.basicAuthPassword,
+        hasHashField: !!host.basicAuthHash,
+        hashFormat: authHash ? authHash.substring(0, 6) + '...' : 'none'
       },
       'Processing host for Caddy configuration'
     )
@@ -443,107 +443,53 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConf
       ],
       handle: []
     }
-    if (host.basicAuthEnabled && host.basicAuthUsername) {
-      const isValidPasswordHash =
-        host.basicAuthPassword !== null &&
-        host.basicAuthPassword !== undefined &&
-        typeof host.basicAuthPassword === 'string' &&
-        host.basicAuthPassword.length > 0 &&
-        host.basicAuthPassword.startsWith('$2')
-      const isNullPassword =
-        host.basicAuthPassword === null ||
-        (typeof host.basicAuthPassword === 'object' && host.basicAuthPassword === null)
-      if (isValidPasswordHash) {
-        caddyLogger.debug(
-          {
-            domain: host.domain,
-            basicAuthEnabled: host.basicAuthEnabled,
-            hasUsername: !!host.basicAuthUsername,
-            username: host.basicAuthUsername,
-            hasValidHash: isValidPasswordHash,
-            passwordType: typeof host.basicAuthPassword,
-            passwordHashStart: host.basicAuthPassword?.substring(0, 6) + '...',
-            isNullPassword
-          },
-          'Setting up basic auth with valid bcrypt hash'
-        )
-        const passwordHash =
-          typeof host.basicAuthPassword === 'string' ? host.basicAuthPassword : ''
-        route.handle.push({
-          handler: 'authentication',
-          providers: {
-            http_basic: {
-              hash: {
-                algorithm: 'bcrypt'
-              },
-              accounts: [
-                {
-                  username: host.basicAuthUsername,
-                  password: passwordHash
-                }
-              ],
-              realm: 'Restricted'
-            }
+
+    if (hasAuth && authHash) {
+      caddyLogger.debug(
+        {
+          domain: host.domain,
+          username: host.basicAuthUsername,
+          hashFormat: authHash.substring(0, 6) + '...'
+        },
+        'Setting up basic auth with valid bcrypt hash'
+      )
+
+      route.handle.push({
+        handler: 'authentication',
+        providers: {
+          http_basic: {
+            hash: {
+              algorithm: 'bcrypt'
+            },
+            accounts: [
+              {
+                username: host.basicAuthUsername as string,
+                password: authHash
+              }
+            ],
+            realm: 'Restricted'
           }
-        })
-        caddyLogger.debug(
-          {
-            authHandler: JSON.stringify(route.handle[route.handle.length - 1].handler),
-            realm: route.handle[route.handle.length - 1].providers?.http_basic?.realm,
-            accountCount:
-              route.handle[route.handle.length - 1].providers?.http_basic?.accounts?.length,
-            bcryptHashFormat: passwordHash.startsWith('$2')
-          },
-          'Added authentication handler to route'
-        )
-      } else {
-        caddyLogger.warn(
-          {
-            domain: host.domain,
-            basicAuthEnabled: host.basicAuthEnabled,
-            hasUsername: !!host.basicAuthUsername,
-            username: host.basicAuthUsername,
-            passwordExists: !!host.basicAuthPassword,
-            passwordType: typeof host.basicAuthPassword,
-            passwordIsNull: host.basicAuthPassword === null,
-            passwordIsUndefined: host.basicAuthPassword === undefined,
-            passwordRawValue:
-              host.basicAuthPassword === null
-                ? 'null'
-                : host.basicAuthPassword === undefined
-                  ? 'undefined'
-                  : typeof host.basicAuthPassword === 'object'
-                    ? 'object (possibly SQLite NULL)'
-                    : host.basicAuthPassword === ''
-                      ? 'empty string'
-                      : host.basicAuthPassword?.startsWith('$2')
-                        ? 'valid bcrypt'
-                        : 'invalid format',
-            passwordLength:
-              typeof host.basicAuthPassword === 'string' ? host.basicAuthPassword.length : 0,
-            validationChecks: {
-              notNull: host.basicAuthPassword !== null,
-              notUndefined: host.basicAuthPassword !== undefined,
-              isString: typeof host.basicAuthPassword === 'string',
-              startsWithBcrypt:
-                typeof host.basicAuthPassword === 'string' &&
-                host.basicAuthPassword.startsWith('$2'),
-              isNullPassword
-            }
-          },
-          'Cannot set up basic auth without a valid bcrypt password hash. Authentication will not be applied.'
-        )
-      }
+        }
+      })
+
+      caddyLogger.debug(
+        {
+          authHandler: 'authentication',
+          username: host.basicAuthUsername,
+          passwordHashFormat: authHash.substring(0, 6) + '...'
+        },
+        'Added authentication handler to route'
+      )
     } else if (host.basicAuthEnabled) {
       caddyLogger.warn(
         {
           domain: host.domain,
-          basicAuthEnabled: host.basicAuthEnabled,
           hasUsername: !!host.basicAuthUsername,
-          hasPassword: !!host.basicAuthPassword,
-          usernameValue: host.basicAuthUsername || 'undefined'
+          username: host.basicAuthUsername,
+          hasPasswordField: !!host.basicAuthPassword,
+          hasHashField: !!host.basicAuthHash
         },
-        'Basic auth is enabled but missing username. Authentication will not be applied.'
+        'Basic auth is enabled but missing valid credentials. Authentication will not be applied.'
       )
     }
     const cleanTargetHost = host.targetHost
@@ -633,366 +579,280 @@ export async function generateCaddyConfig(hosts: ProxyHost[]): Promise<CaddyConf
 }
 
 /**
- * Applies a configuration to the running Caddy server via its API
+ * Fetches from the Caddy API with optimized retries and efficient handling
  *
- * @param {CaddyConfig} config - Caddy configuration to apply
- * @returns {Promise<void>} Promise that resolves when the config is applied
- * @throws {CaddyError} If the config cannot be applied
+ * @param {string} endpoint - The API endpoint to fetch
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Response>} - The fetch response
  */
-export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
+async function fetchWithOptimizedRetry(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const url = `${CADDY_API_URL}${endpoint}`
+
+  caddyLogger.debug(`Making request to Caddy API: ${url}`, {
+    method: options.method || 'GET',
+    bodyLength: options.body
+      ? typeof options.body === 'string'
+        ? options.body.length
+        : 'non-string body'
+      : 0
+  })
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
   try {
-    await retryWithBackoff(async () => {
-      caddyLogger.debug(`Fetching current Caddy configuration from ${CADDY_API_URL}/config/`)
-      const currentConfig = await fetch(`${CADDY_API_URL}/config/`).then((r) =>
-        r.ok ? r.json() : null
-      )
-      if (currentConfig?.admin) {
-        config.admin = currentConfig.admin
+    return await retryWithBackoff(async () => {
+      const fetchOptions = {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        }
       }
-      const configJson = JSON.stringify(config)
-      caddyLogger.debug(
-        {
-          action: 'apply_config',
-          url: `${CADDY_API_URL}/load`,
-          configLength: configJson.length,
-          adminConfig: config.admin,
-          routeCount: config.apps?.http?.servers?.srv0?.routes?.length,
-          routeWithAuth: config.apps?.http?.servers?.srv0?.routes?.some((r) =>
-            r.handle?.some((h) => h.handler === 'authentication')
-          ),
-          configSample: configJson.substring(0, 500) + '...',
-          domains: config.apps?.http?.servers?.srv0?.routes
-            ?.map((r) => r.match?.[0]?.host?.[0])
-            .filter(Boolean)
-        },
-        'Sending configuration to Caddy API with authentication details'
-      )
 
-      try {
-        // Log the exact request being made
-        caddyLogger.debug(
-          {
-            method: 'POST',
-            url: `${CADDY_API_URL}/load`,
-            headers: { 'Content-Type': 'application/json' },
-            bodyLength: configJson.length
-          },
-          'Making request to Caddy API'
-        )
+      const response = await fetch(url, fetchOptions)
 
-        const response = await fetch(`${CADDY_API_URL}/load`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: configJson
-        })
+      if (!response.ok) {
+        const errorText = await response.text()
 
-        // Log the response details
-        caddyLogger.debug(
-          {
-            statusCode: response.status,
+        if (response.status === 404) {
+          caddyLogger.warn(`Caddy API endpoint not found: ${url}`, {
+            status: response.status,
             statusText: response.statusText,
-            headers: Object.fromEntries([...response.headers.entries()])
-          },
-          'Received response from Caddy API'
-        )
+            error: errorText
+          })
 
-        if (!response.ok) {
-          const error = await response.text()
-          caddyLogger.error(
-            {
-              statusCode: response.status,
-              statusText: response.statusText,
-              error,
-              requestUrl: `${CADDY_API_URL}/load`,
-              configSample: configJson.substring(0, 500) + '...'
-            },
-            'Caddy API returned error response'
-          )
           throw new CaddyError(
-            `Failed to apply Caddy configuration: ${error}`,
-            'CONFIG_APPLY_ERROR',
-            { statusCode: response.status, error }
+            `Caddy API endpoint not found: ${url}`,
+            `HTTP_${response.status}`,
+            errorText
           )
         }
 
-        caddyLogger.info(
-          {
-            statusCode: response.status,
-            statusText: response.statusText
-          },
-          'Successfully applied Caddy configuration'
+        throw new CaddyError(
+          `Caddy API error: ${response.status} ${response.statusText}`,
+          `HTTP_${response.status}`,
+          errorText
         )
-      } catch (fetchError) {
+      }
+
+      return response
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+/**
+ * Applies a Caddy configuration with efficient error handling and validation
+ *
+ * @param {CaddyConfig} config - The Caddy configuration to apply
+ * @returns {Promise<void>}
+ */
+export async function applyCaddyConfig(config: CaddyConfig): Promise<void> {
+  try {
+    validateCaddyConfig(config)
+
+    caddyLogger.debug('Applying Caddy configuration...')
+
+    await fetchWithOptimizedRetry(CADDY_ENDPOINTS.LOAD, {
+      method: 'POST',
+      body: JSON.stringify(config)
+    })
+
+    caddyLogger.info('Caddy configuration applied successfully')
+  } catch (error) {
+    if (error instanceof CaddyError) {
+      if (error.code === 'HTTP_404') {
         caddyLogger.error(
           {
-            error: fetchError,
-            errorMessage: fetchError instanceof Error ? fetchError.message : 'unknown error',
-            caddyApiUrl: CADDY_API_URL
+            error,
+            code: error.code,
+            message:
+              'Caddy API endpoint not found. Please check that Caddy is running and the CADDY_API_URL environment variable is correct.'
           },
-          'Error making request to Caddy API'
+          'Failed to apply Caddy configuration - endpoint not found'
         )
-        throw fetchError
+      } else {
+        caddyLogger.error(
+          {
+            error,
+            code: error.code,
+            details: error.details
+          },
+          'Failed to apply Caddy configuration'
+        )
       }
-    })
-  } catch (error) {
-    caddyLogger.error(
-      {
-        error,
-        errorName: error instanceof Error ? error.name : 'unknown',
-        errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown'
-      },
-      'Failed to apply Caddy configuration after retry attempts'
-    )
+    } else {
+      caddyLogger.error({ error }, 'Unexpected error applying Caddy configuration')
+    }
     throw error
   }
 }
 
 /**
- * Gets the status of a TLS certificate for a domain
+ * Validates a Caddy configuration before applying
  *
- * @param {string} domain - Domain to check certificate status for
- * @returns {Promise<CertificateInfo | null>} Certificate information or null if not found
+ * @param {CaddyConfig} config - The configuration to validate
+ * @throws {Error} If configuration is invalid
+ */
+function validateCaddyConfig(config: CaddyConfig): void {
+  if (!config.apps?.http?.servers) {
+    throw new Error('Invalid Caddy config: missing apps.http.servers')
+  }
+
+  Object.values(config.apps.http.servers).forEach((server) => {
+    if (!server.listen || !Array.isArray(server.listen) || server.listen.length === 0) {
+      throw new Error('Invalid Caddy config: server missing listen addresses')
+    }
+
+    if (!server.routes || !Array.isArray(server.routes)) {
+      throw new Error('Invalid Caddy config: server missing routes')
+    }
+  })
+}
+
+/**
+ * Gets certificate status with optimized handling
+ *
+ * @param {string} domain - The domain to check
+ * @returns {Promise<CertificateInfo | null>} Certificate information
  */
 export async function getCertificateStatus(domain: string): Promise<CertificateInfo | null> {
   try {
-    const response = await fetch(`${CADDY_API_URL}/certificates/${domain}`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
+    const response = await fetchWithOptimizedRetry(`/certificates/${domain}`, {
+      method: 'GET'
     })
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error(`Failed to get certificate info: ${response.statusText}`)
-    }
-    const data = await response.json()
-    return {
-      managed: data.managed ?? false,
-      issuer: data.issuer ?? 'Unknown',
-      notBefore: data.not_before ?? '',
-      notAfter: data.not_after ?? '',
-      error: data.error
-    }
+
+    const certInfo = await response.json()
+    return certInfo as CertificateInfo
   } catch (error) {
-    caddyLogger.warn('Failed to get certificate status', { domain, error })
+    if (error instanceof CaddyError && error.code === 'HTTP_404') {
+      caddyLogger.debug({ domain }, 'No certificate found for domain')
+      return null
+    }
+
+    caddyLogger.warn(
+      {
+        domain,
+        error: error instanceof Error ? error.message : String(error)
+      },
+      'Error checking certificate status'
+    )
     return null
   }
 }
 
 /**
- * Checks connectivity to the Caddy API
+ * Checks if Caddy server is running with improved reliability
  *
- * @returns {Promise<boolean>} True if connectivity is successful, false otherwise
+ * @returns {Promise<boolean>} True if Caddy is reachable
  */
 async function checkCaddyConnectivity(): Promise<boolean> {
   try {
-    caddyLogger.debug(`Checking Caddy API connectivity at ${CADDY_API_URL}`)
-
-    // Log the full request details
-    caddyLogger.debug(
-      {
-        action: 'connectivity_check',
-        method: 'GET',
-        url: `${CADDY_API_URL}/config/`,
-        headers: { Accept: 'application/json' }
-      },
-      'Sending request to Caddy API'
-    )
-
-    const response = await fetch(`${CADDY_API_URL}/config/`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
-    })
-
-    const isConnected = response.ok
-
-    caddyLogger.debug(
-      {
-        caddyApiUrl: CADDY_API_URL,
-        connected: isConnected,
-        statusCode: response.status,
-        statusText: response.statusText,
-        responseHeaders: Object.fromEntries([...response.headers.entries()]),
-        bodyPreview: isConnected ? '(body available)' : '(no body)'
-      },
-      isConnected ? 'Successfully connected to Caddy API' : 'Failed to connect to Caddy API'
-    )
-
-    return isConnected
+    await fetchWithOptimizedRetry(CADDY_ENDPOINTS.CONFIG, { method: 'GET' })
+    return true
   } catch (error) {
-    caddyLogger.error(
-      {
-        error,
-        errorName: error instanceof Error ? error.name : 'unknown',
-        errorMessage: error instanceof Error ? error.message : 'unknown',
-        caddyApiUrl: CADDY_API_URL,
-        errorStack: error instanceof Error ? error.stack : 'unknown'
-      },
-      'Error connecting to Caddy API - check if Caddy is running and accessible'
+    caddyLogger.debug(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Failed to connect to Caddy API'
     )
-
     return false
   }
 }
 
 /**
- * Reloads the Caddy configuration with the current proxy hosts
- * Generates a new config and applies it to the running Caddy server
+ * Gets the current Caddy server status
  *
- * @param {ProxyHost[]} hosts - Array of proxy host configurations
- * @returns {Promise<void>} Promise that resolves when the config is reloaded
+ * @returns {Promise<CaddyStatus>} The server status
  */
-export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
-  try {
-    // First check Caddy connectivity
-    const isConnected = await checkCaddyConnectivity()
-
-    if (!isConnected) {
-      throw new Error('Cannot reload Caddy configuration: Caddy API is not reachable')
-    }
-
-    const fixedHosts = fixNullObjectPasswords(hosts)
-    caddyLogger.debug(
-      {
-        hosts: fixedHosts.map((h) => ({
-          id: h.id,
-          domain: h.domain,
-          enabled: h.enabled,
-          targetHost: h.targetHost,
-          targetPort: h.targetPort,
-          basicAuthEnabled: h.basicAuthEnabled,
-          hasUsername: !!h.basicAuthUsername,
-          username: h.basicAuthUsername || 'none',
-          hasPassword: !!h.basicAuthPassword,
-          passwordType: typeof h.basicAuthPassword,
-          passwordTypeCheck: {
-            isString: typeof h.basicAuthPassword === 'string',
-            isNull: h.basicAuthPassword === null,
-            isObject: typeof h.basicAuthPassword === 'object' && h.basicAuthPassword !== null
-          },
-          passwordValue:
-            h.basicAuthPassword === null
-              ? 'null'
-              : h.basicAuthPassword === undefined
-                ? 'undefined'
-                : typeof h.basicAuthPassword !== 'string'
-                  ? `non-string (${typeof h.basicAuthPassword})`
-                  : h.basicAuthPassword === ''
-                    ? 'empty string'
-                    : 'has value',
-          validBcrypt:
-            typeof h.basicAuthPassword === 'string' && h.basicAuthPassword.startsWith('$2'),
-          passwordLength: typeof h.basicAuthPassword === 'string' ? h.basicAuthPassword.length : 0
-        }))
-      },
-      'Attempting to reload Caddy configuration with detailed host info'
-    )
-
-    try {
-      const config = await generateCaddyConfig(fixedHosts)
-      caddyLogger.debug(
-        {
-          config,
-          configStr: JSON.stringify(config).substring(0, 200) + '...'
-        },
-        'Generated Caddy configuration'
-      )
-
-      await applyCaddyConfig(config)
-
-      caddyLogger.info('Successfully reloaded Caddy configuration', {
-        hostCount: hosts.length,
-        activeHosts: fixedHosts.filter((h) => h.enabled).length,
-        hostsWithBasicAuth: fixedHosts.filter((h) => h.enabled && h.basicAuthEnabled).length
-      })
-    } catch (configError) {
-      caddyLogger.error(
-        {
-          error: configError,
-          errorMessage: configError instanceof Error ? configError.message : 'unknown error',
-          hostsCount: hosts.length,
-          enabledHosts: hosts.filter((h) => h.enabled).length,
-          caddyApiUrl: CADDY_API_URL
-        },
-        'Error generating or applying Caddy configuration'
-      )
-      throw configError
-    }
-  } catch (error) {
-    caddyLogger.error(
-      {
-        error,
-        errorName: error instanceof Error ? error.name : 'unknown',
-        errorMessage: error instanceof Error ? error.message : 'unknown',
-        errorStack: error instanceof Error ? error.stack : 'unknown',
-        hosts: hosts.map((h) => ({
-          id: h.id,
-          domain: h.domain,
-          enabled: h.enabled,
-          targetHost: h.targetHost,
-          targetPort: h.targetPort
-        }))
-      },
-      'Failed to reload Caddy configuration'
-    )
-    throw error
-  }
-}
-
-/**
- * Gets the current status of the Caddy server
- * Includes whether it's running, its version, and current config
- *
- * @returns {Promise<{running: boolean, version: string, config?: CaddyConfig}>} Caddy status information
- */
-export async function getCaddyStatus(): Promise<{
+export async function getCaddyServerStatus(): Promise<{
   running: boolean
   version: string
   config?: CaddyConfig
 }> {
-  const endpoints = ['/config/', '/', '/admin/ping']
-  let lastError: Error | null = null
-  for (const endpoint of endpoints) {
-    try {
-      const url = `${CADDY_API_URL}${endpoint}`
-      caddyLogger.debug(`Checking Caddy status at endpoint: ${url}`)
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(5000)
-      })
-      if (response.ok || response.status === 404) {
-        caddyLogger.debug(
-          `Caddy is running - successful response from ${url} with status: ${response.status}`
-        )
-        if (endpoint === '/config/' && response.ok) {
-          try {
-            const data = await response.json()
-            return {
-              running: true,
-              version: data.server?.version || 'unknown',
-              config: data
-            }
-          } catch (parseError) {
-            caddyLogger.debug('Could not parse Caddy config response', { error: parseError })
-            return { running: true, version: 'unknown' }
-          }
-        }
-        return { running: true, version: 'unknown' }
+  caddyLogger.debug(`Checking Caddy status at endpoint: ${CADDY_API_URL}${CADDY_ENDPOINTS.CONFIG}`)
+
+  try {
+    const response = await fetch(`${CADDY_API_URL}${CADDY_ENDPOINTS.CONFIG}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    })
+
+    const isRunning = response.ok
+    caddyLogger.debug(
+      {
+        caddyApiUrl: CADDY_API_URL,
+        connected: isRunning,
+        statusCode: response.status,
+        statusText: response.statusText
+      },
+      `Caddy is ${isRunning ? 'running' : 'not running'} - ${isRunning ? 'successful' : 'failed'} response from ${CADDY_API_URL}${CADDY_ENDPOINTS.CONFIG} with status: ${response.status}`
+    )
+
+    let config
+    if (isRunning) {
+      try {
+        config = await response.json()
+      } catch (parseError) {
+        caddyLogger.debug({ error: parseError }, 'Could not parse Caddy config response')
       }
-      caddyLogger.debug(`Caddy endpoint ${url} returned error status: ${response.status}`)
-      lastError = new Error(`Status code: ${response.status}`)
-    } catch (error) {
-      caddyLogger.debug(`Error checking Caddy at ${endpoint}`, { error })
-      lastError = error instanceof Error ? error : new Error(String(error))
+    }
+
+    return {
+      running: isRunning,
+      version: '2.x',
+      config
+    }
+  } catch (error) {
+    caddyLogger.warn(
+      {
+        error,
+        errorMessage: error instanceof Error ? error.message : 'unknown error',
+        caddyApiUrl: CADDY_API_URL
+      },
+      'Error connecting to Caddy API - check if Caddy is running and accessible'
+    )
+
+    return {
+      running: false,
+      version: 'Unknown'
     }
   }
-  caddyLogger.debug('Failed to connect to any Caddy API endpoint', {
-    error: lastError,
-    triedEndpoints: endpoints
-  })
-  return { running: false, version: 'unknown' }
+}
+
+/**
+ * Reloads the Caddy configuration with optimized performance
+ *
+ * @param {ProxyHost[]} hosts - The proxy hosts to configure
+ * @returns {Promise<void>}
+ */
+export async function reloadCaddyConfig(hosts: ProxyHost[]): Promise<void> {
+  const fixedHosts = fixNullObjectPasswords(hosts)
+
+  try {
+    const isRunning = await checkCaddyConnectivity()
+    if (!isRunning) {
+      caddyLogger.warn('Cannot reload Caddy config: server not running')
+      return
+    }
+
+    const config = await generateCaddyConfig(fixedHosts)
+    await applyCaddyConfig(config)
+
+    caddyLogger.info(
+      {
+        hostCount: fixedHosts.length,
+        domains: fixedHosts.map((h) => h.domain).join(', ')
+      },
+      'Caddy configuration reload completed successfully'
+    )
+  } catch (error) {
+    caddyLogger.error({ error }, 'Failed to reload Caddy configuration')
+    throw error
+  }
 }

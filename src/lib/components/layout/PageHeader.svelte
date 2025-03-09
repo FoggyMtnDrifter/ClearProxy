@@ -4,10 +4,8 @@
    * Consistent header for pages with optional actions slot
    */
 
-  /** Page title */
   export let title: string
 
-  /** Additional CSS classes */
   export let className: string = ''
 </script>
 

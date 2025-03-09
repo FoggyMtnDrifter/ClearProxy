@@ -3,12 +3,17 @@
  * Handles authentication, authorization, and routing logic for the application.
  * @module hooks.server
  */
-import { redirect, type Handle } from '@sveltejs/kit'
+import { redirect, type Handle, type Redirect } from '@sveltejs/kit'
 import { getUserFromSession } from '$lib/auth/session'
 import { authLogger } from '$lib/utils/logger'
+import type { User } from '$lib/models/user'
+import { performance } from 'node:perf_hooks'
 
-/** Routes that can be accessed without authentication */
 const publicRoutes = ['/auth/login', '/auth/register']
+
+const userSessionCache = new Map<string, { user: User; expires: number }>()
+
+const SESSION_CACHE_TTL = 30 * 1000
 
 /**
  * Handle function for SvelteKit server hooks.
@@ -17,55 +22,123 @@ const publicRoutes = ['/auth/login', '/auth/register']
  * @type {Handle}
  */
 export const handle: Handle = async ({ event, resolve }) => {
-  // Get user from session and add to locals
-  const dbUser = await getUserFromSession(event)
-  event.locals.user = dbUser
-    ? {
-        id: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.name
-      }
-    : undefined
-
-  /**
-   * Helper method to invalidate all cache entries
-   * Added to locals for easy access in routes
-   */
-  event.locals.invalidateAll = () => {
-    return event.fetch(event.url, {
-      headers: {
-        'x-sveltekit-invalidate': '*'
-      }
-    })
-  }
-
+  const start = performance.now()
   const path = event.url.pathname
 
-  // Root path redirect based on authentication status
-  if (path === '/') {
-    authLogger.debug('Redirecting from root path')
-    throw redirect(303, event.locals.user ? '/dashboard' : '/auth/login')
+  if (path === '/favicon.ico') {
+    return await resolve(event)
   }
 
-  // Protected route handling - redirect to login if not authenticated
-  if (!publicRoutes.includes(path) && !path.startsWith('/auth/')) {
-    if (!event.locals.user) {
-      const referrer = event.request.headers.get('referer') || ''
-      if (!referrer.includes('/auth/login') && !referrer.includes('/auth/register')) {
-        authLogger.warn('Unauthenticated access attempt to protected route', { path })
+  const sessionId = event.cookies.get('session')
+  let dbUser = undefined
+
+  try {
+    if (sessionId) {
+      const cached = userSessionCache.get(sessionId)
+
+      if (cached && cached.expires > Date.now()) {
+        dbUser = cached.user
+        authLogger.debug('Using cached session data', { userId: dbUser?.id, path })
+      } else {
+        dbUser = await getUserFromSession(event)
+
+        if (dbUser) {
+          userSessionCache.set(sessionId, {
+            user: dbUser,
+            expires: Date.now() + SESSION_CACHE_TTL
+          })
+          authLogger.debug('Cached new session data', { userId: dbUser.id, path })
+        } else if (cached) {
+          userSessionCache.delete(sessionId)
+        }
       }
-      throw redirect(303, '/auth/login')
     }
-  }
 
-  // Prevent authenticated users from accessing auth pages
-  if (event.locals.user && (path === '/auth/login' || path === '/auth/register')) {
-    authLogger.debug('Authenticated user attempting to access auth pages', {
-      userId: event.locals.user.id
-    })
-    throw redirect(303, '/dashboard')
-  }
+    event.locals.user = dbUser
+      ? {
+          id: dbUser.id,
+          email: dbUser.email,
+          name: dbUser.name
+        }
+      : undefined
 
-  const response = await resolve(event)
-  return response
+    if (Math.random() < 0.01) {
+      const now = Date.now()
+      for (const [key, value] of userSessionCache.entries()) {
+        if (value.expires < now) {
+          userSessionCache.delete(key)
+        }
+      }
+    }
+
+    /**
+     * Helper method to invalidate all cache entries
+     * Added to locals for easy access in routes
+     */
+    event.locals.invalidateAll = () => {
+      return event.fetch(event.url, {
+        headers: {
+          'x-sveltekit-invalidate': '*'
+        }
+      })
+    }
+
+    try {
+      if (path === '/') {
+        authLogger.debug('Redirecting from root path')
+        return new Response(null, {
+          status: 303,
+          headers: { location: event.locals.user ? '/dashboard' : '/auth/login' }
+        })
+      }
+
+      if (!publicRoutes.includes(path) && !path.startsWith('/auth/')) {
+        if (!event.locals.user) {
+          const referrer = event.request.headers.get('referer') || ''
+          if (!referrer.includes('/auth/login') && !referrer.includes('/auth/register')) {
+            authLogger.warn('Unauthenticated access attempt to protected route', { path })
+          }
+          return new Response(null, {
+            status: 303,
+            headers: { location: '/auth/login' }
+          })
+        }
+      }
+
+      if (event.locals.user && (path === '/auth/login' || path === '/auth/register')) {
+        authLogger.debug('Authenticated user attempting to access auth pages', {
+          userId: event.locals.user.id
+        })
+        return new Response(null, {
+          status: 303,
+          headers: { location: '/dashboard' }
+        })
+      }
+
+      const response = await resolve(event)
+
+      const duration = performance.now() - start
+      if (duration > 500) {
+        authLogger.warn('Slow route detected', { path, duration: `${duration.toFixed(2)}ms` })
+      }
+
+      return response
+    } catch (error) {
+      if (error instanceof redirect) {
+        const redirectObj = error as Redirect
+        authLogger.debug('Handling redirect', { path, to: redirectObj.location })
+        return new Response(null, {
+          status: 303,
+          headers: { location: redirectObj.location }
+        })
+      }
+
+      authLogger.error({ error, path }, 'Error in route resolution')
+      throw error
+    }
+  } catch (error) {
+    authLogger.error({ error, path }, 'Unhandled error in server hooks')
+
+    return new Response('Internal Server Error', { status: 500 })
+  }
 }

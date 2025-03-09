@@ -12,7 +12,6 @@ import type { PageLoad } from './$types'
  * @type {PageLoad}
  */
 export const load = (({ data, depends }) => {
-  // Register dependencies for page invalidation
   depends('app:proxy-hosts')
   depends('app:caddy-status')
 

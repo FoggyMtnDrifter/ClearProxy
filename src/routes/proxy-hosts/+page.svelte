@@ -1,4 +1,29 @@
+<script context="module">
+  function clickOutside(node: HTMLElement, handler: () => void) {
+    const handleClick = (event: MouseEvent) => {
+      if (node && !node.contains(event.target as Node) && !event.defaultPrevented) {
+        handler()
+      }
+    }
+
+    document.addEventListener('click', handleClick, true)
+
+    return {
+      destroy() {
+        document.removeEventListener('click', handleClick, true)
+      }
+    }
+  }
+</script>
+
 <script lang="ts">
+  /**
+   * @component ProxyHostsPage
+   * @description Manages proxy host configurations for the application.
+   *
+   * This page allows users to view, add, edit, and delete proxy host configurations,
+   * with options for SSL, authentication, and advanced settings.
+   */
   import { enhance } from '$app/forms'
   import { invalidate } from '$app/navigation'
   import { onMount, onDestroy } from 'svelte'
@@ -14,48 +39,155 @@
     Textarea,
     ActionButton,
     Card,
-    TableHeader,
     FormSection,
     FormGroup,
     FormActions,
     EmptyState,
-    StatusBadge
+    StatusBadge,
+    Button
   } from '$lib/components'
-  import { PencilLine, Trash2, Server } from 'lucide-svelte'
+  import { PencilLine, Trash2, Server, Filter as FilterIcon } from 'lucide-svelte'
 
   export let data
-  let form: ProxyHostFormData | null = null
   let statusCheckInterval: ReturnType<typeof setInterval>
   let searchQuery = ''
   let searchTimeout: ReturnType<typeof setTimeout>
   let filteredHosts = data.hosts
   let isCaddyRunning = data.caddyRunning
 
-  // Ensure isCaddyRunning is always up to date with data.caddyRunning
+  let protocolFilter = 'all'
+  let statusFilter = 'all'
+  let sslFilter = 'all'
+
+  let sortColumn: string | null = null
+  let sortDirection: 'asc' | 'desc' = 'asc'
+
+  let showFilters = true
+
+  let showFilterDropdown = false
+  let filterButtonRect: DOMRect | null = null
+
+  function toggleFilterDropdown() {
+    if (!showFilterDropdown) {
+      const buttonEl = document.querySelector('.filter-button') as HTMLElement
+      if (buttonEl) {
+        filterButtonRect = buttonEl.getBoundingClientRect()
+      }
+    }
+    showFilterDropdown = !showFilterDropdown
+  }
+
+  function closeFilterDropdown() {
+    showFilterDropdown = false
+  }
+
   $: {
     isCaddyRunning = data.caddyRunning
     console.log(`Caddy running state updated: ${isCaddyRunning}`)
   }
 
-  $: {
-    clearTimeout(searchTimeout)
-    searchTimeout = setTimeout(() => {
-      if (!searchQuery) {
-        filteredHosts = data.hosts
-      } else {
-        const query = searchQuery.toLowerCase()
-        filteredHosts = data.hosts.filter(
-          (host) =>
-            host.domain.toLowerCase().includes(query) ||
-            host.targetHost.toLowerCase().includes(query) ||
-            host.targetPort.toString().includes(query) ||
-            host.targetProtocol.toLowerCase().includes(query)
-        )
-      }
-    }, 300)
+  $: filterState = {
+    protocol: protocolFilter,
+    status: statusFilter,
+    ssl: sslFilter,
+    search: searchQuery
   }
 
-  // Function to toggle host status
+  $: {
+    if (showFilters) {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        applyFilters()
+      }, 300)
+    }
+  }
+
+  $: if (showFilters && filterState) {
+    applyFilters()
+  }
+
+  function applyFilters() {
+    let results = [...data.hosts]
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      results = results.filter(
+        (host) =>
+          host.domain.toLowerCase().includes(query) ||
+          host.targetHost.toLowerCase().includes(query) ||
+          host.targetPort.toString().includes(query) ||
+          host.targetProtocol.toLowerCase().includes(query)
+      )
+    }
+
+    if (protocolFilter !== 'all') {
+      results = results.filter((host) => host.targetProtocol === protocolFilter)
+    }
+
+    if (statusFilter !== 'all') {
+      results = results.filter(
+        (host) =>
+          (statusFilter === 'active' && host.enabled) ||
+          (statusFilter === 'disabled' && !host.enabled)
+      )
+    }
+
+    if (sslFilter !== 'all') {
+      results = results.filter(
+        (host) =>
+          (sslFilter === 'enabled' && host.sslEnabled) ||
+          (sslFilter === 'disabled' && !host.sslEnabled)
+      )
+    }
+
+    if (sortColumn) {
+      results.sort((a, b) => {
+        let valueA = a[sortColumn as keyof typeof a] ?? ''
+        let valueB = b[sortColumn as keyof typeof b] ?? ''
+
+        if (typeof valueA === 'string') valueA = valueA.toLowerCase()
+        if (typeof valueB === 'string') valueB = valueB.toLowerCase()
+
+        if (sortDirection === 'asc') {
+          if (valueA < valueB) return -1
+          if (valueA > valueB) return 1
+          return 0
+        } else {
+          if (valueA > valueB) return -1
+          if (valueA < valueB) return 1
+          return 0
+        }
+      })
+    }
+
+    filteredHosts = results
+  }
+
+  function handleSort(column: string, direction: 'asc' | 'desc') {
+    sortColumn = column
+    sortDirection = direction
+    applyFilters()
+  }
+
+  function clearAllFilters() {
+    searchQuery = ''
+
+    showFilters = false
+
+    protocolFilter = 'all'
+    statusFilter = 'all'
+    sslFilter = 'all'
+
+    sortColumn = null
+    sortDirection = 'asc'
+
+    filteredHosts = [...data.hosts]
+
+    setTimeout(() => {
+      showFilters = true
+    }, 50)
+  }
+
   async function toggleHostStatus(host: (typeof data.hosts)[number]) {
     if (!data.caddyRunning) {
       error = {
@@ -103,14 +235,14 @@
   }
 
   const columns = [
-    { header: 'Domain Name', key: 'domain', class: 'font-medium text-gray-900' },
-    { header: 'Target Host', key: 'targetHost' },
-    { header: 'Target Port', key: 'targetPort' },
-    { header: 'Protocol', key: 'targetProtocol' },
+    { header: 'Domain Name', key: 'domain', class: 'font-medium text-gray-900', sortable: true },
+    { header: 'Target Host', key: 'targetHost', sortable: true },
+    { header: 'Target Port', key: 'targetPort', sortable: true },
+    { header: 'Protocol', key: 'targetProtocol', sortable: true },
     {
       header: 'Status',
       key: 'status',
-      class: 'whitespace-nowrap px-3 py-4 text-sm text-gray-500'
+      class: 'whitespace-nowrap px-3 py-4 text-gray-500'
     }
   ]
 
@@ -202,7 +334,6 @@
     }
   })
 
-  // Update isCaddyRunning whenever data.caddyRunning changes
   $: isCaddyRunning = data.caddyRunning
 
   let showCreateModal = false
@@ -394,88 +525,228 @@
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    {#if !data.caddyRunning}
-      <div class="mb-4">
-        <Alert
-          type="warning"
-          title="Caddy Server Not Running"
-          message="The Caddy server is currently not running. Proxy configuration changes are disabled until Caddy is started."
-        />
+    {#if error && !showCreateModal && !showEditModal}
+      <div class="mb-6">
+        <Alert type="error" title={error.message} message={error.details} />
       </div>
     {/if}
 
-    <Card>
-      <TableHeader
-        title="Proxy Hosts"
-        description="Configure and manage your proxy host settings."
-        bind:searchQuery
-        searchPlaceholder="Search hosts..."
-        actionText="Add Host"
-        actionDisabled={!data.caddyRunning}
-        on:search={() => {
-          // Search is handled by the reactive statement
-        }}
-        on:action={() => {
-          if (!data.caddyRunning) {
-            error = {
-              message: 'Cannot add proxy hosts',
-              details: 'Caddy server is not running. Please start Caddy before making changes.'
-            }
-            return
-          }
-          showCreateModal = true
-          resetForm()
-        }}
-      />
-      <div class="px-4 pb-5 sm:px-6 sm:pb-6">
-        {#if filteredHosts.length > 0}
-          <div class="relative">
-            {#if !data.caddyRunning}
-              <div
-                class="absolute inset-0 bg-gray-200 dark:bg-gray-800 opacity-10 z-10 pointer-events-none rounded-md"
-              ></div>
-            {/if}
-            <Table {columns} data={filteredHosts} {rowActions}>
-              <svelte:fragment slot="status" let:row>
-                <button
-                  type="button"
-                  on:click={() => toggleHostStatus(row)}
-                  class={data.caddyRunning
-                    ? 'cursor-pointer hover:opacity-80 transition-opacity'
-                    : 'cursor-not-allowed opacity-90 transition-opacity'}
-                  aria-disabled={!data.caddyRunning}
-                >
-                  <StatusBadge
-                    text={row.enabled ? 'Active' : 'Disabled'}
-                    type={row.enabled ? 'success' : 'neutral'}
-                  />
-                </button>
-              </svelte:fragment>
-            </Table>
+    <Card title="Proxy Hosts" description="Manage your reverse proxy domain configurations.">
+      <div class="mb-6">
+        <div class="flex flex-wrap gap-4 items-end relative">
+          <div class="w-64">
+            <Input
+              type="search"
+              label=""
+              name="search"
+              placeholder="Search domains, hosts, or ports..."
+              bind:value={searchQuery}
+            />
           </div>
-        {:else}
-          <EmptyState
-            title="No proxy hosts yet"
-            description="Add your first proxy host to get started with ClearProxy"
-            icon={Server}
-            actionText="Add Host"
-            className="mt-10"
-            disabled={!data.caddyRunning}
-            on:action={() => {
-              if (!data.caddyRunning) {
-                error = {
-                  message: 'Cannot add proxy hosts',
-                  details: 'Caddy server is not running. Please start Caddy before making changes.'
+
+          <div class="relative">
+            <Button
+              variant="secondary"
+              size="md"
+              on:click={toggleFilterDropdown}
+              class_name="h-9 flex items-center gap-2 filter-button"
+            >
+              <FilterIcon size={14} />
+              <span>Filter</span>
+              {#if protocolFilter !== 'all' || statusFilter !== 'all' || sslFilter !== 'all'}
+                <span
+                  class="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ml-1"
+                >
+                  {(protocolFilter !== 'all' ? 1 : 0) +
+                    (statusFilter !== 'all' ? 1 : 0) +
+                    (sslFilter !== 'all' ? 1 : 0)}
+                </span>
+              {/if}
+            </Button>
+          </div>
+
+          {#if searchQuery && !(protocolFilter !== 'all' || statusFilter !== 'all' || sslFilter !== 'all')}
+            <div class="pb-[1px]">
+              <Button variant="secondary" size="md" class_name="" on:click={clearAllFilters}
+                >Clear Search</Button
+              >
+            </div>
+          {/if}
+
+          <div class="ml-auto pb-[1px]">
+            <Button
+              variant="primary"
+              size="md"
+              disabled={!isCaddyRunning}
+              class_name="h-9"
+              on:click={() => {
+                if (!isCaddyRunning) {
+                  error = {
+                    message: 'Cannot add proxy hosts',
+                    details:
+                      'Caddy server is not running. Please start Caddy before making changes.'
+                  }
+                  return
                 }
-                return
-              }
+                showCreateModal = true
+                resetForm()
+              }}
+            >
+              Add Host
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {#if filteredHosts.length > 0}
+        <Table
+          {columns}
+          data={filteredHosts}
+          {rowActions}
+          consistentColumnPadding={true}
+          removeHorizontalPadding={true}
+          {sortColumn}
+          {sortDirection}
+          onSort={handleSort}
+        >
+          <svelte:fragment slot="status" let:row>
+            <button
+              type="button"
+              on:click={() => toggleHostStatus(row)}
+              class={isCaddyRunning
+                ? 'cursor-pointer hover:opacity-80 transition-opacity'
+                : 'cursor-not-allowed opacity-90 transition-opacity'}
+              aria-disabled={!isCaddyRunning}
+            >
+              <StatusBadge
+                text={row.enabled ? 'Active' : 'Disabled'}
+                type={row.enabled ? 'success' : 'neutral'}
+              />
+            </button>
+          </svelte:fragment>
+        </Table>
+      {:else}
+        <EmptyState
+          title="No proxy hosts found"
+          description={searchQuery ||
+          protocolFilter !== 'all' ||
+          statusFilter !== 'all' ||
+          sslFilter !== 'all'
+            ? 'No hosts match your filters. Try adjusting your search criteria.'
+            : 'Add your first proxy host to get started.'}
+          icon={Server}
+          actionText={isCaddyRunning
+            ? searchQuery ||
+              protocolFilter !== 'all' ||
+              statusFilter !== 'all' ||
+              sslFilter !== 'all'
+              ? 'Clear Filters'
+              : 'Add Host'
+            : undefined}
+          disabled={!isCaddyRunning}
+          on:action={() => {
+            if (
+              searchQuery ||
+              protocolFilter !== 'all' ||
+              statusFilter !== 'all' ||
+              sslFilter !== 'all'
+            ) {
+              clearAllFilters()
+            } else if (isCaddyRunning) {
               showCreateModal = true
               resetForm()
-            }}
-          />
+            }
+          }}
+        />
+      {/if}
+    </Card>
+
+    {#if showFilterDropdown && filterButtonRect}
+      <div
+        class="fixed inset-0 z-40"
+        on:click|stopPropagation={closeFilterDropdown}
+        on:keydown={(e) => e.key === 'Escape' && closeFilterDropdown()}
+        role="button"
+        tabindex="0"
+        aria-label="Close filters"
+      ></div>
+
+      <div
+        class="fixed z-[999] w-[280px] bg-white dark:bg-gray-900 rounded-md shadow-lg flex flex-col border border-gray-200 dark:border-gray-700"
+        style="top: {filterButtonRect.bottom + window.scrollY + 8}px; left: {filterButtonRect.left +
+          window.scrollX}px;"
+        use:clickOutside={closeFilterDropdown}
+      >
+        <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="font-semibold text-gray-800 dark:text-gray-200">Filter Options</h3>
+        </div>
+
+        <div class="p-3 flex flex-col gap-3">
+          {#if showFilters}
+            <div class="w-full">
+              <Select
+                label="Protocol"
+                name="protocolFilter"
+                bind:value={protocolFilter}
+                options={[
+                  { value: 'all', label: 'All Protocols' },
+                  { value: 'http', label: 'HTTP' },
+                  { value: 'https', label: 'HTTPS' }
+                ]}
+              />
+            </div>
+
+            <div class="w-full">
+              <Select
+                label="Status"
+                name="statusFilter"
+                bind:value={statusFilter}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'disabled', label: 'Disabled' }
+                ]}
+              />
+            </div>
+
+            <div class="w-full">
+              <Select
+                label="SSL"
+                name="sslFilter"
+                bind:value={sslFilter}
+                options={[
+                  { value: 'all', label: 'All SSL' },
+                  { value: 'enabled', label: 'SSL Enabled' },
+                  { value: 'disabled', label: 'SSL Disabled' }
+                ]}
+              />
+            </div>
+          {:else}
+            <div class="h-[100px] flex items-center justify-center">
+              <span class="text-gray-400">Loading filters...</span>
+            </div>
+          {/if}
+        </div>
+
+        {#if protocolFilter !== 'all' || statusFilter !== 'all' || sslFilter !== 'all'}
+          <div
+            class="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-md"
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              class_name="w-full justify-center"
+              on:click={() => {
+                clearAllFilters()
+                closeFilterDropdown()
+              }}
+            >
+              Clear Filters
+            </Button>
+          </div>
         {/if}
       </div>
-    </Card>
+    {/if}
 
     {#if showCreateModal}
       <Modal
@@ -483,9 +754,15 @@
         isOpen={showCreateModal}
         onClose={() => {
           showCreateModal = false
-          resetForm()
+          error = null
         }}
       >
+        {#if error}
+          <div class="mb-4">
+            <Alert type="error" title={error.message} message={error.details} />
+          </div>
+        {/if}
+
         <form method="POST" action="?/create" use:enhance={handleSubmit} class="space-y-6">
           <FormSection title="Basic Configuration" bordered={false}>
             <Input
@@ -619,10 +896,6 @@
             {/if}
           </FormSection>
 
-          {#if error}
-            <Alert type="error" title={error.message} message={error.details} />
-          {/if}
-
           <FormActions
             submitText="Create Host"
             cancelText="Cancel"
@@ -644,9 +917,15 @@
         isOpen={showEditModal}
         onClose={() => {
           showEditModal = false
-          editingHost = null
+          error = null
         }}
       >
+        {#if error}
+          <div class="mb-4">
+            <Alert type="error" title={error.message} message={error.details} />
+          </div>
+        {/if}
+
         <form method="POST" action="?/update" use:enhance={handleEditSubmit} class="space-y-6">
           <FormSection title="Basic Configuration" bordered={false}>
             <Input label="Domain Name" name="domain" type="text" required bind:value={editDomain} />
@@ -773,10 +1052,6 @@
               />
             {/if}
           </FormSection>
-
-          {#if error}
-            <Alert type="error" title={error.message} message={error.details} />
-          {/if}
 
           <FormActions
             submitText="Save Changes"

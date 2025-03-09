@@ -3,27 +3,18 @@
    * Base type for feed items, containing common properties for all activity events
    */
   export type BaseFeedItem = {
-    /** Unique identifier for the item */
     id: string
-    /** Formatted timestamp for when the action occurred */
     timestamp: string
-    /** Type of action performed */
     type: 'create' | 'update' | 'delete'
-    /** User who performed the action */
     user: {
-      /** User's display name */
       name: string
-      /** User's email address */
       email: string
-      /** Optional URL to user's avatar image */
       avatar?: string
     }
-    /** Type of entity that was modified (e.g., 'proxy', 'user') */
     entityType: string
-    /** Optional additional details about the action */
     details?: string
-    /** Optional object containing data about the deleted item */
     deletedItem?: Record<string, any>
+    domain?: string
   }
 
   /**
@@ -171,6 +162,11 @@
                       >{item.user.name}</span
                     >
                     {getActionText(item.type, item.entityType)}
+                    {#if item.domain}
+                      <span class="text-gray-500 dark:text-gray-400">
+                        {' - '}{item.domain}
+                      </span>
+                    {/if}
                   </div>
                   <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{item.timestamp}</p>
                 </div>

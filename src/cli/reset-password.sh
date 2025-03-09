@@ -6,7 +6,6 @@
 
 set -e
 
-# Function to display usage information
 show_usage() {
   echo "ClearProxy Password Reset Tool"
   echo ""

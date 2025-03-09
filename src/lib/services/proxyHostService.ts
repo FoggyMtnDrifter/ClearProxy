@@ -5,15 +5,70 @@
  */
 import { proxyHostRepository } from '$lib/repositories/proxyHostRepository'
 import { createAuditLog } from '$lib/db/audit'
-import { reloadCaddyConfig, getCaddyStatus, getCertificateStatus } from '$lib/caddy/config'
+import {
+  reloadCaddyConfig,
+  getCaddyServerStatus as getCaddyStatus,
+  getCertificateStatus
+} from '$lib/caddy/config'
 import { apiLogger } from '$lib/utils/logger'
 import { generateCaddyHash } from '$lib/auth/password'
+import { batchProcess, withRetry } from '$lib/utils/db'
 import type {
   ProxyHost,
   ProxyHostWithCert,
   CreateProxyHostData,
-  CaddyStatus
+  CaddyStatus,
+  CertificateInfo
 } from '$lib/models/proxyHost'
+
+const certStatusCache = new Map<string, { status: CertificateInfo | null; timestamp: number }>()
+const CERT_CACHE_TTL = 15 * 1000 // 15 seconds TTL (reduced from 30s)
+
+/**
+ * Clears the certificate status cache
+ *
+ * @param {string} [domain] - Optional domain to clear specific cache entry
+ */
+function clearCertificateCache(domain?: string): void {
+  if (domain) {
+    const cacheKey = `cert:${domain}`
+    certStatusCache.delete(cacheKey)
+    apiLogger.debug({ domain }, 'Cleared certificate cache for domain')
+  } else {
+    certStatusCache.clear()
+    apiLogger.debug('Cleared all certificate cache entries')
+  }
+}
+
+/**
+ * Gets certificate status with caching
+ *
+ * @private
+ * @param {string} domain - Domain to get certificate for
+ * @param {boolean} [bypassCache=false] - Whether to bypass the cache
+ * @returns {Promise<CertificateInfo | null>} Certificate status
+ */
+async function getCachedCertificateStatus(
+  domain: string,
+  bypassCache: boolean = false
+): Promise<CertificateInfo | null> {
+  const cacheKey = `cert:${domain}`
+  const cached = certStatusCache.get(cacheKey)
+
+  if (!bypassCache && cached && Date.now() - cached.timestamp < CERT_CACHE_TTL) {
+    apiLogger.debug({ domain }, 'Using cached certificate status')
+    return cached.status
+  }
+
+  const certStatus = await getCertificateStatus(domain)
+
+  certStatusCache.set(cacheKey, {
+    status: certStatus,
+    timestamp: Date.now()
+  })
+
+  return certStatus
+}
 
 /**
  * Gets all proxy hosts with certificate information
@@ -25,33 +80,33 @@ export async function getAllProxyHosts(): Promise<ProxyHostWithCert[]> {
 
   apiLogger.debug(
     {
-      hosts: hosts.map((h) => ({
-        id: h.id,
-        domain: h.domain,
-        sslEnabled: h.sslEnabled
-      }))
+      hostsCount: hosts.length,
+      sslEnabled: hosts.filter((h) => h.sslEnabled).length
     },
     'Retrieved hosts from database'
   )
 
-  // Enhance each host with certificate information if SSL is enabled
-  const hostsWithCerts = await Promise.all(
-    hosts.map(async (host) => {
-      if (host.sslEnabled) {
-        const certStatus = await getCertificateStatus(host.domain)
-        return {
-          ...host,
-          certStatus
-        }
-      }
+  const sslHosts = hosts.filter((h) => h.sslEnabled)
+  const nonSslHosts = hosts.filter((h) => !h.sslEnabled)
+
+  const sslHostsWithCerts = await batchProcess(
+    sslHosts,
+    async (host) => {
+      const certStatus = await getCachedCertificateStatus(host.domain)
       return {
         ...host,
-        certStatus: null
+        certStatus
       }
-    })
+    },
+    10
   )
 
-  return hostsWithCerts
+  const nonSslHostsWithCerts = nonSslHosts.map((host) => ({
+    ...host,
+    certStatus: null
+  }))
+
+  return [...sslHostsWithCerts, ...nonSslHostsWithCerts]
 }
 
 /**
@@ -65,7 +120,7 @@ export async function getProxyHostById(id: number): Promise<ProxyHostWithCert | 
   if (!host) return null
 
   if (host.sslEnabled) {
-    const certStatus = await getCertificateStatus(host.domain)
+    const certStatus = await getCachedCertificateStatus(host.domain)
     return {
       ...host,
       certStatus
@@ -89,53 +144,73 @@ export async function createProxyHost(
   hostData: CreateProxyHostData,
   userId: number
 ): Promise<ProxyHost> {
-  // Handle password hashing if basic auth is enabled
+  let basicAuthHash: string | null = null
   if (hostData.basicAuthEnabled && hostData.basicAuthPassword) {
-    const basicAuthHash = await generateCaddyHash(hostData.basicAuthPassword)
-    hostData = {
-      ...hostData,
-      basicAuthHash,
-      basicAuthPassword: ''
-    }
+    basicAuthHash = await generateCaddyHash(hostData.basicAuthPassword)
+    apiLogger.debug('Generated bcrypt hash for basic auth password', {
+      hasHash: !!basicAuthHash,
+      hashFormat: basicAuthHash?.substring(0, 6) + '...'
+    })
   }
 
-  // Ensure all optional fields are properly defined for repository create method
-  const hostDataForRepository: Omit<ProxyHost, 'id' | 'createdAt' | 'updatedAt'> = {
-    domain: hostData.domain,
-    targetHost: hostData.targetHost,
-    targetPort: hostData.targetPort,
-    targetProtocol: hostData.targetProtocol,
-    sslEnabled: hostData.sslEnabled,
-    forceSSL: hostData.forceSSL,
-    http2Support: hostData.http2Support,
-    http3Support: hostData.http3Support,
-    enabled: hostData.enabled,
-    cacheEnabled: hostData.cacheEnabled,
-    advancedConfig: hostData.advancedConfig ?? null,
-    basicAuthEnabled: hostData.basicAuthEnabled,
-    basicAuthUsername: hostData.basicAuthUsername ?? null,
-    basicAuthPassword: hostData.basicAuthPassword ?? null,
-    basicAuthHash: hostData.basicAuthHash ?? null,
-    ignoreInvalidCert: hostData.ignoreInvalidCert
-  }
-
-  const createdHost = await proxyHostRepository.create(hostDataForRepository)
-
-  // Create audit log entry
-  await createAuditLog({
-    actionType: 'create',
-    entityType: 'proxy_host',
-    entityId: createdHost.id,
-    userId,
-    changes: {
-      domain: createdHost.domain,
-      targetHost: createdHost.targetHost
+  const createdHost = await withRetry(async () => {
+    const hostForRepository: Omit<ProxyHost, 'id' | 'createdAt' | 'updatedAt'> = {
+      domain: hostData.domain,
+      targetHost: hostData.targetHost,
+      targetPort: hostData.targetPort,
+      targetProtocol: hostData.targetProtocol,
+      sslEnabled: hostData.sslEnabled,
+      forceSSL: hostData.forceSSL,
+      http2Support: hostData.http2Support,
+      http3Support: hostData.http3Support,
+      enabled: hostData.enabled,
+      cacheEnabled: hostData.cacheEnabled ?? false,
+      ignoreInvalidCert: hostData.ignoreInvalidCert,
+      advancedConfig: hostData.advancedConfig || null,
+      basicAuthEnabled: hostData.basicAuthEnabled,
+      basicAuthUsername: hostData.basicAuthUsername || null,
+      basicAuthPassword: null,
+      basicAuthHash: basicAuthHash
     }
+
+    const host = await proxyHostRepository.create(hostForRepository)
+
+    try {
+      await createAuditLog({
+        actionType: 'create',
+        entityType: 'proxyHost',
+        entityId: host.id,
+        userId,
+        changes: {
+          domain: host.domain,
+          targetHost: host.targetHost,
+          targetPort: host.targetPort,
+          enabled: host.enabled,
+          basicAuthEnabled: host.basicAuthEnabled,
+          sslEnabled: host.sslEnabled,
+          forceSSL: host.forceSSL,
+          http2Support: host.http2Support,
+          http3Support: host.http3Support,
+          cacheEnabled: host.cacheEnabled,
+          ignoreInvalidCert: host.ignoreInvalidCert
+        }
+      })
+    } catch (auditError) {
+      apiLogger.error({ error: auditError }, 'Failed to create audit log for proxy host creation')
+    }
+
+    return host
   })
 
-  // Reload Caddy configuration
-  const allHosts = await proxyHostRepository.getAll()
-  await reloadCaddyConfig(allHosts)
+  try {
+    const allHosts = await proxyHostRepository.getAll()
+    await reloadCaddyConfig(allHosts)
+  } catch (caddyError) {
+    apiLogger.error(
+      { error: caddyError, hostId: createdHost.id, domain: createdHost.domain },
+      'Failed to reload Caddy config after host creation'
+    )
+  }
 
   return createdHost
 }
@@ -156,23 +231,34 @@ export async function updateProxyHost(
   const existingHost = await proxyHostRepository.getById(id.toString())
   if (!existingHost) return null
 
-  // Handle password hashing if basic auth is enabled
   let updatedData = { ...hostData }
+
   if (updatedData.basicAuthEnabled && updatedData.basicAuthPassword) {
     const basicAuthHash = await generateCaddyHash(updatedData.basicAuthPassword)
+    apiLogger.debug('Generated bcrypt hash for updated basic auth password', {
+      hostId: id,
+      hasHash: !!basicAuthHash,
+      hashFormat: basicAuthHash?.substring(0, 6) + '...'
+    })
+
     updatedData = {
       ...updatedData,
       basicAuthHash,
-      basicAuthPassword: ''
+      basicAuthPassword: null
+    }
+  } else if (updatedData.basicAuthEnabled === false) {
+    updatedData = {
+      ...updatedData,
+      basicAuthUsername: null,
+      basicAuthPassword: null,
+      basicAuthHash: null
     }
   }
 
   const updatedHost = await proxyHostRepository.update(id.toString(), updatedData)
 
-  // Create audit log entry with appropriate information
-  const changes: Record<string, any> = {}
+  const changes: Record<string, unknown> = {}
 
-  // Only include changes that were actually changed from previous values
   if (hostData.domain && hostData.domain !== existingHost.domain) {
     changes.domain = {
       from: existingHost.domain,
@@ -187,7 +273,6 @@ export async function updateProxyHost(
     }
   }
 
-  // Special handling for status toggle
   if (hostData.enabled !== undefined && hostData.enabled !== existingHost.enabled) {
     changes.status = {
       from: existingHost.enabled ? 'active' : 'disabled',
@@ -195,8 +280,66 @@ export async function updateProxyHost(
     }
   }
 
-  // Only create an audit log if there were actual changes
+  if (
+    hostData.basicAuthEnabled !== undefined &&
+    hostData.basicAuthEnabled !== existingHost.basicAuthEnabled
+  ) {
+    changes.basicAuth = {
+      from: existingHost.basicAuthEnabled ? 'enabled' : 'disabled',
+      to: hostData.basicAuthEnabled ? 'enabled' : 'disabled'
+    }
+  }
+
+  if (hostData.sslEnabled !== undefined && hostData.sslEnabled !== existingHost.sslEnabled) {
+    changes.ssl = {
+      from: existingHost.sslEnabled ? 'enabled' : 'disabled',
+      to: hostData.sslEnabled ? 'enabled' : 'disabled'
+    }
+  }
+
+  if (hostData.forceSSL !== undefined && hostData.forceSSL !== existingHost.forceSSL) {
+    changes.forceSSL = {
+      from: existingHost.forceSSL ? 'enabled' : 'disabled',
+      to: hostData.forceSSL ? 'enabled' : 'disabled'
+    }
+  }
+
+  if (hostData.http2Support !== undefined && hostData.http2Support !== existingHost.http2Support) {
+    changes.http2Support = {
+      from: existingHost.http2Support ? 'enabled' : 'disabled',
+      to: hostData.http2Support ? 'enabled' : 'disabled'
+    }
+  }
+
+  if (hostData.http3Support !== undefined && hostData.http3Support !== existingHost.http3Support) {
+    changes.http3Support = {
+      from: existingHost.http3Support ? 'enabled' : 'disabled',
+      to: hostData.http3Support ? 'enabled' : 'disabled'
+    }
+  }
+
+  if (hostData.cacheEnabled !== undefined && hostData.cacheEnabled !== existingHost.cacheEnabled) {
+    changes.cache = {
+      from: existingHost.cacheEnabled ? 'enabled' : 'disabled',
+      to: hostData.cacheEnabled ? 'enabled' : 'disabled'
+    }
+  }
+
+  if (
+    hostData.ignoreInvalidCert !== undefined &&
+    hostData.ignoreInvalidCert !== existingHost.ignoreInvalidCert
+  ) {
+    changes.ignoreInvalidCert = {
+      from: existingHost.ignoreInvalidCert ? 'enabled' : 'disabled',
+      to: hostData.ignoreInvalidCert ? 'enabled' : 'disabled'
+    }
+  }
+
   if (Object.keys(changes).length > 0) {
+    if (!changes.domain) {
+      changes.domain = existingHost.domain
+    }
+
     await createAuditLog({
       actionType: 'update',
       entityType: 'proxy_host',
@@ -206,9 +349,13 @@ export async function updateProxyHost(
     })
   }
 
-  // Reload Caddy configuration
   const allHosts = await proxyHostRepository.getAll()
   await reloadCaddyConfig(allHosts)
+
+  if (updatedHost && (hostData.domain !== undefined || existingHost)) {
+    const domain = hostData.domain || existingHost.domain
+    clearCertificateCache(domain)
+  }
 
   return updatedHost || null
 }
@@ -227,7 +374,6 @@ export async function deleteProxyHost(id: number, userId: number): Promise<boole
   const deleted = await proxyHostRepository.delete(id.toString())
 
   if (deleted) {
-    // Create audit log entry
     await createAuditLog({
       actionType: 'delete',
       entityType: 'proxy_host',
@@ -238,7 +384,6 @@ export async function deleteProxyHost(id: number, userId: number): Promise<boole
       }
     })
 
-    // Reload Caddy configuration
     const allHosts = await proxyHostRepository.getAll()
     await reloadCaddyConfig(allHosts)
   }
@@ -247,7 +392,7 @@ export async function deleteProxyHost(id: number, userId: number): Promise<boole
 }
 
 /**
- * Gets the current Caddy server status
+ * Gets the Caddy server status
  *
  * @returns {Promise<CaddyStatus>} Caddy server status
  */

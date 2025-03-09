@@ -14,11 +14,8 @@ declare global {
        * Undefined if no user is authenticated.
        */
       user?: {
-        /** Unique identifier for the user */
         id: number
-        /** User's email address */
         email: string
-        /** User's display name */
         name: string
       }
       /**

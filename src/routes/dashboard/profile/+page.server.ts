@@ -20,7 +20,6 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(303, '/auth/login')
   }
 
-  // Fetch complete user data including admin status
   const userData = await userRepository.getById(locals.user.id)
 
   return {
@@ -66,7 +65,6 @@ export const actions = {
       })
     }
 
-    // Check if email is already in use by another user
     if (email.toString() !== locals.user.email) {
       const existingUser = await userRepository.getByEmail(email.toString())
       if (existingUser && existingUser.id !== locals.user.id) {
@@ -142,13 +140,11 @@ export const actions = {
       })
     }
 
-    // Get the current user with password hash
     const user = await userRepository.getById(locals.user.id)
     if (!user) {
       throw redirect(303, '/auth/login')
     }
 
-    // Verify current password
     const isValidPassword = await verifyPassword(currentPassword.toString(), user.passwordHash)
     if (!isValidPassword) {
       return fail(400, {
@@ -158,7 +154,6 @@ export const actions = {
     }
 
     try {
-      // Hash and update the new password
       const passwordHash = await hashPassword(newPassword.toString())
       await userRepository.update(user.id, { passwordHash })
 

@@ -4,10 +4,8 @@
    * Displays a status indicator with appropriate colors
    */
 
-  /** The status text to display */
   export let text: string
 
-  /** The status type which determines colors */
   export let type:
     | 'success'
     | 'warning'
@@ -18,10 +16,8 @@
     | 'purple'
     | 'pink' = 'neutral'
 
-  /** Additional CSS classes */
   export let className: string = ''
 
-  // Color mappings for different status types
   const colors = {
     success: 'bg-green-50 text-green-700 ring-green-600/20',
     warning: 'bg-yellow-50 text-yellow-800 ring-yellow-600/20',

@@ -8,25 +8,18 @@
   import SearchInput from './SearchInput.svelte'
   import { Search } from 'lucide-svelte'
 
-  /** Title of the table */
   export let title: string
 
-  /** Description of the table */
   export let description: string | undefined = undefined
 
-  /** Whether to show the search input */
   export let showSearch: boolean = true
 
-  /** Search placeholder text */
   export let searchPlaceholder: string = 'Search...'
 
-  /** Current search query */
   export let searchQuery: string = ''
 
-  /** Primary action button text */
   export let actionText: string | undefined = undefined
 
-  /** Primary action disabled state */
   export let actionDisabled: boolean = false
 
   const dispatch = createEventDispatcher<{ search: string; action: null }>()

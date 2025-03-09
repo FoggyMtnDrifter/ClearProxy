@@ -4,16 +4,12 @@
    * Provides consistent layout for grouped form inputs
    */
 
-  /** Type of layout to use */
   export let layout: 'stack' | 'grid' | 'row' = 'stack'
 
-  /** Grid columns for grid layout (sm and above) */
   export let cols: 1 | 2 | 3 | 4 | 6 | 12 = 2
 
-  /** Gap between elements */
   export let gap: 2 | 3 | 4 | 5 | 6 = 4
 
-  /** Additional CSS classes */
   export let className: string = ''
 
   /**

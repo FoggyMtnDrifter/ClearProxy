@@ -48,7 +48,6 @@ class AuditLogRepository implements IAuditLogRepository {
    * @returns {Promise<AuditLog>} The created audit log
    */
   async create(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
-    // Convert changes to JSON string if it's an object
     const preparedData = {
       ...auditLog,
       changes:
@@ -109,5 +108,4 @@ class AuditLogRepository implements IAuditLogRepository {
   }
 }
 
-// Export a singleton instance
 export const auditLogRepository = new AuditLogRepository()

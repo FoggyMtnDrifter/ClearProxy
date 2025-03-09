@@ -15,20 +15,16 @@ import { apiLogger } from '$lib/utils/logger'
  */
 export async function loadDashboardData() {
   try {
-    // Get all proxy hosts for stats calculation
     const hosts = await proxyHostRepository.getAll()
 
-    // Get Caddy server status
     const caddyStatus = await proxyHostService.getCaddyServerStatus()
 
-    // Calculate system statistics
     const stats = {
       totalHosts: hosts.length,
       activeHosts: hosts.filter((h) => h.enabled).length,
       caddyRunning: caddyStatus.running
     }
 
-    // Get recent audit logs
     const recentLogs = await auditLogService.getRecentAuditLogs(5)
 
     apiLogger.debug(

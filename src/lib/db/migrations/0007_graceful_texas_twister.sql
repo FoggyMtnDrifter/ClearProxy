@@ -1,0 +1,1 @@
+ALTER TABLE `proxy_hosts` ADD `basic_auth_hash` text;

@@ -6,28 +6,20 @@
   import { createEventDispatcher } from 'svelte'
   import Button from './Button.svelte'
 
-  /** Title for the empty state */
   export let title: string = 'No data available'
 
-  /** Description text */
   export let description: string | undefined = undefined
 
-  /** Icon to display (Lucide icon component) */
   export let icon: any = undefined
 
-  /** Icon size in pixels */
   export let iconSize: number = 48
 
-  /** Icon color */
   export let iconColor: string = 'text-gray-400 dark:text-gray-500'
 
-  /** Action button text */
   export let actionText: string | undefined = undefined
 
-  /** Disable the action button */
   export let disabled: boolean = false
 
-  /** Additional CSS classes */
   export let className: string = ''
 
   const dispatch = createEventDispatcher<{ action: null }>()

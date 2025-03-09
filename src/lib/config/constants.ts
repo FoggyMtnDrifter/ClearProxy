@@ -4,15 +4,12 @@
  * @module config/constants
  */
 
-// Application settings
 export const APP_NAME = 'ClearProxy'
 export const APP_VERSION = '1.0.0'
 
-// Database settings
 export const DEFAULT_PAGE_SIZE = 20
 export const MAX_PAGE_SIZE = 100
 
-// Logging
 export const LOG_LEVELS = {
   TRACE: 'trace',
   DEBUG: 'debug',
@@ -22,15 +19,12 @@ export const LOG_LEVELS = {
   FATAL: 'fatal'
 }
 
-// Security
 export const PASSWORD_SALT_ROUNDS = 10
 export const TOKEN_EXPIRY = '1d' // 1 day
 
-// Caddy
 export const CADDY_API_BASE_URL = 'http://localhost:2019'
 export const CADDY_CONF_PATH = '/config/caddy/Caddyfile'
 
-// Audit logs
 export const DEFAULT_AUDIT_LOG_LIMIT = 100
 
 /**

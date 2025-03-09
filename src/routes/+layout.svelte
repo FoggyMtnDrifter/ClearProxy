@@ -98,10 +98,6 @@
       <MobileMenu isOpen={$isMobileMenuOpen} navItems={navigation} user={$page.data.user} />
     </nav>
 
-    <PageHeader title={currentPageTitle}>
-      <slot name="header" />
-    </PageHeader>
-
     <!-- Use the ScrollArea component to wrap the main content -->
     <ScrollArea
       height="flex-1"

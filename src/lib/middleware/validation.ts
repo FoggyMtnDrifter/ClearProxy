@@ -31,6 +31,7 @@ export interface ValidationRules {
 
 /**
  * Validates form data against validation rules
+ * Optimized version with early termination and caching
  *
  * @param {FormData} formData - The form data to validate
  * @param {ValidationRules} rules - Validation rules to apply
@@ -43,20 +44,27 @@ export function validateFormData(
   const errors: Record<string, string> = {}
 
   for (const [field, rule] of Object.entries(rules)) {
+    if (rule.required) {
+      const value = formData.get(field)
+      if (!validate.isNotEmpty(value?.toString())) {
+        errors[field] = rule.message
+      }
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return errors
+  }
+
+  for (const [field, rule] of Object.entries(rules)) {
+    if (errors[field]) continue
+
     const value = formData.get(field)
 
-    // Check required fields
-    if (rule.required && !validate.isNotEmpty(value?.toString())) {
-      errors[field] = rule.message
-      continue
-    }
-
-    // Skip validation if field is not required and empty
     if (!rule.required && !validate.isNotEmpty(value?.toString())) {
       continue
     }
 
-    // Run custom validation
     if (rule.validate && value !== null && !rule.validate(value)) {
       errors[field] = rule.message
     }
@@ -65,14 +73,32 @@ export function validateFormData(
   return errors
 }
 
+type ValidatorFunction = (
+  event: RequestEvent
+) => Promise<{ formData: FormData } | ReturnType<typeof fail>>
+
+const validatorCache = new Map<string, ValidatorFunction>()
+
 /**
- * Creates a validation middleware function
+ * Creates a validation middleware function with optimized caching
  *
  * @param {ValidationRules} rules - Validation rules to apply
  * @returns {Function} Middleware function for validation
  */
 export function createValidator(rules: ValidationRules) {
-  return async (event: RequestEvent) => {
+  const ruleKey = JSON.stringify(
+    Object.entries(rules).map(([field, rule]) => ({
+      field,
+      required: !!rule.required,
+      hasValidator: !!rule.validate
+    }))
+  )
+
+  if (validatorCache.has(ruleKey)) {
+    return validatorCache.get(ruleKey)!
+  }
+
+  const validator = async (event: RequestEvent) => {
     const { request } = event
 
     try {
@@ -80,7 +106,7 @@ export function createValidator(rules: ValidationRules) {
       const errors = validateFormData(formData, rules)
 
       if (Object.keys(errors).length > 0) {
-        apiLogger.warn(
+        apiLogger.debug(
           { errors, formData: Object.fromEntries(formData) },
           'Validation failed for request'
         )
@@ -91,7 +117,6 @@ export function createValidator(rules: ValidationRules) {
         })
       }
 
-      // Return the validated form data for convenience
       return { formData }
     } catch (error) {
       apiLogger.error({ error }, 'Error occurred during validation')
@@ -103,6 +128,10 @@ export function createValidator(rules: ValidationRules) {
       })
     }
   }
+
+  validatorCache.set(ruleKey, validator)
+
+  return validator
 }
 
 /**

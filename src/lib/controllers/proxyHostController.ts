@@ -25,13 +25,14 @@ export async function loadProxyHosts(event: ExtendedRequestEvent) {
   depends('app:caddy-status')
 
   const [hosts, caddyStatus] = await Promise.all([
-    proxyHostService.getAllProxyHosts(),
+    proxyHostService.getAllProxyHosts(false),
     proxyHostService.getCaddyServerStatus()
   ])
 
   return {
     hosts,
-    caddyRunning: caddyStatus.running
+    caddyRunning: caddyStatus.running,
+    loadingCertificates: hosts.some((host) => host.sslEnabled)
   }
 }
 

@@ -5,6 +5,7 @@
  */
 import type { Actions, PageServerLoad } from './$types'
 import * as proxyHostController from '$lib/controllers/proxyHostController'
+import * as proxyHostService from '$lib/services/proxyHostService'
 
 /**
  * Loads proxy host data and Caddy server status for the proxy hosts page.
@@ -50,5 +51,17 @@ export const actions = {
    */
   toggle: async (event) => {
     return await proxyHostController.toggleProxyHost(event)
+  },
+
+  /**
+   * Fetches certificate statuses for SSL-enabled hosts
+   */
+  fetchCertificates: async () => {
+    const hostsWithCerts = await proxyHostService.getAllProxyHosts(true)
+    const sslHosts = hostsWithCerts.filter((h) => h.sslEnabled)
+
+    return {
+      hosts: sslHosts
+    }
   }
 } satisfies Actions

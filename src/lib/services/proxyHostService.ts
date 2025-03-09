@@ -22,7 +22,7 @@ import type {
 } from '$lib/models/proxyHost'
 
 const certStatusCache = new Map<string, { status: CertificateInfo | null; timestamp: number }>()
-const CERT_CACHE_TTL = 15 * 1000 // 15 seconds TTL (reduced from 30s)
+const CERT_CACHE_TTL = 300 * 1000 // 5 minutes TTL (increased from 15 seconds)
 
 /**
  * Clears the certificate status cache
@@ -73,9 +73,12 @@ async function getCachedCertificateStatus(
 /**
  * Gets all proxy hosts with certificate information
  *
+ * @param {boolean} [loadCertificates=true] - Whether to load certificate information
  * @returns {Promise<ProxyHostWithCert[]>} Proxy hosts with certificate status
  */
-export async function getAllProxyHosts(): Promise<ProxyHostWithCert[]> {
+export async function getAllProxyHosts(
+  loadCertificates: boolean = true
+): Promise<ProxyHostWithCert[]> {
   const hosts = await proxyHostRepository.getAll()
 
   apiLogger.debug(
@@ -89,6 +92,13 @@ export async function getAllProxyHosts(): Promise<ProxyHostWithCert[]> {
   const sslHosts = hosts.filter((h) => h.sslEnabled)
   const nonSslHosts = hosts.filter((h) => !h.sslEnabled)
 
+  if (!loadCertificates) {
+    return [...sslHosts, ...nonSslHosts].map((host) => ({
+      ...host,
+      certStatus: null
+    }))
+  }
+
   const sslHostsWithCerts = await batchProcess(
     sslHosts,
     async (host) => {
@@ -98,7 +108,7 @@ export async function getAllProxyHosts(): Promise<ProxyHostWithCert[]> {
         certStatus
       }
     },
-    10
+    50
   )
 
   const nonSslHostsWithCerts = nonSslHosts.map((host) => ({

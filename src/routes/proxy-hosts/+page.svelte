@@ -29,6 +29,7 @@
   import { onMount, onDestroy } from 'svelte'
   import type { ProxyHostFormData } from './types'
   import type { SubmitFunction } from '@sveltejs/kit'
+  import type { ProxyHostWithCert } from '$lib/models/proxyHost'
   import {
     Modal,
     Alert,
@@ -54,6 +55,8 @@
   let searchTimeout: ReturnType<typeof setTimeout>
   let filteredHosts = data.hosts
   let isCaddyRunning = data.caddyRunning
+  let isLoadingCertificates = data.loadingCertificates || false
+  let certificatesLoaded = !isLoadingCertificates
 
   let protocolFilter = 'all'
   let statusFilter = 'all'
@@ -318,11 +321,48 @@
   }
 
   onMount(() => {
-    invalidate('app:caddy-status')
+    // Start the regular status updates
+    statusCheckInterval = setInterval(async () => {
+      await invalidate('app:caddy-status')
+    }, 30000) // Check every 30 seconds
 
-    statusCheckInterval = setInterval(() => {
-      invalidate('app:caddy-status')
-    }, 5000)
+    // If we have SSL hosts, fetch their certificate info in the background
+    if (isLoadingCertificates) {
+      setTimeout(async () => {
+        try {
+          const response = await fetch('?/fetchCertificates', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            if (result.data && result.data.hosts) {
+              // Update the hosts with certificate information
+              const sslHosts = result.data.hosts as ProxyHostWithCert[]
+              const hostMap = new Map(sslHosts.map((h) => [h.id, h]))
+
+              data.hosts = data.hosts.map((host) => {
+                if (host.sslEnabled && hostMap.has(host.id)) {
+                  return hostMap.get(host.id) || host
+                }
+                return host
+              })
+
+              filteredHosts = [...data.hosts]
+              applyFilters()
+            }
+          }
+        } catch (err) {
+          console.error('Error loading certificate data:', err)
+        } finally {
+          isLoadingCertificates = false
+          certificatesLoaded = true
+        }
+      }, 100) // Start loading certificates shortly after component is mounted
+    }
   })
 
   onDestroy(() => {
@@ -531,7 +571,12 @@
       </div>
     {/if}
 
-    <Card title="Proxy Hosts" description="Manage your reverse proxy domain configurations.">
+    <Card
+      title="Proxy Hosts"
+      description="Manage your reverse proxy domain configurations.{isLoadingCertificates
+        ? ' Loading SSL certificates...'
+        : ''}"
+    >
       <div class="mb-6">
         <div class="flex flex-wrap gap-4 items-end relative">
           <div class="w-64">

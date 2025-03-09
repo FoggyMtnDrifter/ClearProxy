@@ -21,53 +21,14 @@ import type {
   CertificateInfo
 } from '$lib/models/proxyHost'
 
-const certStatusCache = new Map<string, { status: CertificateInfo | null; timestamp: number }>()
-const CERT_CACHE_TTL = 300 * 1000 // 5 minutes TTL (increased from 15 seconds)
-
 /**
- * Clears the certificate status cache
+ * Gets certificate status directly without caching
  *
- * @param {string} [domain] - Optional domain to clear specific cache entry
- */
-function clearCertificateCache(domain?: string): void {
-  if (domain) {
-    const cacheKey = `cert:${domain}`
-    certStatusCache.delete(cacheKey)
-    apiLogger.debug({ domain }, 'Cleared certificate cache for domain')
-  } else {
-    certStatusCache.clear()
-    apiLogger.debug('Cleared all certificate cache entries')
-  }
-}
-
-/**
- * Gets certificate status with caching
- *
- * @private
  * @param {string} domain - Domain to get certificate for
- * @param {boolean} [bypassCache=false] - Whether to bypass the cache
  * @returns {Promise<CertificateInfo | null>} Certificate status
  */
-async function getCachedCertificateStatus(
-  domain: string,
-  bypassCache: boolean = false
-): Promise<CertificateInfo | null> {
-  const cacheKey = `cert:${domain}`
-  const cached = certStatusCache.get(cacheKey)
-
-  if (!bypassCache && cached && Date.now() - cached.timestamp < CERT_CACHE_TTL) {
-    apiLogger.debug({ domain }, 'Using cached certificate status')
-    return cached.status
-  }
-
-  const certStatus = await getCertificateStatus(domain)
-
-  certStatusCache.set(cacheKey, {
-    status: certStatus,
-    timestamp: Date.now()
-  })
-
-  return certStatus
+async function getCertificateStatusDirect(domain: string): Promise<CertificateInfo | null> {
+  return await getCertificateStatus(domain)
 }
 
 /**
@@ -102,7 +63,7 @@ export async function getAllProxyHosts(
   const sslHostsWithCerts = await batchProcess(
     sslHosts,
     async (host) => {
-      const certStatus = await getCachedCertificateStatus(host.domain)
+      const certStatus = await getCertificateStatusDirect(host.domain)
       return {
         ...host,
         certStatus
@@ -130,7 +91,7 @@ export async function getProxyHostById(id: number): Promise<ProxyHostWithCert | 
   if (!host) return null
 
   if (host.sslEnabled) {
-    const certStatus = await getCachedCertificateStatus(host.domain)
+    const certStatus = await getCertificateStatusDirect(host.domain)
     return {
       ...host,
       certStatus
@@ -364,7 +325,6 @@ export async function updateProxyHost(
 
   if (updatedHost && (hostData.domain !== undefined || existingHost)) {
     const domain = hostData.domain || existingHost.domain
-    clearCertificateCache(domain)
   }
 
   return updatedHost || null

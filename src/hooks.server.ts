@@ -11,10 +11,6 @@ import { performance } from 'node:perf_hooks'
 
 const publicRoutes = ['/auth/login', '/auth/register']
 
-const userSessionCache = new Map<string, { user: User; expires: number }>()
-
-const SESSION_CACHE_TTL = 30 * 1000
-
 /**
  * Handle function for SvelteKit server hooks.
  * Manages authentication state, route protection, and redirects based on user login status.
@@ -34,24 +30,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   try {
     if (sessionId) {
-      const cached = userSessionCache.get(sessionId)
-
-      if (cached && cached.expires > Date.now()) {
-        dbUser = cached.user
-        authLogger.debug('Using cached session data', { userId: dbUser?.id, path })
-      } else {
-        dbUser = await getUserFromSession(event)
-
-        if (dbUser) {
-          userSessionCache.set(sessionId, {
-            user: dbUser,
-            expires: Date.now() + SESSION_CACHE_TTL
-          })
-          authLogger.debug('Cached new session data', { userId: dbUser.id, path })
-        } else if (cached) {
-          userSessionCache.delete(sessionId)
-        }
-      }
+      dbUser = await getUserFromSession(event)
+      authLogger.debug('Retrieved user from session', { userId: dbUser?.id, path })
     }
 
     event.locals.user = dbUser
@@ -62,17 +42,9 @@ export const handle: Handle = async ({ event, resolve }) => {
         }
       : undefined
 
-    if (Math.random() < 0.01) {
-      const now = Date.now()
-      for (const [key, value] of userSessionCache.entries()) {
-        if (value.expires < now) {
-          userSessionCache.delete(key)
-        }
-      }
-    }
-
     /**
-     * Helper method to invalidate all cache entries
+     * Helper method to invalidate SvelteKit's built-in client-side page caching
+     * This is for SvelteKit's internal cache, not our backend caching (which has been removed)
      * Added to locals for easy access in routes
      */
     event.locals.invalidateAll = () => {

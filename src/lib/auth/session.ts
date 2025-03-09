@@ -21,9 +21,6 @@ const SESSION_MAX_AGE = 60 * 60 * 24
 const SESSION_HTTP_ONLY = true
 const SESSION_SAME_SITE = 'lax'
 
-const invalidSessionCache = new Set<string>()
-const INVALID_CACHE_MAX_SIZE = 100
-
 /**
  * Retrieves the currently authenticated user from the session cookie
  *
@@ -37,17 +34,8 @@ export async function getUserFromSession(event: SessionEvent) {
     return null
   }
 
-  if (invalidSessionCache.has(session)) {
-    authLogger.debug(
-      { session: session.substring(0, 10) + '...' },
-      'Using cached invalid session result'
-    )
-    return null
-  }
-
   try {
     if (!session.includes(':')) {
-      addToInvalidSessionCache(session)
       authLogger.warn({ session: session.substring(0, 10) + '...' }, 'Invalid session format')
       event.cookies.delete(SESSION_COOKIE_NAME, { path: SESSION_COOKIE_PATH })
       return null
@@ -59,7 +47,6 @@ export async function getUserFromSession(event: SessionEvent) {
     const sessionTime = parseInt(timestamp)
 
     if (isNaN(userId) || isNaN(sessionTime)) {
-      addToInvalidSessionCache(session)
       authLogger.warn(
         {
           session: session.substring(0, 10) + '...',
@@ -92,26 +79,8 @@ export async function getUserFromSession(event: SessionEvent) {
       { error, session: session.substring(0, 10) + '...' },
       'Failed to parse or validate session'
     )
-    addToInvalidSessionCache(session)
     return null
   }
-}
-
-/**
- * Add a session to the invalid session cache, maintaining size limit
- *
- * @private
- * @param {string} session - The invalid session string
- */
-function addToInvalidSessionCache(session: string): void {
-  // Prevent cache from growing too large
-  if (invalidSessionCache.size >= INVALID_CACHE_MAX_SIZE) {
-    // Clear a few items from the beginning
-    const toDelete = [...invalidSessionCache].slice(0, 10)
-    toDelete.forEach((s) => invalidSessionCache.delete(s))
-  }
-
-  invalidSessionCache.add(session)
 }
 
 /**

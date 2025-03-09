@@ -31,7 +31,7 @@ export interface ValidationRules {
 
 /**
  * Validates form data against validation rules
- * Optimized version with early termination and caching
+ * Optimized version with early termination for efficiency
  *
  * @param {FormData} formData - The form data to validate
  * @param {ValidationRules} rules - Validation rules to apply
@@ -77,28 +77,14 @@ type ValidatorFunction = (
   event: RequestEvent
 ) => Promise<{ formData: FormData } | ReturnType<typeof fail>>
 
-const validatorCache = new Map<string, ValidatorFunction>()
-
 /**
- * Creates a validation middleware function with optimized caching
+ * Creates a validation middleware function
  *
  * @param {ValidationRules} rules - Validation rules to apply
  * @returns {Function} Middleware function for validation
  */
 export function createValidator(rules: ValidationRules) {
-  const ruleKey = JSON.stringify(
-    Object.entries(rules).map(([field, rule]) => ({
-      field,
-      required: !!rule.required,
-      hasValidator: !!rule.validate
-    }))
-  )
-
-  if (validatorCache.has(ruleKey)) {
-    return validatorCache.get(ruleKey)!
-  }
-
-  const validator = async (event: RequestEvent) => {
+  return async (event: RequestEvent) => {
     const { request } = event
 
     try {
@@ -128,10 +114,6 @@ export function createValidator(rules: ValidationRules) {
       })
     }
   }
-
-  validatorCache.set(ruleKey, validator)
-
-  return validator
 }
 
 /**

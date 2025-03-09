@@ -6,9 +6,6 @@
 import { authLogger } from '../utils/logger'
 import { execSync } from 'child_process'
 
-const hashCache = new Map<string, string>()
-const HASH_CACHE_MAX_SIZE = 100
-
 /**
  * Hashes a password using SHA-256 algorithm
  *
@@ -21,13 +18,6 @@ export async function hashPassword(password: string): Promise<string> {
     throw new Error('Cannot hash empty password')
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    const cached = hashCache.get(password)
-    if (cached) {
-      return cached
-    }
-  }
-
   try {
     const encoder = new TextEncoder()
     const data = encoder.encode(password)
@@ -35,18 +25,6 @@ export async function hashPassword(password: string): Promise<string> {
     const hashedPassword = Array.from(new Uint8Array(hash))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (hashCache.size >= HASH_CACHE_MAX_SIZE) {
-        const keysToDelete = [...hashCache.keys()]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, Math.floor(HASH_CACHE_MAX_SIZE * 0.2))
-
-        keysToDelete.forEach((key) => hashCache.delete(key))
-      }
-
-      hashCache.set(password, hashedPassword)
-    }
 
     authLogger.debug('Password hashed successfully')
     return hashedPassword
@@ -87,8 +65,6 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 }
 
-const caddyHashCache = new Map<string, string>()
-
 /**
  * Generates a Caddy-compatible password hash using bcrypt algorithm
  * Tries to use the caddy command-line tool to generate the hash, falls back to a custom implementation
@@ -122,10 +98,6 @@ export async function generateCaddyHash(password: string): Promise<string> {
     throw new Error('Password cannot be empty or contain only whitespace')
   }
 
-  if (caddyHashCache.has(password)) {
-    return caddyHashCache.get(password)!
-  }
-
   try {
     authLogger.debug(
       {
@@ -155,9 +127,7 @@ export async function generateCaddyHash(password: string): Promise<string> {
           'Generated hash does not match expected format'
         )
 
-        const fallbackHash = fallbackBcryptHash(password)
-        caddyHashCache.set(password, fallbackHash)
-        return fallbackHash
+        return fallbackBcryptHash(password)
       }
 
       authLogger.debug(
@@ -169,7 +139,6 @@ export async function generateCaddyHash(password: string): Promise<string> {
         'Successfully generated Caddy password hash'
       )
 
-      caddyHashCache.set(password, hash)
       return hash
     } catch (cmdError) {
       authLogger.warn(
@@ -182,9 +151,7 @@ export async function generateCaddyHash(password: string): Promise<string> {
         'Local caddy command failed, using bcrypt fallback'
       )
 
-      const fallbackHash = fallbackBcryptHash(password)
-      caddyHashCache.set(password, fallbackHash)
-      return fallbackHash
+      return fallbackBcryptHash(password)
     }
   } catch (error) {
     authLogger.error(

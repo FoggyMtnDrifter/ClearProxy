@@ -12,24 +12,17 @@ import * as schema from './schema'
 import { existsSync } from 'fs'
 import { proxyHosts as _proxyHosts } from './schema'
 
-/** Root directory for database files */
 const projectRoot = process.env.DATABASE_PATH || '.'
-/** Path to database migrations */
 const migrationsPath =
   process.env.MIGRATIONS_PATH || path.join(projectRoot, 'src/lib/db/migrations')
-/** Path to the SQLite database file */
 const dbPath = path.join(projectRoot, 'clearproxy.db')
 
-// Configuration for SQLite connection
 const SQLITE_CONFIG = {
-  // Enable WAL mode for better concurrency
   pragma: {
     journal_mode: 'WAL',
     synchronous: 'NORMAL',
-    foreign_keys: 'ON',
-    cache_size: process.env.DB_CACHE_SIZE ? parseInt(process.env.DB_CACHE_SIZE, 10) : -2000
+    foreign_keys: 'ON'
   },
-  // Optional: Configure a memory cache size in pages, -2000 is approximately 2MB
   timeout: process.env.DB_TIMEOUT ? parseInt(process.env.DB_TIMEOUT, 10) : 5000
 }
 
@@ -49,9 +42,6 @@ async function initializeDatabase() {
     }
 
     const sqlite = new Database(dbPath, SQLITE_CONFIG)
-
-    // Enable pragmas for optimal performance
-    sqlite.pragma('temp_store = MEMORY')
 
     const db = drizzle(sqlite, { schema })
     dbLogger.info('Database connection initialized successfully')
@@ -73,7 +63,6 @@ async function initializeDatabase() {
 
 const { db, sqlite, migrationError } = await initializeDatabase()
 
-// Register cleanup handlers for database connection
 process.on('exit', () => {
   dbLogger.info('Closing database connection on process exit')
   sqlite.close()
@@ -85,7 +74,6 @@ process.on('SIGINT', () => {
   process.exit()
 })
 
-// More comprehensive cleanup handling
 process.on('SIGTERM', () => {
   dbLogger.info('Closing database connection on SIGTERM')
   sqlite.close()
@@ -98,11 +86,8 @@ process.on('uncaughtException', (err) => {
   process.exit(1)
 })
 
-/** Drizzle ORM database instance */
 export { db }
-/** SQLite database connection */
 export { sqlite }
-/** Any errors that occurred during migration */
 export { migrationError }
 
 /**

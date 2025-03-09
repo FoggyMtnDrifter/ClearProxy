@@ -4,8 +4,6 @@
  * @module utils/db
  */
 
-const processedObjectsCache = new WeakMap<object, boolean>()
-
 /**
  * Fixes null object passwords in database rows
  * Some database drivers may return passwords as null objects rather than strings
@@ -23,10 +21,6 @@ export function fixNullObjectPasswords<T extends Record<string, unknown>>(rows: 
   if (rows.length === 1) {
     const row = rows[0]
 
-    if (processedObjectsCache.has(row)) {
-      return rows
-    }
-
     const needsFixing =
       ('basicAuthPassword' in row &&
         typeof row['basicAuthPassword'] === 'object' &&
@@ -34,7 +28,6 @@ export function fixNullObjectPasswords<T extends Record<string, unknown>>(rows: 
       ('password' in row && typeof row['password'] === 'object' && row['password'] !== null)
 
     if (!needsFixing) {
-      processedObjectsCache.set(row, true)
       return rows
     }
 
@@ -56,15 +49,10 @@ export function fixNullObjectPasswords<T extends Record<string, unknown>>(rows: 
       fixedRow['password'] = ''
     }
 
-    processedObjectsCache.set(fixedRow, true)
     return [fixedRow as T]
   }
 
   return rows.map((row) => {
-    if (processedObjectsCache.has(row)) {
-      return row
-    }
-
     const needsFixing =
       ('basicAuthPassword' in row &&
         typeof row['basicAuthPassword'] === 'object' &&
@@ -72,7 +60,6 @@ export function fixNullObjectPasswords<T extends Record<string, unknown>>(rows: 
       ('password' in row && typeof row['password'] === 'object' && row['password'] !== null)
 
     if (!needsFixing) {
-      processedObjectsCache.set(row, true)
       return row
     }
 
@@ -94,13 +81,14 @@ export function fixNullObjectPasswords<T extends Record<string, unknown>>(rows: 
       fixedRow['password'] = ''
     }
 
-    processedObjectsCache.set(fixedRow, true)
     return fixedRow as T
   })
 }
 
 /**
  * Batch process database operations for better performance
+ * This is not a caching mechanism, but rather a way to process large datasets in smaller chunks
+ * All data is processed directly without memory storage between operations
  *
  * @template T
  * @template R

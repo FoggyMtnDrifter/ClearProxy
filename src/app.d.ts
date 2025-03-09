@@ -19,8 +19,8 @@ declare global {
         name: string
       }
       /**
-       * Function to invalidate all SvelteKit cache entries.
-       * Useful for clearing cached data after mutations.
+       * Function to invalidate SvelteKit's built-in client-side page caching.
+       * This is used to refresh UI after data changes, not related to our backend.
        */
       invalidateAll?: () => void
     }

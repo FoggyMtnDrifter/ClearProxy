@@ -9,10 +9,6 @@ import { UnauthorizedError } from '$lib/utils/errors'
 import { apiLogger } from '$lib/utils/logger'
 import type { User } from '$lib/models/user'
 
-const recentAuthChecks = new Map<string, { userId: number; timestamp: number }>()
-const AUTH_CACHE_TTL = 3000 // 3 seconds cache TTL (reduced from 5s)
-const AUTH_CACHE_MAX_SIZE = 500 // Reduced max cache size
-
 /**
  * Middleware that requires the user to be authenticated
  *
@@ -30,19 +26,10 @@ export function requireAuth(event: RequestEvent) {
     throw redirect(302, '/auth/login')
   }
 
-  const cacheKey = `${sessionId}:${routeId}`
-  const cachedAuth = recentAuthChecks.get(cacheKey)
-
-  if (cachedAuth && Date.now() - cachedAuth.timestamp < AUTH_CACHE_TTL) {
-    return
-  }
-
   if (!locals.user) {
     apiLogger.info({ path: routeId }, 'Unauthenticated user attempting to access protected route')
     throw redirect(302, '/auth/login')
   }
-
-  updateAuthCache(cacheKey, (locals.user as User).id)
 }
 
 /**
@@ -59,13 +46,6 @@ export function requireAdmin(event: RequestEvent) {
   const user = locals.user as User
   const routeId = route.id ?? url.pathname
 
-  const cacheKey = `admin:${user.id}:${routeId}`
-  const cachedAuth = recentAuthChecks.get(cacheKey)
-
-  if (cachedAuth && Date.now() - cachedAuth.timestamp < AUTH_CACHE_TTL) {
-    return
-  }
-
   if (!user.isAdmin) {
     apiLogger.warn(
       {
@@ -78,31 +58,6 @@ export function requireAdmin(event: RequestEvent) {
 
     throw new UnauthorizedError('Admin access required')
   }
-
-  updateAuthCache(cacheKey, user.id)
-}
-
-/**
- * Updates the auth cache, maintaining maximum size
- *
- * @private
- * @param {string} cacheKey - The cache key
- * @param {number} userId - The authenticated user ID
- */
-function updateAuthCache(cacheKey: string, userId: number): void {
-  if (recentAuthChecks.size >= AUTH_CACHE_MAX_SIZE) {
-    const keysToDelete = [...recentAuthChecks.entries()]
-      .sort((a, b) => a[1].timestamp - b[1].timestamp)
-      .slice(0, Math.floor(AUTH_CACHE_MAX_SIZE * 0.1))
-      .map(([key]) => key)
-
-    keysToDelete.forEach((key) => recentAuthChecks.delete(key))
-  }
-
-  recentAuthChecks.set(cacheKey, {
-    userId,
-    timestamp: Date.now()
-  })
 }
 
 /**
@@ -137,10 +92,6 @@ export function requireOwnership(paramName: string = 'userId') {
     }
 
     if (user.isAdmin) {
-      const routeId = route.id ?? url.pathname
-      const cacheKey = `admin-access:${user.id}:${resourceOwnerId}:${routeId}`
-
-      updateAuthCache(cacheKey, user.id)
       return
     }
 

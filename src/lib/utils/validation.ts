@@ -9,25 +9,6 @@ const HOSTNAME_REGEX =
   /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$|^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
-const validationResultCache = new Map<string, boolean>()
-const CACHE_MAX_SIZE = 1000
-
-function getCachedResult(key: string, validationFn: () => boolean): boolean {
-  if (validationResultCache.has(key)) {
-    return validationResultCache.get(key)!
-  }
-
-  const result = validationFn()
-
-  if (validationResultCache.size >= CACHE_MAX_SIZE) {
-    const keysToDelete = [...validationResultCache.keys()].slice(0, 100)
-    keysToDelete.forEach((k) => validationResultCache.delete(k))
-  }
-
-  validationResultCache.set(key, result)
-  return result
-}
-
 /**
  * Validates a domain name
  *
@@ -39,8 +20,7 @@ export function isValidDomain(domain: string): boolean {
     return false
   }
 
-  const cacheKey = `domain:${domain}`
-  return getCachedResult(cacheKey, () => DOMAIN_REGEX.test(domain))
+  return DOMAIN_REGEX.test(domain)
 }
 
 /**
@@ -54,8 +34,7 @@ export function isValidHostname(hostname: string): boolean {
     return false
   }
 
-  const cacheKey = `hostname:${hostname}`
-  return getCachedResult(cacheKey, () => HOSTNAME_REGEX.test(hostname))
+  return HOSTNAME_REGEX.test(hostname)
 }
 
 /**
@@ -80,9 +59,7 @@ export function isValidEmail(email: string): boolean {
   }
 
   const normalizedEmail = email.toLowerCase().trim()
-
-  const cacheKey = `email:${normalizedEmail}`
-  return getCachedResult(cacheKey, () => EMAIL_REGEX.test(normalizedEmail))
+  return EMAIL_REGEX.test(normalizedEmail)
 }
 
 /**
@@ -106,14 +83,10 @@ export function isStrongPassword(password: string): boolean {
     return false
   }
 
-  const cacheKey = `pwd:${password.length}:${password.substring(0, 2)}${password.substring(password.length - 2)}`
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasLowercase = /[a-z]/.test(password)
+  const hasNumber = /[0-9]/.test(password)
+  const hasSpecial = /[^A-Za-z0-9]/.test(password)
 
-  return getCachedResult(cacheKey, () => {
-    const hasUppercase = /[A-Z]/.test(password)
-    const hasLowercase = /[a-z]/.test(password)
-    const hasNumber = /[0-9]/.test(password)
-    const hasSpecial = /[^A-Za-z0-9]/.test(password)
-
-    return hasUppercase && hasLowercase && hasNumber && hasSpecial
-  })
+  return hasUppercase && hasLowercase && hasNumber && hasSpecial
 }

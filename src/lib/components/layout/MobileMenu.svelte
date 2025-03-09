@@ -5,6 +5,7 @@
    */
   import { page } from '$app/stores'
   import { User, LogOut } from 'lucide-svelte'
+  import { isMobileMenuOpen } from '$lib/stores/navigation'
   import ThemeToggle from '../ui/ThemeToggle.svelte'
   import UserAvatar from '../ui/UserAvatar.svelte'
 
@@ -23,6 +24,13 @@
   export let user: { name?: string; email?: string } | undefined | null = undefined
 
   $: currentPath = $page.url.pathname
+
+  /**
+   * Closes the mobile menu when a navigation item is clicked
+   */
+  function closeMenu() {
+    isMobileMenuOpen.set(false)
+  }
 </script>
 
 <div class="md:hidden {isOpen ? '' : 'hidden'}" id="mobile-menu">
@@ -30,6 +38,7 @@
     {#each navItems as item}
       <a
         href={item.href}
+        on:click={closeMenu}
         class="block rounded-md px-3 py-2 text-base font-medium cursor-pointer {currentPath ===
         item.href
           ? 'bg-brand-600/15 text-brand-500 dark:bg-brand-500/20 dark:text-brand-300'
@@ -61,6 +70,7 @@
     <div class="mt-3 space-y-1 px-2">
       <a
         href="/dashboard/profile"
+        on:click={closeMenu}
         class="flex items-center rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 cursor-pointer"
       >
         <User class="mr-3 size-5 text-gray-400" />

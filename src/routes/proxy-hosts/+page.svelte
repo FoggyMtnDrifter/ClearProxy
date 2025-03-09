@@ -579,7 +579,7 @@
     >
       <div class="mb-6">
         <div class="flex flex-wrap gap-4 items-end relative">
-          <div class="w-64">
+          <div class="w-full sm:w-64">
             <Input
               type="search"
               label=""
@@ -612,18 +612,18 @@
 
           {#if searchQuery && !(protocolFilter !== 'all' || statusFilter !== 'all' || sslFilter !== 'all')}
             <div class="pb-[1px]">
-              <Button variant="secondary" size="md" class_name="" on:click={clearAllFilters}
+              <Button variant="secondary" size="md" class_name="h-9" on:click={clearAllFilters}
                 >Clear Search</Button
               >
             </div>
           {/if}
 
-          <div class="ml-auto pb-[1px]">
+          <div class="ml-auto sm:ml-auto pb-[1px] w-full sm:w-auto mt-3 sm:mt-0">
             <Button
               variant="primary"
               size="md"
               disabled={!isCaddyRunning}
-              class_name="h-9"
+              class_name="h-9 w-full sm:w-auto"
               on:click={() => {
                 if (!isCaddyRunning) {
                   error = {
@@ -718,8 +718,10 @@
 
       <div
         class="fixed z-[999] w-[280px] bg-white dark:bg-gray-900 rounded-md shadow-lg flex flex-col border border-gray-200 dark:border-gray-700"
-        style="top: {filterButtonRect.bottom + window.scrollY + 8}px; left: {filterButtonRect.left +
-          window.scrollX}px;"
+        style="top: {filterButtonRect.bottom + window.scrollY + 8}px; left: {Math.min(
+          filterButtonRect.left + window.scrollX,
+          window.innerWidth - 290
+        )}px; max-width: calc(100vw - 20px);"
         use:clickOutside={closeFilterDropdown}
       >
         <div class="p-3 border-b border-gray-200 dark:border-gray-700">
@@ -818,8 +820,8 @@
               placeholder="example.com"
             />
 
-            <div class="flex flex-row space-x-4">
-              <div class="w-1/4">
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+              <div class="w-full sm:w-1/4">
                 <Select
                   label="Target Protocol"
                   name="targetProtocol"
@@ -830,7 +832,7 @@
                   ]}
                 />
               </div>
-              <div class="w-1/2">
+              <div class="w-full sm:w-1/2">
                 <Input
                   label="Target Host"
                   name="targetHost"
@@ -840,7 +842,7 @@
                   on:input={(e) => handleTargetHostInput(e, 'targetPort')}
                 />
               </div>
-              <div class="w-1/4">
+              <div class="w-full sm:w-1/4">
                 <Input
                   label="Target Port"
                   name="targetPort"
@@ -854,7 +856,7 @@
           </FormSection>
 
           {#if targetProtocol === 'https'}
-            <FormSection bordered={false}>
+            <FormSection bordered={false} className="px-1">
               <Toggle
                 bind:checked={ignoreInvalidCert}
                 label="Ignore Invalid Certificate"
@@ -864,11 +866,11 @@
             </FormSection>
           {/if}
 
-          <FormSection title="SSL Configuration">
+          <FormSection title="SSL Configuration" className="px-1">
             <Toggle bind:checked={sslEnabled} label="Enable SSL" name="sslEnabled" />
 
             {#if sslEnabled}
-              <FormGroup layout="stack" gap={4}>
+              <FormGroup layout="stack" gap={4} className="space-y-3">
                 <Toggle
                   bind:checked={forceSSL}
                   label="Force SSL"
@@ -891,7 +893,7 @@
             {/if}
           </FormSection>
 
-          <FormSection title="Security">
+          <FormSection title="Security" className="px-1">
             <Toggle
               bind:checked={basicAuthEnabled}
               label="Basic Authentication"
@@ -901,7 +903,7 @@
             />
 
             {#if basicAuthEnabled}
-              <FormGroup layout="stack" gap={4}>
+              <FormGroup layout="stack" gap={4} className="space-y-3">
                 <Input
                   label="Username"
                   name="basicAuthUsername"
@@ -922,7 +924,7 @@
             {/if}
           </FormSection>
 
-          <FormSection title="Advanced Configuration">
+          <FormSection title="Advanced Configuration" className="px-1">
             <Toggle
               bind:checked={showAdvanced}
               label="Custom Caddyfile Directives"
@@ -975,8 +977,8 @@
           <FormSection title="Basic Configuration" bordered={false}>
             <Input label="Domain Name" name="domain" type="text" required bind:value={editDomain} />
 
-            <div class="flex flex-row space-x-4">
-              <div class="w-1/4">
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+              <div class="w-full sm:w-1/4">
                 <Select
                   label="Target Protocol"
                   name="targetProtocol"
@@ -987,7 +989,7 @@
                   ]}
                 />
               </div>
-              <div class="w-1/2">
+              <div class="w-full sm:w-1/2">
                 <Input
                   label="Target Host"
                   name="targetHost"
@@ -997,7 +999,7 @@
                   on:input={(e) => handleTargetHostInput(e, 'targetPort')}
                 />
               </div>
-              <div class="w-1/4">
+              <div class="w-full sm:w-1/4">
                 <Input
                   label="Target Port"
                   name="targetPort"
@@ -1011,7 +1013,7 @@
           </FormSection>
 
           {#if targetProtocol === 'https'}
-            <FormSection bordered={false}>
+            <FormSection bordered={false} className="px-1">
               <Toggle
                 bind:checked={ignoreInvalidCert}
                 label="Ignore Invalid Certificate"
@@ -1021,11 +1023,11 @@
             </FormSection>
           {/if}
 
-          <FormSection title="SSL Configuration">
+          <FormSection title="SSL Configuration" className="px-1">
             <Toggle bind:checked={sslEnabled} label="Enable SSL" name="sslEnabled" />
 
             {#if sslEnabled}
-              <FormGroup layout="stack" gap={4}>
+              <FormGroup layout="stack" gap={4} className="space-y-3">
                 <Toggle
                   bind:checked={forceSSL}
                   label="Force SSL"
@@ -1048,7 +1050,7 @@
             {/if}
           </FormSection>
 
-          <FormSection title="Security">
+          <FormSection title="Security" className="px-1">
             <Toggle
               bind:checked={basicAuthEnabled}
               label="Basic Authentication"
@@ -1058,7 +1060,7 @@
             />
 
             {#if basicAuthEnabled}
-              <FormGroup layout="stack" gap={4}>
+              <FormGroup layout="stack" gap={4} className="space-y-3">
                 <Input
                   label="Username"
                   name="basicAuthUsername"
@@ -1079,7 +1081,7 @@
             {/if}
           </FormSection>
 
-          <FormSection title="Advanced Configuration">
+          <FormSection title="Advanced Configuration" className="px-1">
             <Toggle
               bind:checked={showAdvanced}
               label="Custom Caddyfile Directives"

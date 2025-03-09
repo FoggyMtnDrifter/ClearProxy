@@ -37,9 +37,18 @@
   }
 </script>
 
-<div class="mt-6 flex items-center {alignClasses[align]} gap-{gap} {className}">
+<div
+  class="mt-6 flex flex-col-reverse sm:flex-row items-center {alignClasses[
+    align
+  ]} gap-{gap} {className}"
+>
   {#if showCancel}
-    <Button variant="secondary" {size} on:click={() => dispatch('cancel')}>
+    <Button
+      variant="secondary"
+      {size}
+      class_name="w-full sm:w-auto mt-3 sm:mt-0"
+      on:click={() => dispatch('cancel')}
+    >
       {cancelText}
     </Button>
   {/if}
@@ -52,6 +61,7 @@
     {loading}
     {loadingText}
     {form}
+    class_name="w-full sm:w-auto"
     on:click={() => dispatch('submit')}
   >
     {submitText}

@@ -72,7 +72,7 @@
         <div
           use:clickOutside
           on:click_outside={handleClickOutside}
-          class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all dark:bg-gray-800 dark:text-gray-100 sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"
+          class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all dark:bg-gray-800 dark:text-gray-100 sm:my-8 sm:w-full sm:max-w-2xl sm:p-6 w-full mx-4"
           transition:fade={{ duration: 200 }}
         >
           <div class="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">

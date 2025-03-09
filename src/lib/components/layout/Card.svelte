@@ -18,7 +18,7 @@
 <div
   class="overflow-hidden bg-white dark:bg-gray-800 {shadow
     ? 'shadow dark:shadow-gray-900/10'
-    : ''} sm:rounded-lg {className}"
+    : ''} rounded-lg {className}"
 >
   {#if title}
     <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700/40">

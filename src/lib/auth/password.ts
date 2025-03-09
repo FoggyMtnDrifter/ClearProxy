@@ -3,7 +3,7 @@
  * Handles password hashing, verification, and generation of special formats.
  * @module auth/password
  */
-import { authLogger } from '../logger'
+import { authLogger } from '../utils/logger'
 import { execSync } from 'child_process'
 
 /**
@@ -14,6 +14,10 @@ import { execSync } from 'child_process'
  * @throws {Error} If hashing fails
  */
 export async function hashPassword(password: string): Promise<string> {
+  if (!password) {
+    throw new Error('Cannot hash empty password')
+  }
+
   try {
     const encoder = new TextEncoder()
     const data = encoder.encode(password)
@@ -21,6 +25,7 @@ export async function hashPassword(password: string): Promise<string> {
     const hashedPassword = Array.from(new Uint8Array(hash))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
+
     authLogger.debug('Password hashed successfully')
     return hashedPassword
   } catch (error) {
@@ -38,6 +43,17 @@ export async function hashPassword(password: string): Promise<string> {
  * @throws {Error} If verification fails
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (!password || !hash) {
+    authLogger.debug(
+      {
+        passwordEmpty: !password,
+        hashEmpty: !hash
+      },
+      'Empty password or hash in verification'
+    )
+    return false
+  }
+
   try {
     const calculatedHash = await hashPassword(password)
     const isValid = calculatedHash === hash
@@ -93,13 +109,14 @@ export async function generateCaddyHash(password: string): Promise<string> {
       'Generating Caddy password hash'
     )
 
-    const isDev = process.env.NODE_ENV !== 'production'
-    let command = isDev
-      ? `caddy hash-password --plaintext "${password}"`
-      : `docker exec clearproxy-caddy caddy hash-password --plaintext "${password}"`
+    const command = `caddy hash-password --plaintext "${password}"`
 
     try {
-      const hash = execSync(command, { encoding: 'utf-8' }).trim()
+      authLogger.debug(`Executing command: ${command}`)
+      const hash = execSync(command, {
+        encoding: 'utf-8',
+        timeout: 2000
+      }).trim()
 
       if (!hash || !hash.startsWith('$2')) {
         authLogger.warn(
@@ -124,18 +141,17 @@ export async function generateCaddyHash(password: string): Promise<string> {
 
       return hash
     } catch (cmdError) {
-      if (isDev) {
-        authLogger.warn(
-          {
-            error: cmdError,
-            fallback: true
-          },
-          'Local caddy command not available, using bcrypt fallback'
-        )
+      authLogger.warn(
+        {
+          error: cmdError,
+          errorMessage: cmdError instanceof Error ? cmdError.message : 'unknown error',
+          fallback: true,
+          command
+        },
+        'Local caddy command failed, using bcrypt fallback'
+      )
 
-        return fallbackBcryptHash(password)
-      }
-      throw cmdError
+      return fallbackBcryptHash(password)
     }
   } catch (error) {
     authLogger.error(
@@ -150,19 +166,19 @@ export async function generateCaddyHash(password: string): Promise<string> {
 }
 
 function fallbackBcryptHash(password: string): string {
-  const salt = base64Encode(password.substring(0, 8) || 'salt').substring(0, 22)
-  const hash = base64Encode(password).substring(0, 31)
+  const randomId = Math.random().toString(36).substring(2, 10)
+  const encodedPassword = base64Encode(password + randomId)
 
   authLogger.debug(
     {
       usingFallback: true,
       passwordLength: password.length,
-      hashFormat: '$2a$14$' + salt.substring(0, 5) + '...'
+      hashFormat: '$2a$14$...'
     },
     'Using fallback bcrypt hash generator for development'
   )
 
-  return `$2a$14$${salt}${hash}`
+  return `$2a$14$${randomId}${encodedPassword.substring(0, 31)}`
 }
 
 function base64Encode(str: string): string {

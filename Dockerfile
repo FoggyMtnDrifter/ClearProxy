@@ -29,8 +29,8 @@ COPY --from=builder /app/src/lib/db/migrations ./migrations
 COPY --from=builder /app/package.json ./package.json
 
 # Create required directories and set permissions
-RUN mkdir -p /data /app/build/server/logs && \
-    chown -R node:node /data /app/build/server/logs
+RUN mkdir -p /data /app/build/logs && \
+    chown -R node:node /data /app/build /app/build/logs
 
 # Expose port
 EXPOSE 3000

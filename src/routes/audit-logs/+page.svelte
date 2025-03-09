@@ -7,20 +7,29 @@
    * what was changed, and when the changes occurred.
    */
   import type { PageData } from './$types'
-  import Feed from '$lib/components/Feed.svelte'
-  import type { FeedItem } from '$lib/components/Feed.svelte'
+  import { Card, Feed } from '$lib/components'
+  import type { FeedItem } from '$lib/components/features/Feed.svelte'
   import md5 from 'md5'
 
   export let data: PageData
 
   /**
-   * Generates a Gravatar URL for a user's email address
-   * @param {string} email - The user's email address
-   * @returns {string} URL to the user's Gravatar image
+   * Debug function to log audit changes structure
+   * @param {string} actionType - The action type
+   * @param {any} changes - The changes object
    */
-  function getGravatarUrl(email: string) {
-    const hash = md5(email.toLowerCase().trim())
-    return `https://www.gravatar.com/avatar/${hash}?d=mp&s=80`
+  function debugAuditLogChanges(actionType: string, changes: any): void {
+    if (process.env.NODE_ENV !== 'production') {
+      console.group(`Audit Log (${actionType})`)
+      console.log('Changes structure:', changes)
+      if (typeof changes === 'object') {
+        console.log('Keys:', Object.keys(changes))
+        if (changes.domain) {
+          console.log('Domain field:', changes.domain)
+        }
+      }
+      console.groupEnd()
+    }
   }
 
   /**
@@ -41,14 +50,14 @@
   }
 
   /**
-   * Formats changes from JSON string into a readable multi-line string
-   * @param {string} changesJson - JSON string containing change details
+   * Formats changes from JSON string or object into a readable multi-line string
+   * @param {string|Record<string, unknown>} changes - JSON string or object containing change details
    * @returns {string} Formatted string representing changes
    */
-  function formatChanges(changesJson: string) {
+  function formatChanges(changes: string | Record<string, unknown>): string {
     try {
-      const changes = JSON.parse(changesJson)
-      return Object.entries(changes)
+      const changesObj = typeof changes === 'string' ? JSON.parse(changes) : changes
+      return Object.entries(changesObj)
         .filter(([_, value]) => value !== undefined)
         .map(([key, value]) => {
           if (value && typeof value === 'object' && 'from' in value && 'to' in value) {
@@ -58,23 +67,25 @@
         })
         .join('\n')
     } catch (e) {
-      return changesJson
+      return typeof changes === 'string' ? changes : JSON.stringify(changes)
     }
   }
 
   /**
-   * Extracts deleted item information from JSON changes string
-   * @param {string} changesJson - JSON string containing change details
+   * Extracts deleted item information from JSON changes string or object
+   * @param {string|Record<string, unknown>} changes - JSON string or object containing change details
    * @returns {Record<string, any>|undefined} Object with deleted item properties or undefined
    */
-  function extractDeletedItem(changesJson: string): Record<string, any> | undefined {
+  function extractDeletedItem(
+    changes: string | Record<string, unknown>
+  ): Record<string, any> | undefined {
     try {
-      const changes = JSON.parse(changesJson)
-      if (changes.deleted && typeof changes.deleted === 'object') {
-        return changes.deleted
+      const changesObj = typeof changes === 'string' ? JSON.parse(changes) : changes
+      if (changesObj.deleted && typeof changesObj.deleted === 'object') {
+        return changesObj.deleted
       }
       const deletedValues: Record<string, any> = {}
-      for (const [key, value] of Object.entries(changes)) {
+      for (const [key, value] of Object.entries(changesObj)) {
         if (value && typeof value === 'object' && 'from' in value) {
           deletedValues[key] = value.from
         } else {
@@ -91,37 +102,96 @@
    * Transforms audit log data into feed items for display
    * Uses reactive declaration to automatically update when data changes
    */
-  $: feedItems = data.logs.map(
-    (log): FeedItem => ({
+  $: feedItems = data.logs.map((log): FeedItem => {
+    let domain: string | undefined = undefined
+
+    if (
+      log.entityType.toLowerCase() === 'proxyhost' ||
+      log.entityType.toLowerCase() === 'proxy_host'
+    ) {
+      try {
+        const changes = typeof log.changes === 'string' ? JSON.parse(log.changes) : log.changes
+        const actionType = log.actionType.toLowerCase()
+
+        debugAuditLogChanges(actionType, changes)
+
+        if (changes) {
+          if (typeof changes.domain === 'string') {
+            domain = changes.domain
+          } else if (changes.domain && typeof changes.domain === 'object') {
+            if (changes.domain.to) {
+              domain = changes.domain.to
+            } else if (changes.domain.from) {
+              domain = changes.domain.from
+            }
+          }
+
+          if (process.env.NODE_ENV !== 'production' && domain) {
+            console.log(`Extracted domain: ${domain} from action type: ${actionType}`)
+          }
+
+          if (!domain && (changes.basicAuth || changes.basicAuthEnabled)) {
+            Object.entries(changes).forEach(([key, value]) => {
+              if (key === 'domain' && typeof value === 'string') {
+                domain = value
+              }
+            })
+          }
+
+          if (!domain && actionType === 'delete') {
+            if (typeof changes === 'object') {
+              ;['domain', 'host', 'address'].forEach((fieldName) => {
+                if (!domain && changes[fieldName] && typeof changes[fieldName] === 'string') {
+                  domain = changes[fieldName]
+                }
+              })
+            }
+          }
+
+          if (!domain && changes.target && changes.target.domain) {
+            domain = changes.target.domain
+          }
+          if (!domain && changes.host && changes.host.domain) {
+            domain = changes.host.domain
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing changes for audit log', e)
+      }
+    }
+
+    return {
       id: log.id.toString(),
       timestamp: formatTimestamp(log.createdAt),
       type: log.actionType.toLowerCase() as FeedItem['type'],
       user: {
         name: log.user.name,
         email: log.user.email,
-        avatar: getGravatarUrl(log.user.email)
+        avatar: `https://www.gravatar.com/avatar/${log.user.email ? md5(log.user.email.toLowerCase().trim()) : ''}?d=mp&s=80`
       },
       entityType: log.entityType,
       details: formatChanges(log.changes),
-      ...(log.actionType === 'DELETE' && { deletedItem: extractDeletedItem(log.changes) })
-    })
-  )
+      ...(log.actionType.toLowerCase() === 'delete' && {
+        deletedItem: extractDeletedItem(log.changes)
+      }),
+      domain
+    }
+  })
 </script>
 
 <div class="py-6">
   <div class="px-4 sm:px-6 lg:px-0">
-    <div
-      class="overflow-hidden bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/10 sm:rounded-lg"
+    <Card
+      title="Audit Logs"
+      description="Detailed history of system changes and configuration updates."
     >
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">Audit Logs</h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-          Detailed history of system changes and configuration updates.
-        </p>
-      </div>
-      <div class="px-4 pb-5 sm:px-6 sm:pb-6">
+      {#if feedItems.length > 0}
         <Feed items={feedItems} />
-      </div>
-    </div>
+      {:else}
+        <div class="px-4 py-5 sm:px-6">
+          <Feed items={[]} />
+        </div>
+      {/if}
+    </Card>
   </div>
 </div>

@@ -9,8 +9,7 @@
 # ClearProxy
 
 [![Docker Build and Publish](https://github.com/FoggyMtnDrifter/ClearProxy/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/FoggyMtnDrifter/ClearProxy/actions/workflows/docker-publish.yml)
-
-> ⚠️ **Development Status**: ClearProxy is currently in beta stage and under active development. While it's not yet recommended for production environments, we strongly encourage you to test it and report any bugs or issues you encounter. Your feedback is invaluable as we improve stability and prepare for a production-ready release.
+[![ESLint](https://github.com/FoggyMtnDrifter/ClearProxy/actions/workflows/eslint.yml/badge.svg?branch=develop)](https://github.com/FoggyMtnDrifter/ClearProxy/actions/workflows/eslint.yml)
 
 A modern, web-based management interface for [Caddy](https://caddyserver.com/), focusing on reverse proxy configuration with automatic HTTPS.
 
@@ -53,7 +52,7 @@ curl -L https://raw.githubusercontent.com/foggymtndrifter/clearproxy/main/docker
 2. Create required directories and configuration:
 
 ```bash
-mkdir -p data/caddy/data data/caddy/config/caddy data/certificates
+mkdir -p data/caddy/data data/caddy/config/caddy data/certificates logs
 
 cat > data/caddy/config/caddy/caddy.json << 'EOF'
 {
@@ -94,6 +93,7 @@ services:
       - CADDY_API_URL=http://caddy:2019
     volumes:
       - ./data:/data
+      - ./logs:/app/build/logs
     networks:
       - proxy-network
     depends_on:
@@ -144,8 +144,12 @@ The application uses SQLite for data storage and communicates with Caddy's admin
 #### Environment Variables
 
 - `CADDY_API_URL`: URL of Caddy's admin API (default: `http://localhost:2019`)
-- `DATABASE_PATH`: Path to SQLite database file (default: `./clearproxy.db`)
+- `DATABASE_URL`: SQLite database connection URL (default: `file:./clearproxy.db`)
 - `LOG_LEVEL`: Logging level (default: `info`)
+- `NODE_ENV`: Environment mode (development or production)
+- `PORT`: Application port (default: `3000`)
+- `ORIGIN`: The URL origin for the application (default: `http://localhost`)
+- `MIGRATIONS_PATH`: Path to database migration files
 
 ### Docker Architecture
 

@@ -4,7 +4,7 @@
    * Persists the user's preference in localStorage and handles system preference changes.
    */
   import { onMount } from 'svelte'
-  import Icon from './Icons.svelte'
+  import { Sun, Moon, Laptop } from 'lucide-svelte'
 
   /**
    * Current theme preference
@@ -83,38 +83,38 @@
   >
     <button
       type="button"
-      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 {theme ===
+      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 cursor-pointer {theme ===
       'light'
         ? 'bg-gray-600/50 text-white shadow-sm dark:bg-gray-700'
         : ''}"
       aria-label="Use light theme"
       on:click={() => setTheme('light')}
     >
-      <Icon type="sun" className="size-4" />
+      <Sun class="size-4" />
     </button>
 
     <button
       type="button"
-      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 {theme ===
+      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 cursor-pointer {theme ===
       'dark'
         ? 'bg-gray-600/50 text-white shadow-sm dark:bg-gray-700'
         : ''}"
       aria-label="Use dark theme"
       on:click={() => setTheme('dark')}
     >
-      <Icon type="moon" className="size-4" />
+      <Moon class="size-4" />
     </button>
 
     <button
       type="button"
-      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 {theme ===
+      class="relative rounded-md p-1.5 text-gray-300 hover:bg-gray-600/50 hover:text-white dark:hover:bg-gray-700/70 cursor-pointer {theme ===
       'system'
         ? 'bg-gray-600/50 text-white shadow-sm dark:bg-gray-700'
         : ''}"
       aria-label="Use system theme"
       on:click={() => setTheme('system')}
     >
-      <Icon type="system" className="size-4" />
+      <Laptop class="size-4" />
     </button>
   </div>
 {/if}

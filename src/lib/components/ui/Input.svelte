@@ -3,7 +3,7 @@
    * Input component for text entry with various configurations.
    * Supports different input types, validation, and styling options.
    */
-  import Icon from './Icons.svelte'
+  import { CircleX } from 'lucide-svelte'
   import { createEventDispatcher } from 'svelte'
 
   /**
@@ -133,7 +133,7 @@
       {autocomplete}
       class="block w-full rounded-md bg-white px-3 py-1.5 text-base
         {hasError
-        ? 'col-start-1 row-start-1 pr-10 text-red-900 outline-red-300 placeholder:text-red-300 focus:outline-red-600 dark:text-red-300 dark:outline-red-700 dark:placeholder:text-red-700 dark:focus:outline-red-500'
+        ? 'col-start-1 row-start-1 pr-10 text-red-900 outline-red-300 placeholder:text-red-300 focus:outline-red-600 dark:bg-gray-800 dark:text-red-300 dark:outline-red-700 dark:placeholder:text-red-700 dark:focus:outline-red-500'
         : 'text-gray-900 outline-gray-300 placeholder:text-gray-400 focus:outline-brand-600 dark:bg-gray-800 dark:text-gray-100 dark:outline-gray-600 dark:placeholder:text-gray-500 dark:focus:outline-brand-500'}
         outline outline-1 -outline-offset-1
         focus:outline focus:outline-2 focus:-outline-offset-2
@@ -145,9 +145,8 @@
     />
 
     {#if hasError}
-      <Icon
-        type="error"
-        className="pointer-events-none col-start-1 row-start-1 mr-3 size-5 self-center justify-self-end text-red-500 dark:text-red-400 sm:size-4"
+      <CircleX
+        class="pointer-events-none col-start-1 row-start-1 mr-3 size-5 self-center justify-self-end text-red-500 dark:text-red-400 sm:size-4"
       />
     {/if}
   </div>

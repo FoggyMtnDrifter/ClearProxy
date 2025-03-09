@@ -3,13 +3,11 @@
  * Manages new user creation and initial admin setup.
  * @module routes/auth/register/+page.server
  */
-import { db } from '$lib/db'
-import { users } from '$lib/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { userRepository } from '$lib/repositories/userRepository'
 import { hashPassword } from '$lib/auth/password'
 import { createSession } from '$lib/auth/session'
 import { fail, redirect } from '@sveltejs/kit'
-import { authLogger } from '$lib/logger'
+import { authLogger } from '$lib/utils/logger'
 import type { Actions, PageServerLoad } from './$types'
 
 /**
@@ -24,11 +22,8 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(303, '/dashboard')
   }
 
-  const userCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(users)
-    .get()
-  if ((userCount?.count ?? 0) > 0) {
+  const userCount = await userRepository.count()
+  if (userCount > 0) {
     throw redirect(303, '/auth/login')
   }
 
@@ -64,20 +59,13 @@ export const actions = {
       return fail(400, { error: 'All fields are required' })
     }
 
-    const userCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(users)
-      .get()
-    if ((userCount?.count ?? 0) > 0) {
+    const userCount = await userRepository.count()
+    if (userCount > 0) {
       authLogger.warn({ email }, 'Registration attempt when registration is disabled')
       return fail(403, { error: 'Registration is currently disabled' })
     }
 
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email.toString()))
-      .get()
+    const existingUser = await userRepository.getByEmail(email.toString())
     if (existingUser) {
       authLogger.warn({ email }, 'Registration attempt with existing email')
       return fail(400, { error: 'Email already registered' })
@@ -86,15 +74,12 @@ export const actions = {
     try {
       const passwordHash = await hashPassword(password.toString())
 
-      const [user] = await db
-        .insert(users)
-        .values({
-          email: email.toString(),
-          passwordHash,
-          name: name.toString(),
-          isAdmin: true
-        })
-        .returning()
+      const user = await userRepository.create({
+        email: email.toString(),
+        passwordHash,
+        name: name.toString(),
+        isAdmin: true
+      })
 
       authLogger.info(
         { userId: user.id, email, name, isAdmin: true },

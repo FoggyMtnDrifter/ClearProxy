@@ -5,7 +5,7 @@
  */
 import { clearSession } from '$lib/auth/session'
 import { redirect } from '@sveltejs/kit'
-import { authLogger } from '$lib/logger'
+import { authLogger } from '$lib/utils/logger'
 import type { RequestHandler } from './$types'
 
 /**

@@ -39,6 +39,7 @@ export const proxyHosts = sqliteTable('proxy_hosts', {
   basicAuthEnabled: integer('basic_auth_enabled', { mode: 'boolean' }).notNull().default(false),
   basicAuthUsername: text('basic_auth_username'),
   basicAuthPassword: text('basic_auth_password'),
+  basicAuthHash: text('basic_auth_hash'),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })

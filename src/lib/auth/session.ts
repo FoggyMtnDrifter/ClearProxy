@@ -3,20 +3,23 @@
  * Handles cookies-based session creation, validation, and termination.
  * @module auth/session
  */
-import { db } from '$lib/db'
-import { users } from '$lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { userRepository } from '$lib/repositories/userRepository'
 import type { Cookies } from '@sveltejs/kit'
-import { authLogger } from '../logger'
+import { authLogger } from '../utils/logger'
 
 /**
  * Interface for objects that contain cookie functionality
  * Used to abstract the SvelteKit-specific event object
  */
 interface SessionEvent {
-  /** Access to cookie management */
   cookies: Cookies
 }
+
+const SESSION_COOKIE_NAME = 'session'
+const SESSION_COOKIE_PATH = '/'
+const SESSION_MAX_AGE = 60 * 60 * 24
+const SESSION_HTTP_ONLY = true
+const SESSION_SAME_SITE = 'lax'
 
 /**
  * Retrieves the currently authenticated user from the session cookie
@@ -25,33 +28,57 @@ interface SessionEvent {
  * @returns {Promise<any|null>} User object if authenticated, null otherwise
  */
 export async function getUserFromSession(event: SessionEvent) {
-  const session = event.cookies.get('session')
+  const session = event.cookies.get(SESSION_COOKIE_NAME)
   if (!session) {
     authLogger.debug('No session cookie found')
     return null
   }
 
   try {
-    const [userId, timestamp] = session.split(':')
-    if (Date.now() - parseInt(timestamp) > 24 * 60 * 60 * 1000) {
-      authLogger.debug({ userId }, 'Session expired')
-      event.cookies.delete('session', { path: '/' })
+    if (!session.includes(':')) {
+      authLogger.warn({ session: session.substring(0, 10) + '...' }, 'Invalid session format')
+      event.cookies.delete(SESSION_COOKIE_NAME, { path: SESSION_COOKIE_PATH })
       return null
     }
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, parseInt(userId)))
+    const [userIdStr, timestamp] = session.split(':')
+
+    const userId = parseInt(userIdStr)
+    const sessionTime = parseInt(timestamp)
+
+    if (isNaN(userId) || isNaN(sessionTime)) {
+      authLogger.warn(
+        {
+          session: session.substring(0, 10) + '...',
+          userIdIsNaN: isNaN(userId),
+          timestampIsNaN: isNaN(sessionTime)
+        },
+        'Invalid session data'
+      )
+      event.cookies.delete(SESSION_COOKIE_NAME, { path: SESSION_COOKIE_PATH })
+      return null
+    }
+
+    if (Date.now() - sessionTime > SESSION_MAX_AGE * 1000) {
+      authLogger.debug({ userId }, 'Session expired')
+      event.cookies.delete(SESSION_COOKIE_NAME, { path: SESSION_COOKIE_PATH })
+      return null
+    }
+
+    const user = await userRepository.getById(userId)
     if (!user) {
       authLogger.warn({ userId }, 'Session user not found in database')
+      event.cookies.delete(SESSION_COOKIE_NAME, { path: SESSION_COOKIE_PATH })
       return null
     }
 
     authLogger.debug({ userId: user.id }, 'Session user retrieved successfully')
     return user
   } catch (error) {
-    authLogger.error({ error, session }, 'Failed to parse or validate session')
+    authLogger.error(
+      { error, session: session.substring(0, 10) + '...' },
+      'Failed to parse or validate session'
+    )
     return null
   }
 }
@@ -64,14 +91,20 @@ export async function getUserFromSession(event: SessionEvent) {
  * @param {number} userId - ID of the user to create session for
  */
 export function createSession(event: SessionEvent, userId: number) {
+  if (!userId || isNaN(userId)) {
+    authLogger.error({ userId }, 'Attempted to create session with invalid user ID')
+    return
+  }
+
   const session = `${userId}:${Date.now()}`
 
-  event.cookies.set('session', session, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24
+  event.cookies.set(SESSION_COOKIE_NAME, session, {
+    path: SESSION_COOKIE_PATH,
+    httpOnly: SESSION_HTTP_ONLY,
+    sameSite: SESSION_SAME_SITE,
+    maxAge: SESSION_MAX_AGE
   })
+
   authLogger.debug({ userId }, 'Created new session')
 }
 
@@ -82,14 +115,17 @@ export function createSession(event: SessionEvent, userId: number) {
  * @param {SessionEvent} event - Object containing cookie access
  */
 export function clearSession(event: SessionEvent) {
-  const session = event.cookies.get('session')
+  const session = event.cookies.get(SESSION_COOKIE_NAME)
   if (session) {
     try {
       const [userId] = session.split(':')
       authLogger.debug({ userId }, 'Clearing session')
     } catch (error) {
-      authLogger.error({ error, session }, 'Failed to parse session during cleanup')
+      authLogger.error(
+        { error, session: session.substring(0, 10) + '...' },
+        'Failed to parse session during cleanup'
+      )
     }
   }
-  event.cookies.delete('session', { path: '/' })
+  event.cookies.delete(SESSION_COOKIE_NAME, { path: SESSION_COOKIE_PATH })
 }

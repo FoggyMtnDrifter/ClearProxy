@@ -7,18 +7,24 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as path from 'path'
-import { dbLogger } from '../logger'
+import { dbLogger } from '../utils/logger'
 import * as schema from './schema'
 import { existsSync } from 'fs'
 import { proxyHosts as _proxyHosts } from './schema'
 
-/** Root directory for database files */
 const projectRoot = process.env.DATABASE_PATH || '.'
-/** Path to database migrations */
 const migrationsPath =
   process.env.MIGRATIONS_PATH || path.join(projectRoot, 'src/lib/db/migrations')
-/** Path to the SQLite database file */
 const dbPath = path.join(projectRoot, 'clearproxy.db')
+
+const SQLITE_CONFIG = {
+  pragma: {
+    journal_mode: 'WAL',
+    synchronous: 'NORMAL',
+    foreign_keys: 'ON'
+  },
+  timeout: process.env.DB_TIMEOUT ? parseInt(process.env.DB_TIMEOUT, 10) : 5000
+}
 
 /**
  * Initializes the database connection and runs migrations.
@@ -35,7 +41,8 @@ async function initializeDatabase() {
       dbLogger.info('Database file does not exist, it will be created')
     }
 
-    const sqlite = new Database(dbPath)
+    const sqlite = new Database(dbPath, SQLITE_CONFIG)
+
     const db = drizzle(sqlite, { schema })
     dbLogger.info('Database connection initialized successfully')
 
@@ -56,7 +63,6 @@ async function initializeDatabase() {
 
 const { db, sqlite, migrationError } = await initializeDatabase()
 
-// Register cleanup handlers for database connection
 process.on('exit', () => {
   dbLogger.info('Closing database connection on process exit')
   sqlite.close()
@@ -68,11 +74,20 @@ process.on('SIGINT', () => {
   process.exit()
 })
 
-/** Drizzle ORM database instance */
+process.on('SIGTERM', () => {
+  dbLogger.info('Closing database connection on SIGTERM')
+  sqlite.close()
+  process.exit()
+})
+
+process.on('uncaughtException', (err) => {
+  dbLogger.error({ error: err }, 'Uncaught exception, closing database connection')
+  sqlite.close()
+  process.exit(1)
+})
+
 export { db }
-/** SQLite database connection */
 export { sqlite }
-/** Any errors that occurred during migration */
 export { migrationError }
 
 /**

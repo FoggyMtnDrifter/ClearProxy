@@ -32,3 +32,5 @@ jobs:
         with:
           config_path: './eslint.config.mjs'
           extra_args: '--max-warnings=0'
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192' # Increase heap memory limit to 8GB

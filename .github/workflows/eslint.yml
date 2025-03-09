@@ -79,20 +79,24 @@ jobs:
           FILE_COUNT=$(echo "$CHANGED_FILES" | wc -l)
           echo "Found $FILE_COUNT changed files to lint"
 
-      - name: Run ESLint in tiny batches
+      - name: Create batching script for reviewdog
         if: steps.changed_files.outputs.file_list != ''
         run: |
-          # Convert space-separated list to array
-          read -ra FILES <<< "${{ steps.changed_files.outputs.file_list }}"
+          cat > run-eslint-batches.sh << 'EOF'
+          #!/bin/bash
+          set -eo pipefail
 
-          # Set batch size - using much smaller batches
+          # Read the file list from the first argument
+          IFS=' ' read -ra FILES <<< "$1"
+
+          # Set batch size
           BATCH_SIZE=5
 
           # Total files count
           TOTAL_FILES=${#FILES[@]}
           echo "Total files to lint: $TOTAL_FILES"
 
-          # Track if any batch fails
+          # Exit code tracker
           LINT_FAILED=0
 
           # Process files in batches
@@ -100,28 +104,54 @@ jobs:
             echo "Processing batch $(($i / BATCH_SIZE + 1))..."
             
             # Get the batch of files
-            BATCH=()
+            BATCH_FILES=""
             for ((j=i; j<i+BATCH_SIZE && j<TOTAL_FILES; j++)); do
-              BATCH+=("${FILES[$j]}")
+              BATCH_FILES="$BATCH_FILES ${FILES[$j]}"
             done
             
-            # Run ESLint on this batch
-            echo "Linting ${#BATCH[@]} files..."
-            echo "Files: ${BATCH[@]}"
+            # Run ESLint on this batch via reviewdog
+            echo "Linting batch $(($i / BATCH_SIZE + 1)) with files:$BATCH_FILES"
             
-            # Use the temporarily modified ESLint config with reduced memory usage
-            NODE_OPTIONS="--max-old-space-size=2048" npx eslint --config ./eslint.ci-temp.mjs --max-warnings=0 ${BATCH[@]} || {
-              echo "ESLint failed on batch $(($i / BATCH_SIZE + 1))"
-              LINT_FAILED=1
-            }
+            # For PR comments (only in PR mode)
+            if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+              NODE_OPTIONS="--max-old-space-size=2048" reviewdog -f=eslint \
+                -reporter=github-pr-review \
+                -filter-mode=added \
+                -fail-on-error=false \
+                -level=error \
+                < <(npx eslint --config ./eslint.ci-temp.mjs --format json $BATCH_FILES) || {
+                echo "ESLint failed on batch $(($i / BATCH_SIZE + 1))"
+                LINT_FAILED=1
+              }
+            else
+              # For manual runs, just output to stdout
+              NODE_OPTIONS="--max-old-space-size=2048" npx eslint --config ./eslint.ci-temp.mjs --max-warnings=0 $BATCH_FILES || {
+                echo "ESLint failed on batch $(($i / BATCH_SIZE + 1))"
+                LINT_FAILED=1
+              }
+            fi
           done
 
-          # Fail the job if any batch failed
-          if [ $LINT_FAILED -eq 1 ]; then
-            echo "ESLint found issues in one or more files"
-            exit 1
-          fi
+          # Return the final exit code
+          exit $LINT_FAILED
+          EOF
+
+          chmod +x run-eslint-batches.sh
+
+      - name: Install reviewdog
+        if: github.event_name == 'pull_request' && steps.changed_files.outputs.file_list != ''
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
+      - name: Run ESLint in batches with reviewdog
+        if: steps.changed_files.outputs.file_list != ''
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: |
+          ./run-eslint-batches.sh "${{ steps.changed_files.outputs.file_list }}"
 
       - name: Clean up temporary files
         if: always()
-        run: rm -f ./eslint.ci-temp.mjs ./modify-eslint-config.mjs
+        run: rm -f ./eslint.ci-temp.mjs ./modify-eslint-config.mjs ./run-eslint-batches.sh

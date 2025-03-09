@@ -6,7 +6,6 @@
 import { redirect, type Handle, type Redirect } from '@sveltejs/kit'
 import { getUserFromSession } from '$lib/auth/session'
 import { authLogger } from '$lib/utils/logger'
-import type { User } from '$lib/models/user'
 import { performance } from 'node:perf_hooks'
 
 const publicRoutes = ['/auth/login', '/auth/register']

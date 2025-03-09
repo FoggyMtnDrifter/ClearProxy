@@ -73,10 +73,6 @@ export function validateFormData(
   return errors
 }
 
-type ValidatorFunction = (
-  event: RequestEvent
-) => Promise<{ formData: FormData } | ReturnType<typeof fail>>
-
 /**
  * Creates a validation middleware function
  *

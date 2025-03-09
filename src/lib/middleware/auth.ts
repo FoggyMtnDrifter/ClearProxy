@@ -68,7 +68,7 @@ export function requireAdmin(event: RequestEvent) {
  */
 export function requireOwnership(paramName: string = 'userId') {
   return (event: RequestEvent) => {
-    const { locals, params, route, url } = event
+    const { locals, params } = event
 
     requireAuth(event)
 

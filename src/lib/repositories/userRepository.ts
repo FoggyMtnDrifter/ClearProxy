@@ -41,7 +41,6 @@ class UserRepository implements IUserRepository {
    * @returns {Promise<User|undefined>} The user or undefined if not found
    */
   async getByEmail(email: string): Promise<User | undefined> {
-    const normalizedEmail = email.toLowerCase().trim()
     const user = await db.select().from(users).where(eq(users.email, email)).limit(1).get()
     return user as User | undefined
   }

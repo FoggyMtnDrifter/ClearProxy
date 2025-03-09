@@ -323,10 +323,6 @@ export async function updateProxyHost(
   const allHosts = await proxyHostRepository.getAll()
   await reloadCaddyConfig(allHosts)
 
-  if (updatedHost && (hostData.domain !== undefined || existingHost)) {
-    const domain = hostData.domain || existingHost.domain
-  }
-
   return updatedHost || null
 }
 

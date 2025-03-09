@@ -27,10 +27,55 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint on changed files
-        uses: tj-actions/eslint-changed-files@v25
-        with:
-          config_path: './eslint.config.mjs'
-          extra_args: '--max-warnings=0'
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192' # Increase heap memory limit to 8GB
+      - name: Find changed files
+        id: changed_files
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_COMMIT=${{ github.event.pull_request.base.sha }}
+            echo "Using PR base commit: $BASE_COMMIT"
+          else
+            # For manual runs on branch or other cases, use a reasonable default
+            BASE_COMMIT=$(git merge-base origin/main HEAD)
+            echo "Using merge-base with main: $BASE_COMMIT"
+          fi
+
+          # Get the list of changed files (only .js, .ts, .svelte)
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT $BASE_COMMIT HEAD | grep -E '\.(js|ts|svelte)$' || true)
+
+          # Replace newlines with spaces in the file list
+          CHANGED_FILES_SPACE_SEPARATED=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+
+          # Save to output
+          echo "file_list=$CHANGED_FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+
+          # Count of files
+          FILE_COUNT=$(echo "$CHANGED_FILES" | wc -l)
+          echo "Found $FILE_COUNT changed files to lint"
+
+      - name: Run ESLint in batches
+        if: steps.changed_files.outputs.file_list != ''
+        run: |
+          # Convert space-separated list to array
+          read -ra FILES <<< "${{ steps.changed_files.outputs.file_list }}"
+
+          # Set batch size
+          BATCH_SIZE=20
+
+          # Total files count
+          TOTAL_FILES=${#FILES[@]}
+          echo "Total files to lint: $TOTAL_FILES"
+
+          # Process files in batches
+          for ((i=0; i<TOTAL_FILES; i+=BATCH_SIZE)); do
+            echo "Processing batch $(($i / BATCH_SIZE + 1))..."
+            
+            # Get the batch of files
+            BATCH=()
+            for ((j=i; j<i+BATCH_SIZE && j<TOTAL_FILES; j++)); do
+              BATCH+=("${FILES[$j]}")
+            done
+            
+            # Run ESLint on this batch
+            echo "Linting ${#BATCH[@]} files..."
+            NODE_OPTIONS="--max-old-space-size=4096" npx eslint --config ./eslint.config.mjs --max-warnings=0 ${BATCH[@]}
+          done

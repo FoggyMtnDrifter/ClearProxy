@@ -296,7 +296,7 @@
             {#if rowActions.length > 0}
               <td
                 class={`relative py-3.5 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 ${
-                  i > 0 ? 'border-t border-transparent' : ''
+                  i > 0 ? 'border-t border-gray-200 dark:border-gray-700' : ''
                 }`}
               >
                 <div class="flex justify-end">

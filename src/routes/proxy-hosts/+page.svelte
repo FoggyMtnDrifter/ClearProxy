@@ -1,5 +1,7 @@
 <script context="module">
-  function clickOutside(node: HTMLElement, handler: () => void) {
+  type ClickOutsideHandler = () => void
+
+  function clickOutside(node: HTMLElement, handler: ClickOutsideHandler) {
     const handleClick = (event: MouseEvent) => {
       if (node && !node.contains(event.target as Node) && !event.defaultPrevented) {
         handler()

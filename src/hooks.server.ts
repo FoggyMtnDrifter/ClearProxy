@@ -7,8 +7,17 @@ import { redirect, type Handle, type Redirect } from '@sveltejs/kit'
 import { getUserFromSession } from '$lib/auth/session'
 import { authLogger } from '$lib/utils/logger'
 import { performance } from 'node:perf_hooks'
+import { initializeCaddyConfig } from '$lib/caddy/init'
 
 const publicRoutes = ['/auth/login', '/auth/register']
+
+// Initialize Caddy configuration on app startup
+initializeCaddyConfig().catch((error) => {
+  authLogger.error(
+    { error },
+    'Failed to initialize Caddy configuration on startup. Some proxy configurations may not be applied.'
+  )
+})
 
 /**
  * Handle function for SvelteKit server hooks.

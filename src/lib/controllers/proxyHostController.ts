@@ -126,11 +126,15 @@ export async function updateProxyHost(event: RequestEvent) {
   const targetProtocol = formData.get('targetProtocol')?.toString() || 'http'
   const sslEnabled = formData.get('sslEnabled') === 'true'
   const forceSSL = formData.get('forceSSL') === 'true'
+  const http2Support = formData.get('http2Support') === 'true'
+  const http3Support = formData.get('http3Support') === 'true'
   const enabled = formData.get('enabled') === 'true'
   const cacheEnabled = formData.get('cacheEnabled') === 'true'
   const basicAuthEnabled = formData.get('basicAuthEnabled') === 'true'
   const basicAuthUsername = formData.get('basicAuthUsername')?.toString() || ''
   const basicAuthPassword = formData.get('basicAuthPassword')?.toString() || ''
+  const advancedConfig = formData.get('advancedConfig')?.toString() || ''
+  const ignoreInvalidCert = formData.get('ignoreInvalidCert') === 'true'
 
   if (!domain) {
     return fail(400, { error: 'Domain is required' })
@@ -147,11 +151,15 @@ export async function updateProxyHost(event: RequestEvent) {
     targetProtocol,
     sslEnabled,
     forceSSL,
+    http2Support,
+    http3Support,
     enabled,
     cacheEnabled,
+    advancedConfig,
     basicAuthEnabled,
     basicAuthUsername: basicAuthEnabled ? basicAuthUsername : null,
-    basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null
+    basicAuthPassword: basicAuthEnabled ? basicAuthPassword : null,
+    ignoreInvalidCert
   }
 
   try {

@@ -321,15 +321,17 @@ async function retryWithBackoff<T>(
 }
 
 /**
- * Parses advanced Caddy configuration from a JSON string
+ * Parses advanced Caddy configuration from a string
  * Allows for custom routing rules beyond the standard proxy configuration
+ * Can handle both JSON format and Caddyfile directive format
  *
- * @param {string} config - JSON string containing advanced Caddy configuration
+ * @param {string} config - String containing advanced Caddy configuration (JSON or Caddyfile directives)
  * @returns {CaddyRoute[]} Array of parsed Caddy routes
  */
 function parseAdvancedConfig(config: string): CaddyRoute[] {
   if (!config) return []
 
+  // First try to parse as JSON
   try {
     const parsedConfig = JSON.parse(config)
 
@@ -342,13 +344,75 @@ function parseAdvancedConfig(config: string): CaddyRoute[] {
       Array.isArray(parsedConfig.routes)
     ) {
       return parsedConfig.routes
+    } else if (typeof parsedConfig === 'object' && parsedConfig !== null) {
+      // Single route object, wrap in array
+      return [parsedConfig as CaddyRoute]
     } else {
       caddyLogger.warn('Invalid advanced config format, expected array or object with routes array')
       return []
     }
   } catch (error) {
-    caddyLogger.error({ error }, 'Failed to parse advanced configuration')
-    return []
+    // Not valid JSON, try to parse as Caddyfile directive format
+    caddyLogger.debug(
+      { error },
+      'JSON parsing failed, attempting to process as Caddyfile directive'
+    )
+
+    try {
+      // Handle Caddyfile directives like: route /.well-known/path { ... }
+      if (config.trim().startsWith('route ')) {
+        const routeMatch = config.match(/route\s+([^\s{]+)\s*{([^}]+)}/)
+        if (routeMatch) {
+          const path = routeMatch[1]
+          const directives = routeMatch[2].trim()
+
+          // Parse the directives
+          const handlers: CaddyHandler[] = []
+
+          // Check for respond directive
+          const respondMatch = directives.match(/respond\s+`([^`]+)`/)
+          if (respondMatch) {
+            handlers.push({
+              handler: 'static_response',
+              body: respondMatch[1].trim()
+            })
+          }
+
+          // Check for header directive
+          const headerMatch = directives.match(/header\s+([^\s]+)\s+([^\s]+)/)
+          if (headerMatch) {
+            handlers.push({
+              handler: 'headers',
+              response: {
+                set: {
+                  [headerMatch[1]]: [headerMatch[2]]
+                }
+              }
+            })
+          }
+
+          if (handlers.length > 0) {
+            return [
+              {
+                match: [
+                  {
+                    path: [path],
+                    host: [''] // This will be replaced in generateCaddyConfig with the actual host
+                  }
+                ],
+                handle: handlers
+              }
+            ]
+          }
+        }
+      }
+
+      caddyLogger.warn('Could not parse as Caddyfile directive either, using empty configuration')
+      return []
+    } catch (directiveError) {
+      caddyLogger.error({ error: directiveError }, 'Failed to parse Caddyfile directive')
+      return []
+    }
   }
 }
 
